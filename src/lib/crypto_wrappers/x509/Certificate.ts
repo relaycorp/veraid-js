@@ -1,21 +1,99 @@
-import { BmpString, Integer, OctetString, BaseBlock } from 'asn1js';
+import { BmpString, Integer, OctetString, type BaseBlock } from 'asn1js';
 import { min, setMilliseconds } from 'date-fns';
-import * as pkijs from 'pkijs';
+import {
+  AttributeTypeAndValue,
+  AuthorityKeyIdentifier,
+  BasicConstraints,
+  Certificate as PkijsCertificate,
+  CertificateChainValidationEngine,
+  Extension,
+  type FindIssuerCallback,
+} from 'pkijs';
 
-import * as oids from '../../oids.js';
 import { derDeserialize, generateRandom64BitValue } from '../utils.js';
 import { getIdFromIdentityKey, getPublicKeyDigest } from '../keys.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
-import CertificateError from './CertificateError.js';
-import FullCertificateIssuanceOptions from './FullCertificateIssuanceOptions.js';
-import { assertPkiType, assertUndefined } from '../cms/utils.js';
+import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 
-const MAX_PATH_LENGTH_CONSTRAINT = 2; // Per Relaynet PKI
+import CertificateError from './CertificateError.js';
+import type FullCertificateIssuanceOptions from './FullCertificateIssuanceOptions.js';
+
+const X509_CERTIFICATE_VERSION_3 = 2;
 
 type FindIssuerSignature = (
-  cert: pkijs.Certificate,
-  engine: pkijs.CertificateChainValidationEngine,
-) => Promise<readonly pkijs.Certificate[]>;
+  cert: PkijsCertificate,
+  engine: CertificateChainValidationEngine,
+) => Promise<readonly PkijsCertificate[]>;
+
+function generatePositiveAsn1Integer(): Integer {
+  const potentiallySignedInteger = new Uint8Array(generateRandom64BitValue());
+
+  // ASN.1 BER/DER INTEGER uses two's complement with big endian, so we ensure the integer is
+  // positive by keeping the leftmost octet below 128.
+  const positiveInteger = new Uint8Array(potentiallySignedInteger);
+  positiveInteger.set([Math.min(potentiallySignedInteger[0], 127)], 0);
+
+  return new Integer({ valueHex: positiveInteger });
+}
+
+function makeBasicConstraintsExtension(isCa: boolean, pathLengthConstraint: number): Extension {
+  if (pathLengthConstraint < 0) {
+    throw new CertificateError(`pathLenConstraint must be >= 0 (got ${pathLengthConstraint})`);
+  }
+  const basicConstraints = new BasicConstraints({
+    cA: isCa,
+    pathLenConstraint: pathLengthConstraint,
+  });
+  return new Extension({
+    critical: true,
+    extnID: BASIC_CONSTRAINTS,
+    extnValue: basicConstraints.toSchema().toBER(false),
+  });
+}
+
+async function makeAuthorityKeyIdExtension(publicKey: CryptoKey): Promise<Extension> {
+  const keyDigest = await getPublicKeyDigest(publicKey);
+  const keyIdEncoded = new OctetString({ valueHex: keyDigest });
+  return new Extension({
+    extnID: AUTHORITY_KEY,
+    extnValue: new AuthorityKeyIdentifier({ keyIdentifier: keyIdEncoded }).toSchema().toBER(false),
+  });
+}
+
+async function makeSubjectKeyIdExtension(publicKey: CryptoKey): Promise<Extension> {
+  const keyDigest = await getPublicKeyDigest(publicKey);
+  return new Extension({
+    extnID: SUBJECT_KEY,
+    extnValue: new OctetString({ valueHex: keyDigest }).toBER(false),
+  });
+}
+
+function validateIssuerCertificate(issuerCertificate: Certificate): void {
+  const extensions = issuerCertificate.pkijsCertificate.extensions ?? [];
+  const bcExtension = extensions.find((extension) => extension.extnID === BASIC_CONSTRAINTS);
+  if (bcExtension === undefined) {
+    throw new CertificateError('Basic constraints extension is missing from issuer certificate');
+  }
+  const basicConstraintsAsn1 = derDeserialize(bcExtension.extnValue.valueBlock.valueHex);
+  const basicConstraints = new BasicConstraints({ schema: basicConstraintsAsn1 });
+  if (!basicConstraints.cA) {
+    throw new CertificateError('Issuer is not a CA');
+  }
+}
+
+function cloneAsn1jsValue<Type extends BaseBlock>(value: Type): Type {
+  const valueSerialized = value.toBER(false);
+  return derDeserialize(valueSerialized) as Type;
+}
+
+function isCertificateInArray(certificate: Certificate, array: readonly Certificate[]): boolean {
+  for (const certInArray of array) {
+    if (certInArray.isEqual(certificate)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * X.509 Certificate.
@@ -24,14 +102,6 @@ type FindIssuerSignature = (
  * certificates easy and safe.
  */
 export default class Certificate {
-  get startDate(): Date {
-    return this.pkijsCertificate.notBefore.value;
-  }
-
-  get expiryDate(): Date {
-    return this.pkijsCertificate.notAfter.value;
-  }
-
   /**
    * Deserialize certificate from DER-encoded value.
    *
@@ -39,68 +109,65 @@ export default class Certificate {
    */
   public static deserialize(certDer: ArrayBuffer): Certificate {
     const asn1Value = derDeserialize(certDer);
-    const pkijsCert = new pkijs.Certificate({ schema: asn1Value });
+    const pkijsCert = new PkijsCertificate({ schema: asn1Value });
     return new Certificate(pkijsCert);
   }
 
   /**
    * Issue a Relaynet PKI certificate.
-   *
-   * @param options
    */
   public static async issue(options: FullCertificateIssuanceOptions): Promise<Certificate> {
     // PKI.js should round down to the nearest second per X.509. We should do it ourselves to
     // avoid discrepancies when the validity dates of a freshly-issued certificate are used.
     const validityStartDate = setMilliseconds(options.validityStartDate ?? new Date(), 0);
-    const issuerCertificate = options.issuerCertificate;
     const validityEndDate = setMilliseconds(
-      issuerCertificate
-        ? min([issuerCertificate.expiryDate, options.validityEndDate])
+      options.issuerCertificate
+        ? min([options.issuerCertificate.expiryDate, options.validityEndDate])
         : options.validityEndDate,
       0,
     );
 
-    //region Validation
+    // region Validation
     if (validityEndDate < validityStartDate) {
       throw new CertificateError('The end date must be later than the start date');
     }
-    if (issuerCertificate) {
-      validateIssuerCertificate(issuerCertificate);
+    if (options.issuerCertificate) {
+      validateIssuerCertificate(options.issuerCertificate);
     }
-    //endregion
 
-    const issuerPublicKey = issuerCertificate
-      ? await issuerCertificate.pkijsCertificate.getPublicKey()
+    // endregion
+
+    const issuerPublicKey = options.issuerCertificate
+      ? await options.issuerCertificate.pkijsCertificate.getPublicKey()
       : options.subjectPublicKey;
-    const pkijsCert = new pkijs.Certificate({
+    const pkijsCert = new PkijsCertificate({
       extensions: [
-        makeBasicConstraintsExtension(options.isCA === true, options.pathLenConstraint ?? 0),
+        makeBasicConstraintsExtension(options.isCa === true, options.pathLenConstraint ?? 0),
         await makeAuthorityKeyIdExtension(issuerPublicKey),
         await makeSubjectKeyIdExtension(options.subjectPublicKey),
       ],
-      serialNumber: generatePositiveASN1Integer(),
-      version: 2, // 2 = v3
+
+      serialNumber: generatePositiveAsn1Integer(),
+      version: X509_CERTIFICATE_VERSION_3,
     });
 
-    // tslint:disable-next-line:no-object-mutation
     pkijsCert.notBefore.value = validityStartDate;
-    // tslint:disable-next-line:no-object-mutation
+
     pkijsCert.notAfter.value = validityEndDate;
 
     pkijsCert.subject.typesAndValues.push(
-      new pkijs.AttributeTypeAndValue({
-        type: oids.COMMON_NAME,
+      new AttributeTypeAndValue({
+        type: COMMON_NAME,
         value: new BmpString({ value: options.commonName }),
       }),
     );
 
-    const issuerDn = issuerCertificate
-      ? issuerCertificate.pkijsCertificate.subject.typesAndValues
+    const issuerDn = options.issuerCertificate
+      ? options.issuerCertificate.pkijsCertificate.subject.typesAndValues
       : pkijsCert.subject.typesAndValues;
-    // tslint:disable-next-line:no-object-mutation
     pkijsCert.issuer.typesAndValues = issuerDn.map(
       (attribute) =>
-        new pkijs.AttributeTypeAndValue({
+        new AttributeTypeAndValue({
           type: attribute.type,
           value: cloneAsn1jsValue(attribute.value),
         }),
@@ -115,13 +182,18 @@ export default class Certificate {
     return new Certificate(pkijsCert);
   }
 
-  public readonly pkijsCertificate: pkijs.Certificate;
-
-  // tslint:disable-next-line:readonly-keyword
   protected subjectIdCache: string | null = null;
 
-  public constructor(pkijsCertificate: pkijs.Certificate) {
+  public constructor(public readonly pkijsCertificate: PkijsCertificate) {
     this.pkijsCertificate = pkijsCertificate;
+  }
+
+  public get startDate(): Date {
+    return this.pkijsCertificate.notBefore.value;
+  }
+
+  public get expiryDate(): Date {
+    return this.pkijsCertificate.notAfter.value;
   }
 
   /**
@@ -151,23 +223,17 @@ export default class Certificate {
   }
 
   public getCommonName(): string {
-    const matchingDnAttr = this.pkijsCertificate.subject.typesAndValues.filter(
-      (a) => (a.type as unknown as string) === oids.COMMON_NAME,
+    const commonNameAttribute = this.pkijsCertificate.subject.typesAndValues.find(
+      (attribute) => (attribute.type as unknown as string) === COMMON_NAME,
     );
-    if (matchingDnAttr.length === 0) {
+    if (commonNameAttribute === undefined) {
       throw new CertificateError('Distinguished Name does not contain Common Name');
     }
-    return matchingDnAttr[0].value.valueBlock.value;
-  }
-
-  public async getPublicKey(): Promise<CryptoKey> {
-    return this.pkijsCertificate.getPublicKey();
+    return commonNameAttribute.value.valueBlock.value;
   }
 
   /**
    * Report whether this certificate is the same as `otherCertificate`.
-   *
-   * @param otherCertificate
    */
   public isEqual(otherCertificate: Certificate): boolean {
     const thisCertSerialized = Buffer.from(this.serialize());
@@ -177,10 +243,10 @@ export default class Certificate {
 
   public validate(): void {
     // X.509 versioning starts at 0
-    const x509CertVersion = this.pkijsCertificate.version + 1;
-    if (x509CertVersion !== 3) {
+    const x509CertVersion = this.pkijsCertificate.version;
+    if (x509CertVersion !== X509_CERTIFICATE_VERSION_3) {
       throw new CertificateError(
-        `Only X.509 v3 certificates are supported (got v${x509CertVersion})`,
+        `Only X.509 v3 certificates are supported (got v${x509CertVersion + 1})`,
       );
     }
 
@@ -193,26 +259,30 @@ export default class Certificate {
     }
   }
 
-  public async calculateSubjectId(): Promise<string> {
-    if (!this.subjectIdCache) {
-      // tslint:disable-next-line:no-object-mutation
-      this.subjectIdCache = await getIdFromIdentityKey(await this.getPublicKey());
-    }
-    return this.subjectIdCache;
-  }
-
   public getIssuerId(): string | null {
     const authorityKeyAttribute = this.pkijsCertificate.extensions?.find(
-      (attr) => attr.extnID === oids.AUTHORITY_KEY,
+      (attribute) => attribute.extnID === AUTHORITY_KEY,
     );
     if (!authorityKeyAttribute) {
       return null;
     }
-    const authorityKeyId = authorityKeyAttribute.parsedValue;
-    assertPkiType(authorityKeyId, pkijs.AuthorityKeyIdentifier, 'authorityKeyId');
-    assertUndefined(authorityKeyId.keyIdentifier, 'authorityKeyId.keyIdentifier');
+    const authorityKeyId = authorityKeyAttribute.parsedValue as AuthorityKeyIdentifier;
+    if (!authorityKeyId.keyIdentifier) {
+      throw new CertificateError('Key identifier is missing from AKI extension');
+    }
     const id = Buffer.from(authorityKeyId.keyIdentifier.valueBlock.valueHexView).toString('hex');
     return `0${id}`;
+  }
+
+  public async getPublicKey(): Promise<CryptoKey> {
+    return this.pkijsCertificate.getPublicKey();
+  }
+
+  public async calculateSubjectId(): Promise<string> {
+    if (this.subjectIdCache === null) {
+      this.subjectIdCache = await getIdFromIdentityKey(await this.getPublicKey());
+    }
+    return this.subjectIdCache;
   }
 
   /**
@@ -228,17 +298,18 @@ export default class Certificate {
     trustedCertificates: readonly Certificate[],
   ): Promise<readonly Certificate[]> {
     async function findIssuer(
-      pkijsCertificate: pkijs.Certificate,
+      pkijsCertificate: PkijsCertificate,
       validationEngine: { readonly defaultFindIssuer: FindIssuerSignature },
-    ): Promise<readonly pkijs.Certificate[]> {
+    ): Promise<readonly PkijsCertificate[]> {
       const issuers = await validationEngine.defaultFindIssuer(
         pkijsCertificate,
-        validationEngine as any,
+        validationEngine as CertificateChainValidationEngine,
       );
-      if (issuers.length !== 0) {
+      if (0 < issuers.length) {
         return issuers;
       }
-      // If the certificate is actually an intermediate certificate but it's passed as a trusted
+
+      // If the certificate is actually an intermediate certificate, but it's passed as a trusted
       // certificate, accepted it.
       const certificate = new Certificate(pkijsCertificate);
       return isCertificateInArray(certificate, trustedCertificates) ? [pkijsCertificate] : [];
@@ -247,19 +318,25 @@ export default class Certificate {
     // Ignore any intermediate certificate that's also the issuer of a trusted certificate.
     // The main reason for doing this isn't performance, but the fact that PKI.js would fail to
     // compute the path.
-    const intermediateCertsSanitized = intermediateCaCertificates.filter((c) => {
+    const intermediateCertsSanitized = intermediateCaCertificates.filter((certificate) => {
       for (const trustedCertificate of trustedCertificates) {
-        if (trustedCertificate.pkijsCertificate.issuer.isEqual(c.pkijsCertificate.subject)) {
+        if (
+          trustedCertificate.pkijsCertificate.issuer.isEqual(certificate.pkijsCertificate.subject)
+        ) {
           return false;
         }
       }
       return true;
     });
 
-    const chainValidator = new pkijs.CertificateChainValidationEngine({
-      certs: [...intermediateCertsSanitized.map((c) => c.pkijsCertificate), this.pkijsCertificate],
-      findIssuer: findIssuer as unknown as pkijs.FindIssuerCallback, // Use unknown to fix TS error, because findIssuer returns `readonly Certificate[]` instead of `Certificate[]`
-      trustedCerts: trustedCertificates.map((c) => c.pkijsCertificate),
+    const chainValidator = new CertificateChainValidationEngine({
+      certs: [
+        ...intermediateCertsSanitized.map((certificate) => certificate.pkijsCertificate),
+        this.pkijsCertificate,
+      ],
+
+      findIssuer: findIssuer as unknown as FindIssuerCallback,
+      trustedCerts: trustedCertificates.map((certificate) => certificate.pkijsCertificate),
     });
     const verification = await chainValidator.verify({ passedWhenNotRevValues: false });
 
@@ -268,87 +345,7 @@ export default class Certificate {
     }
 
     return verification.certificatePath!.map(
-      (pkijsCert: pkijs.Certificate) => new Certificate(pkijsCert),
+      (pkijsCert: PkijsCertificate) => new Certificate(pkijsCert),
     );
   }
-}
-
-function generatePositiveASN1Integer(): Integer {
-  const potentiallySignedInteger = new Uint8Array(generateRandom64BitValue());
-
-  // ASN.1 BER/DER INTEGER uses two's complement with big endian, so we ensure the integer is
-  // positive by keeping the leftmost octet below 128.
-  const positiveInteger = new Uint8Array(potentiallySignedInteger);
-  positiveInteger.set([Math.min(potentiallySignedInteger[0], 127)], 0);
-
-  return new Integer({ valueHex: positiveInteger });
-}
-
-//region Extensions
-
-function makeBasicConstraintsExtension(cA: boolean, pathLenConstraint: number): pkijs.Extension {
-  if (pathLenConstraint < 0 || MAX_PATH_LENGTH_CONSTRAINT < pathLenConstraint) {
-    throw new CertificateError(
-      `pathLenConstraint must be between 0 and 2 (got ${pathLenConstraint})`,
-    );
-  }
-  const basicConstraints = new pkijs.BasicConstraints({ cA, pathLenConstraint });
-  return new pkijs.Extension({
-    critical: true,
-    extnID: oids.BASIC_CONSTRAINTS,
-    extnValue: basicConstraints.toSchema().toBER(false),
-  });
-}
-
-async function makeAuthorityKeyIdExtension(publicKey: CryptoKey): Promise<pkijs.Extension> {
-  const keyDigest = await getPublicKeyDigest(publicKey);
-  const keyIdEncoded = new OctetString({ valueHex: keyDigest });
-  return new pkijs.Extension({
-    extnID: oids.AUTHORITY_KEY,
-    extnValue: new pkijs.AuthorityKeyIdentifier({ keyIdentifier: keyIdEncoded })
-      .toSchema()
-      .toBER(false),
-  });
-}
-
-async function makeSubjectKeyIdExtension(publicKey: CryptoKey): Promise<pkijs.Extension> {
-  const keyDigest = await getPublicKeyDigest(publicKey);
-  return new pkijs.Extension({
-    extnID: oids.SUBJECT_KEY,
-    extnValue: new OctetString({ valueHex: keyDigest }).toBER(false),
-  });
-}
-
-//endregion
-
-//region Validation
-
-function validateIssuerCertificate(issuerCertificate: Certificate): void {
-  const extensions = issuerCertificate.pkijsCertificate.extensions || [];
-  const matchingExtensions = extensions.filter((e) => e.extnID === oids.BASIC_CONSTRAINTS);
-  if (matchingExtensions.length === 0) {
-    throw new CertificateError('Basic constraints extension is missing from issuer certificate');
-  }
-  const extension = matchingExtensions[0];
-  const basicConstraintsAsn1 = derDeserialize(extension.extnValue.valueBlock.valueHex);
-  const basicConstraints = new pkijs.BasicConstraints({ schema: basicConstraintsAsn1 });
-  if (!basicConstraints.cA) {
-    throw new CertificateError('Issuer is not a CA');
-  }
-}
-
-//endregion
-
-function cloneAsn1jsValue<T extends BaseBlock>(value: T): T {
-  const valueSerialized = value.toBER(false);
-  return derDeserialize(valueSerialized) as T;
-}
-
-function isCertificateInArray(certificate: Certificate, array: readonly Certificate[]): boolean {
-  for (const certInArray of array) {
-    if (certInArray.isEqual(certificate)) {
-      return true;
-    }
-  }
-  return false;
 }

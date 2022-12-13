@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import * as asn1js from 'asn1js';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { addDays, addSeconds, setMilliseconds, subSeconds } from 'date-fns';
@@ -9,10 +10,10 @@ import * as oids from '../../oids.js';
 import { derDeserialize, getPkijsCrypto } from '../utils.js';
 import { derSerializePublicKey, generateRSAKeyPair, getIdFromIdentityKey } from '../keys.js';
 import { RsaPssPrivateKey } from '../PrivateKey.js';
-import { MockRsaPssProvider } from '../webcrypto/_test_utils.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
+import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 
 const pkijsCrypto = getPkijsCrypto();
 
@@ -28,7 +29,7 @@ beforeAll(async () => {
   issuerKeyPair = await generateRSAKeyPair();
   issuerCertificate = await Certificate.issue({
     ...baseCertificateOptions,
-    isCA: true,
+    isCa: true,
     issuerPrivateKey: issuerKeyPair.privateKey,
     subjectPublicKey: issuerKeyPair.publicKey,
   });
@@ -277,7 +278,7 @@ describe('issue()', () => {
   test('should accept an issuer marked as CA', async () => {
     const issuerCert = await Certificate.issue({
       ...baseCertificateOptions,
-      isCA: true,
+      isCa: true,
       issuerPrivateKey: issuerKeyPair.privateKey,
       subjectPublicKey: issuerKeyPair.publicKey,
     });
@@ -295,7 +296,7 @@ describe('issue()', () => {
   test('should refuse an issuer certificate without extensions', async () => {
     const invalidIssuerCertificate = await Certificate.issue({
       ...baseCertificateOptions,
-      isCA: false,
+      isCa: false,
       issuerPrivateKey: issuerKeyPair.privateKey,
       subjectPublicKey: issuerKeyPair.publicKey,
     });
@@ -317,7 +318,7 @@ describe('issue()', () => {
   test('should refuse an issuer certificate with an empty set of extensions', async () => {
     const invalidIssuerCertificate = await Certificate.issue({
       ...baseCertificateOptions,
-      isCA: false,
+      isCa: false,
       issuerPrivateKey: issuerKeyPair.privateKey,
       subjectPublicKey: issuerKeyPair.publicKey,
     });
@@ -339,7 +340,7 @@ describe('issue()', () => {
   test('should refuse an issuer certificate without basic constraints extension', async () => {
     const invalidIssuerCertificate = await Certificate.issue({
       ...baseCertificateOptions,
-      isCA: false,
+      isCa: false,
       issuerPrivateKey: subjectKeyPair.privateKey,
       subjectPublicKey: issuerKeyPair.publicKey,
     });
@@ -363,7 +364,7 @@ describe('issue()', () => {
   test('should refuse an issuer not marked as CA', async () => {
     const invalidIssuerCertificate = await Certificate.issue({
       ...baseCertificateOptions,
-      isCA: false,
+      isCa: false,
       issuerPrivateKey: issuerKeyPair.privateKey,
       subjectPublicKey: issuerKeyPair.publicKey,
     });
@@ -422,7 +423,7 @@ describe('issue()', () => {
     test('CA flag should be enabled if requested', async () => {
       const cert = await Certificate.issue({
         ...baseCertificateOptions,
-        isCA: true,
+        isCa: true,
         issuerPrivateKey: subjectKeyPair.privateKey,
         subjectPublicKey: subjectKeyPair.publicKey,
       });
@@ -454,17 +455,6 @@ describe('issue()', () => {
       expect(basicConstraints).toHaveProperty('pathLenConstraint', pathLenConstraint);
     });
 
-    test('pathLenConstraint should not be greater than 2', async () => {
-      await expect(
-        Certificate.issue({
-          ...baseCertificateOptions,
-          issuerPrivateKey: subjectKeyPair.privateKey,
-          pathLenConstraint: 3,
-          subjectPublicKey: subjectKeyPair.publicKey,
-        }),
-      ).rejects.toEqual(new CertificateError('pathLenConstraint must be between 0 and 2 (got 3)'));
-    });
-
     test('pathLenConstraint should not be negative', async () => {
       await expect(
         Certificate.issue({
@@ -473,7 +463,7 @@ describe('issue()', () => {
           pathLenConstraint: -1,
           subjectPublicKey: subjectKeyPair.publicKey,
         }),
-      ).rejects.toEqual(new CertificateError('pathLenConstraint must be between 0 and 2 (got -1)'));
+      ).rejects.toStrictEqual(new CertificateError('pathLenConstraint must be >= 0 (got -1)'));
     });
   });
 
@@ -767,7 +757,7 @@ describe('getCertificationPath', () => {
     stubTrustedCaPrivateKey = trustedCaKeyPair.privateKey;
     stubRootCa = reSerializeCertificate(
       await generateStubCert({
-        attributes: { isCA: true },
+        attributes: { isCa: true },
         issuerPrivateKey: trustedCaKeyPair.privateKey,
         subjectPublicKey: trustedCaKeyPair.publicKey,
       }),
@@ -809,7 +799,7 @@ describe('getCertificationPath', () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
     const intermediateCaCert = reSerializeCertificate(
       await generateStubCert({
-        attributes: { isCA: true },
+        attributes: { isCa: true },
         issuerCertificate: stubRootCa,
         issuerPrivateKey: stubTrustedCaPrivateKey,
         subjectPublicKey: intermediateCaKeyPair.publicKey,
@@ -834,7 +824,7 @@ describe('getCertificationPath', () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
     const intermediateCaCert = reSerializeCertificate(
       await generateStubCert({
-        attributes: { isCA: true },
+        attributes: { isCa: true },
         issuerCertificate: stubRootCa,
         issuerPrivateKey: stubTrustedCaPrivateKey,
         subjectPublicKey: intermediateCaKeyPair.publicKey,
@@ -857,7 +847,7 @@ describe('getCertificationPath', () => {
   test('Cert issued by untrusted intermediate CA should not be trusted', async () => {
     const untrustedIntermediateCaKeyPair = await generateRSAKeyPair();
     const untrustedIntermediateCaCert = await generateStubCert({
-      attributes: { isCA: true },
+      attributes: { isCa: true },
       issuerPrivateKey: untrustedIntermediateCaKeyPair.privateKey,
       subjectPublicKey: untrustedIntermediateCaKeyPair.publicKey,
     });
@@ -880,7 +870,7 @@ describe('getCertificationPath', () => {
   test('Including trusted intermediate CA should not make certificate trusted', async () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
     const trustedIntermediateCaCert = await generateStubCert({
-      attributes: { isCA: true },
+      attributes: { isCa: true },
       issuerPrivateKey: intermediateCaKeyPair.privateKey,
       subjectPublicKey: intermediateCaKeyPair.publicKey,
     });
@@ -896,7 +886,7 @@ describe('getCertificationPath', () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
     const intermediateCaCert = reSerializeCertificate(
       await generateStubCert({
-        attributes: { isCA: true },
+        attributes: { isCa: true },
         issuerCertificate: stubRootCa,
         issuerPrivateKey: stubTrustedCaPrivateKey,
         subjectPublicKey: intermediateCaKeyPair.publicKey,
