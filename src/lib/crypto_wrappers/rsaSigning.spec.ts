@@ -3,7 +3,7 @@ import * as utils from './utils.js';
 import { generateRSAKeyPair } from './keys.js';
 import { RsaPssPrivateKey } from './PrivateKey.js';
 import { sign, verify } from './rsaSigning.js';
-import { MockRsaPssProvider } from './webcrypto/_test_utils.js';
+import {MockRsaPssProvider} from "../../testUtils/webcrypto/MockRsaPssProvider.js";
 
 const plaintext = arrayBufferFrom('the plaintext');
 

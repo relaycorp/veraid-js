@@ -1,11 +1,11 @@
 import { Crypto as BaseCrypto } from '@peculiar/webcrypto';
-import { getCiphers } from 'crypto';
+import { getCiphers } from 'node:crypto';
 import { AesKwProvider, ProviderCrypto, SubtleCrypto } from 'webcrypto-core';
 
 import { AwalaAesKwProvider } from './AwalaAesKwProvider.js';
 
 export class AwalaCrypto extends BaseCrypto {
-  constructor(customProviders: readonly ProviderCrypto[] = []) {
+  public constructor(customProviders: readonly ProviderCrypto[] = []) {
     super();
 
     const providers = (this.subtle as SubtleCrypto).providers;

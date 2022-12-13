@@ -1,3 +1,3 @@
-import RelaynetError from '../../RelaynetError.js';
+import VeraError from '../../VeraError.js';
 
-export default class CertificateError extends RelaynetError {}
+export default class CertificateError extends VeraError {}

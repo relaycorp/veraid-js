@@ -2,9 +2,9 @@ import { getCiphers } from 'crypto';
 import { SubtleCrypto } from 'webcrypto-core';
 
 import { getMockInstance } from '../../_test_utils.js';
-import { MockAesKwProvider } from './_test_utils.js';
 import { AwalaAesKwProvider } from './AwalaAesKwProvider.js';
 import { AwalaCrypto } from './AwalaCrypto.js';
+import {MockAesKwProvider} from "../../../testUtils/webcrypto/MockAesKwProvider.js";
 
 jest.mock('crypto');
 

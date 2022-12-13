@@ -1,8 +1,9 @@
-function expectErrorToEqual(error: Error | undefined, expectedError: Error) {
-  expect(error).toBeInstanceOf(Error);
-  expect(error!.name).toEqual(expectedError.name);
-  expect(error!.name).toEqual(expectedError.name);
-  expect(error!.message).toEqual(expectedError.message);
+function expectErrorToEqual(error: Error, expectedError: Error) {
+  expect(typeof expectedError).toEqual(typeof error);
+  expect(expectedError.name).toEqual(error.name);
+  expect(expectedError.name).toEqual(error.name);
+  expect(expectedError.message).toEqual(error.message);
+  expect(expectedError.cause).toEqual(error.cause);
 }
 
 export function expectFunctionToThrowError(
@@ -16,7 +17,7 @@ export function expectFunctionToThrowError(
     error = err as Error;
   }
 
-  expectErrorToEqual(error, expectedError);
+  expectErrorToEqual(error!, expectedError);
 }
 
 export async function expectFunctionToReject(
@@ -30,5 +31,5 @@ export async function expectFunctionToReject(
     error = err as Error;
   }
 
-  expectErrorToEqual(error, expectedError);
+  expectErrorToEqual(error!, expectedError);
 }

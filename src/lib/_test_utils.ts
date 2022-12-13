@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 
+import { type IBerConvertible } from 'asn1js';
 import bufferToArray from 'buffer-to-arraybuffer';
 import { type Certificate as PkijsCertificate, type RelativeDistinguishedNames } from 'pkijs';
 
 import { generateRSAKeyPair, getPublicKeyDigestHex } from './crypto_wrappers/keys.js';
 import Certificate from './crypto_wrappers/x509/Certificate.js';
-import FullCertificateIssuanceOptions from './crypto_wrappers/x509/FullCertificateIssuanceOptions.js';
+import type FullCertificateIssuanceOptions from './crypto_wrappers/x509/FullCertificateIssuanceOptions.js';
 
 type PkijsValueType = PkijsCertificate | RelativeDistinguishedNames;
 
@@ -16,17 +17,11 @@ export function expectPkijsValuesToBeEqual(
   expectAsn1ValuesToBeEqual(expectedValue.toSchema(), actualValue.toSchema());
 }
 
-type Asn1jsToBER = (sizeOnly?: boolean) => ArrayBuffer;
-
-interface Asn1jsSerializable {
-  readonly toBER: Asn1jsToBER;
-}
-
 export function expectAsn1ValuesToBeEqual(
-  expectedValue: Asn1jsSerializable,
-  actualValue: Asn1jsSerializable,
+  expectedValue: IBerConvertible,
+  actualValue: IBerConvertible,
 ): void {
-  expectArrayBuffersToEqual(expectedValue.toBER(false), actualValue.toBER(false));
+  expect(Buffer.from(actualValue.toBER(false))).toEqual(Buffer.from(expectedValue.toBER(false)));
 }
 
 interface StubCertConfig {
@@ -56,8 +51,12 @@ export async function generateStubCert(config: Partial<StubCertConfig> = {}): Pr
   return reSerializeCertificate(certificate);
 }
 
+export function calculateDigest(algorithm: string, plaintext: ArrayBuffer | Buffer): Buffer {
+  return createHash(algorithm).update(Buffer.from(plaintext)).digest();
+}
+
 export function calculateDigestHex(algorithm: string, plaintext: ArrayBuffer | Buffer): string {
-  return createHash(algorithm).update(Buffer.from(plaintext)).digest('hex');
+  return calculateDigest(algorithm, plaintext).toString('hex');
 }
 
 export function sha256Hex(plaintext: ArrayBuffer | Buffer): string {
@@ -82,27 +81,8 @@ export function mockSpy<T, Y extends any[]>(
   return spy;
 }
 
-/**
- * Assert that two `ArrayBuffer`s are equivalent.
- *
- * expect(value1).toEqual(value2) does NOT work with ArrayBuffer instances: It always passes.
- */
-export function expectArrayBuffersToEqual(
-  expectedBuffer: ArrayBuffer,
-  actualBuffer: ArrayBuffer,
-): void {
-  expect(expectedBuffer).not.toBeInstanceOf(Buffer);
-  expect(actualBuffer).not.toBeInstanceOf(Buffer);
-  expect(Buffer.from(actualBuffer)).toEqual(Buffer.from(expectedBuffer));
-}
-
 export function getMockInstance(mockedObject: any): jest.MockInstance<any, any> {
-  return mockedObject as any;
-}
-
-export function getMockContext(mockedObject: any): jest.MockContext<any, any> {
-  const mockInstance = getMockInstance(mockedObject);
-  return mockInstance.mock;
+  return mockedObject;
 }
 
 export function reSerializeCertificate(cert: Certificate): Certificate {

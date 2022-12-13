@@ -1,10 +1,12 @@
-import bufferToArray from 'buffer-to-arraybuffer';
 import { createHash } from 'node:crypto';
 
+import bufferToArray from 'buffer-to-arraybuffer';
 import { CryptoEngine } from 'pkijs';
 
 import { arrayBufferFrom, sha256Hex } from '../_test_utils.js';
-import { HashingAlgorithm, RSAModulus } from './algorithms.js';
+import { MockRsaPssProvider } from '../../testUtils/webcrypto/MockRsaPssProvider.js';
+
+import { type HashingAlgorithm, type RSAModulus } from './algorithms.js';
 import {
   derDeserializeRSAPrivateKey,
   derDeserializeRSAPublicKey,
@@ -17,21 +19,20 @@ import {
   getRSAPublicKeyFromPrivate,
 } from './keys.js';
 import { RsaPssPrivateKey } from './PrivateKey.js';
-import { MockRsaPssProvider } from './webcrypto/_test_utils.js';
 
 describe('generateRsaKeyPair', () => {
   test('Keys should be RSA-PSS', async () => {
     const keyPair = await generateRSAKeyPair();
 
-    expect(keyPair.publicKey.algorithm.name).toEqual('RSA-PSS');
-    expect(keyPair.privateKey.algorithm.name).toEqual('RSA-PSS');
+    expect(keyPair.publicKey.algorithm.name).toBe('RSA-PSS');
+    expect(keyPair.privateKey.algorithm.name).toBe('RSA-PSS');
   });
 
   test('Keys should be extractable', async () => {
     const keyPair = await generateRSAKeyPair();
 
-    expect(keyPair.publicKey.extractable).toEqual(true);
-    expect(keyPair.privateKey.extractable).toEqual(true);
+    expect(keyPair.publicKey.extractable).toBe(true);
+    expect(keyPair.privateKey.extractable).toBe(true);
   });
 
   test('Key usages should be used for signatures only', async () => {
@@ -158,8 +159,8 @@ describe('Key serializers', () => {
 
       expect(publicKeyDer).toEqual(Buffer.from(stubExportedKeyDer));
 
-      expect(mockExportKey).toBeCalledTimes(1);
-      expect(mockExportKey).toBeCalledWith('spki', stubKeyPair.publicKey);
+      expect(mockExportKey).toHaveBeenCalledTimes(1);
+      expect(mockExportKey).toHaveBeenCalledWith('spki', stubKeyPair.publicKey);
     });
 
     test('Public key should be extracted first if input is PrivateKey', async () => {
@@ -171,7 +172,7 @@ describe('Key serializers', () => {
         Buffer.from(stubExportedKeyDer),
       );
 
-      expect(mockExportKey).not.toBeCalled();
+      expect(mockExportKey).not.toHaveBeenCalled();
     });
   });
 
@@ -181,8 +182,8 @@ describe('Key serializers', () => {
 
       expect(privateKeyDer).toEqual(Buffer.from(stubExportedKeyDer));
 
-      expect(mockExportKey).toBeCalledTimes(1);
-      expect(mockExportKey).toBeCalledWith('pkcs8', stubKeyPair.privateKey);
+      expect(mockExportKey).toHaveBeenCalledTimes(1);
+      expect(mockExportKey).toHaveBeenCalledWith('pkcs8', stubKeyPair.privateKey);
     });
   });
 });
@@ -190,7 +191,6 @@ describe('Key serializers', () => {
 describe('Key deserializers', () => {
   const stubKeyDer = Buffer.from('Hey');
   const rsaAlgorithmOptions: RsaHashedImportParams = { name: 'RSA-PSS', hash: { name: 'SHA-256' } };
-  const ecdhCurveName: NamedCurve = 'P-384';
 
   let stubKeyPair: CryptoKeyPair;
   beforeAll(async () => {
@@ -211,8 +211,8 @@ describe('Key deserializers', () => {
     const publicKey = await derDeserializeRSAPublicKey(stubKeyDer, rsaAlgorithmOptions);
 
     expect(publicKey).toBe(stubKeyPair.publicKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
+    expect(mockImportKey).toHaveBeenCalledTimes(1);
+    expect(mockImportKey).toHaveBeenCalledWith(
       'spki',
       bufferToArray(stubKeyDer),
       rsaAlgorithmOptions,
@@ -227,8 +227,8 @@ describe('Key deserializers', () => {
     const publicKey = await derDeserializeRSAPublicKey(stubKeyDer);
 
     expect(publicKey).toBe(stubKeyPair.publicKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
+    expect(mockImportKey).toHaveBeenCalledTimes(1);
+    expect(mockImportKey).toHaveBeenCalledWith(
       'spki',
       bufferToArray(stubKeyDer),
       rsaAlgorithmOptions,
@@ -244,10 +244,14 @@ describe('Key deserializers', () => {
     const publicKey = await derDeserializeRSAPublicKey(keyDerArrayBuffer, rsaAlgorithmOptions);
 
     expect(publicKey).toBe(stubKeyPair.publicKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith('spki', keyDerArrayBuffer, rsaAlgorithmOptions, true, [
-      'verify',
-    ]);
+    expect(mockImportKey).toHaveBeenCalledTimes(1);
+    expect(mockImportKey).toHaveBeenCalledWith(
+      'spki',
+      keyDerArrayBuffer,
+      rsaAlgorithmOptions,
+      true,
+      ['verify'],
+    );
   });
 
   test('derDeserializeRSAPrivateKey should convert DER private key to RSA key', async () => {
@@ -256,8 +260,8 @@ describe('Key deserializers', () => {
     const privateKey = await derDeserializeRSAPrivateKey(stubKeyDer, rsaAlgorithmOptions);
 
     expect(privateKey).toBe(stubKeyPair.privateKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
+    expect(mockImportKey).toHaveBeenCalledTimes(1);
+    expect(mockImportKey).toHaveBeenCalledWith(
       'pkcs8',
       bufferToArray(stubKeyDer),
       rsaAlgorithmOptions,
@@ -272,83 +276,14 @@ describe('Key deserializers', () => {
     const privateKey = await derDeserializeRSAPrivateKey(stubKeyDer);
 
     expect(privateKey).toBe(stubKeyPair.privateKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
+    expect(mockImportKey).toHaveBeenCalledTimes(1);
+    expect(mockImportKey).toHaveBeenCalledWith(
       'pkcs8',
       bufferToArray(stubKeyDer),
       rsaAlgorithmOptions,
       true,
       ['sign'],
     );
-  });
-
-  test('derDeserializeECDHPublicKey should convert DER public key to ECDH key', async () => {
-    mockImportKey.mockResolvedValueOnce(stubKeyPair.publicKey);
-
-    const publicKey = await derDeserializeECDHPublicKey(stubKeyDer, ecdhCurveName);
-
-    expect(publicKey).toBe(stubKeyPair.publicKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
-      'spki',
-      bufferToArray(stubKeyDer),
-      { name: 'ECDH', namedCurve: ecdhCurveName },
-      true,
-      [],
-    );
-  });
-
-  test('derDeserializeECDHPublicKey should default to P-256', async () => {
-    mockImportKey.mockResolvedValueOnce(stubKeyPair.publicKey);
-
-    await derDeserializeECDHPublicKey(stubKeyDer);
-
-    expect(mockImportKey).toBeCalledTimes(1);
-    const algorithm = mockImportKey.mock.calls[0][2];
-    expect(algorithm).toHaveProperty('namedCurve', 'P-256');
-  });
-
-  test('derDeserializeECDHPublicKey should accept an ArrayBuffer serialization', async () => {
-    mockImportKey.mockResolvedValueOnce(stubKeyPair.publicKey);
-
-    const publicKeyDerArrayBuffer = bufferToArray(stubKeyDer);
-    const publicKey = await derDeserializeECDHPublicKey(publicKeyDerArrayBuffer, ecdhCurveName);
-
-    expect(publicKey).toBe(stubKeyPair.publicKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
-      'spki',
-      publicKeyDerArrayBuffer,
-      { name: 'ECDH', namedCurve: ecdhCurveName },
-      true,
-      [],
-    );
-  });
-
-  test('derDeserializeECDHPrivateKey should convert DER private key to ECDH key', async () => {
-    mockImportKey.mockResolvedValueOnce(stubKeyPair.privateKey);
-
-    const privateKey = await derDeserializeECDHPrivateKey(stubKeyDer, ecdhCurveName);
-
-    expect(privateKey).toBe(stubKeyPair.privateKey);
-    expect(mockImportKey).toBeCalledTimes(1);
-    expect(mockImportKey).toBeCalledWith(
-      'pkcs8',
-      bufferToArray(stubKeyDer),
-      { name: 'ECDH', namedCurve: ecdhCurveName },
-      true,
-      ['deriveBits', 'deriveKey'],
-    );
-  });
-
-  test('derDeserializeECDHPrivateKey should default to P-256', async () => {
-    mockImportKey.mockResolvedValueOnce(stubKeyPair.privateKey);
-
-    await derDeserializeECDHPrivateKey(stubKeyDer);
-
-    expect(mockImportKey).toBeCalledTimes(1);
-    const algorithm = mockImportKey.mock.calls[0][2];
-    expect(algorithm).toHaveProperty('namedCurve', 'P-256');
   });
 });
 
@@ -393,15 +328,6 @@ describe('getIdFromIdentityKey', () => {
 
     const id = await getIdFromIdentityKey(keyPair.publicKey);
 
-    expect(id).toEqual('0' + sha256Hex(await derSerializePublicKey(keyPair.publicKey)));
-  });
-
-  test('DH keys should be refused', async () => {
-    const keyPair = await generateECDHKeyPair();
-
-    await expect(getIdFromIdentityKey(keyPair.publicKey)).rejects.toThrowWithMessage(
-      Error,
-      'Only RSA keys are supported (got ECDH)',
-    );
+    expect(id).toBe(`0${sha256Hex(await derSerializePublicKey(keyPair.publicKey))}`);
   });
 });

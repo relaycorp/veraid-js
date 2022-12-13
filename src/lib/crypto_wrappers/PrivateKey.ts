@@ -1,16 +1,19 @@
-// tslint:disable:max-classes-per-file
+import {
+  CryptoKey as WebCryptoKey,
+  type KeyAlgorithm as WebCryptoKeyAlgorithm,
+  type KeyUsages,
+  type ProviderCrypto,
+} from 'webcrypto-core';
 
-import { CryptoKey, KeyAlgorithm, KeyUsages, ProviderCrypto } from 'webcrypto-core';
+import { type HashingAlgorithm } from './algorithms.js';
 
-import { HashingAlgorithm } from './algorithms.js';
-
-export class PrivateKey extends CryptoKey {
+export abstract class PrivateKey extends WebCryptoKey {
   public override readonly extractable = true; // The **public** key is extractable as SPKI
 
   public override readonly type = 'private' as KeyType;
 
-  constructor(
-    public override readonly algorithm: KeyAlgorithm,
+  protected constructor(
+    public override readonly algorithm: WebCryptoKeyAlgorithm,
     public readonly provider: ProviderCrypto,
   ) {
     super();
@@ -20,7 +23,7 @@ export class PrivateKey extends CryptoKey {
 export class RsaPssPrivateKey extends PrivateKey {
   public override readonly usages = ['sign'] as KeyUsages;
 
-  constructor(hashingAlgorithm: HashingAlgorithm, provider: ProviderCrypto) {
+  public constructor(hashingAlgorithm: HashingAlgorithm, provider: ProviderCrypto) {
     const algorithm = { name: 'RSA-PSS', hash: { name: hashingAlgorithm } };
     super(algorithm, provider);
   }

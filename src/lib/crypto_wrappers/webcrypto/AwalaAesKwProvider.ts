@@ -1,41 +1,46 @@
 import { AESKW } from '@stablelib/aes-kw';
-import { AesKwProvider, CryptoKey } from 'webcrypto-core';
+import { AesKwProvider, type CryptoKey as WebCryptoKey } from 'webcrypto-core';
+
+function typedArrayToBuffer(array: Uint8Array): ArrayBuffer {
+  return array.buffer.slice(array.byteOffset, array.byteLength + array.byteOffset);
+}
 
 /**
  * AES-KW provider that uses pure JavaScript for encryption and decryption.
  */
 export class AwalaAesKwProvider extends AesKwProvider {
-  constructor(protected readonly originalProvider: AesKwProvider) {
+  public constructor(protected readonly originalProvider: AesKwProvider) {
     super();
   }
 
   public async onGenerateKey(
     algorithm: AesKeyGenParams,
-    extractable: boolean,
-    // tslint:disable-next-line:readonly-array
+    isExtractable: boolean,
     keyUsages: KeyUsage[],
-  ): Promise<CryptoKey> {
-    return this.originalProvider.onGenerateKey(algorithm, extractable, keyUsages);
+  ): Promise<WebCryptoKey> {
+    return this.originalProvider.onGenerateKey(algorithm, isExtractable, keyUsages);
   }
 
-  public async onExportKey(format: KeyFormat, key: CryptoKey): Promise<JsonWebKey | ArrayBuffer> {
+  public async onExportKey(
+    format: KeyFormat,
+    key: WebCryptoKey,
+  ): Promise<ArrayBuffer | JsonWebKey> {
     return this.originalProvider.onExportKey(format, key);
   }
 
   public async onImportKey(
     format: KeyFormat,
-    keyData: JsonWebKey | ArrayBuffer,
+    keyData: ArrayBuffer | JsonWebKey,
     algorithm: Algorithm,
-    extractable: boolean,
-    // tslint:disable-next-line:readonly-array
+    isExtractable: boolean,
     keyUsages: KeyUsage[],
-  ): Promise<CryptoKey> {
-    return this.originalProvider.onImportKey(format, keyData, algorithm, extractable, keyUsages);
+  ): Promise<WebCryptoKey> {
+    return this.originalProvider.onImportKey(format, keyData, algorithm, isExtractable, keyUsages);
   }
 
   public override async onEncrypt(
     _algorithm: Algorithm,
-    key: any,
+    key: WebCryptoKey,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
     const aesKw = await this.makeAesKw(key);
@@ -44,19 +49,15 @@ export class AwalaAesKwProvider extends AesKwProvider {
 
   public override async onDecrypt(
     _algorithm: Algorithm,
-    key: any,
+    key: WebCryptoKey,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
     const aesKw = await this.makeAesKw(key);
     return typedArrayToBuffer(aesKw.unwrapKey(new Uint8Array(data)));
   }
 
-  private async makeAesKw(key: any): Promise<AESKW> {
+  private async makeAesKw(key: WebCryptoKey): Promise<AESKW> {
     const keyExported = (await this.onExportKey('raw', key)) as ArrayBuffer;
     return new AESKW(new Uint8Array(keyExported));
   }
-}
-
-function typedArrayToBuffer(array: Uint8Array): ArrayBuffer {
-  return array.buffer.slice(array.byteOffset, array.byteLength + array.byteOffset);
 }

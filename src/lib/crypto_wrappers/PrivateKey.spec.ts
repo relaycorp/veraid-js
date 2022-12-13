@@ -1,6 +1,9 @@
-import { HashingAlgorithm } from './algorithms.js';
+import { type KeyAlgorithm as WebCryptoKeyAlgorithm, type ProviderCrypto } from 'webcrypto-core';
+
+import { MockAesKwProvider } from '../../testUtils/webcrypto/MockAesKwProvider.js';
+
+import { type HashingAlgorithm } from './algorithms.js';
 import { PrivateKey, RsaPssPrivateKey } from './PrivateKey.js';
-import { MockAesKwProvider } from './webcrypto/_test_utils.js';
 import { AwalaAesKwProvider } from './webcrypto/AwalaAesKwProvider.js';
 
 const PROVIDER = new AwalaAesKwProvider(new MockAesKwProvider());
@@ -8,28 +11,34 @@ const PROVIDER = new AwalaAesKwProvider(new MockAesKwProvider());
 describe('PrivateKey', () => {
   const ALGORITHM: KeyAlgorithm = { name: 'RSA-PSS' };
 
-  test('Key type should be private', () => {
-    const key = new PrivateKey(ALGORITHM, PROVIDER);
+  class StubPrivateKey extends PrivateKey {
+    public constructor(algorithm: WebCryptoKeyAlgorithm, provider: ProviderCrypto) {
+      super(algorithm, provider);
+    }
+  }
 
-    expect(key.type).toEqual('private');
+  test('Key type should be private', () => {
+    const key = new StubPrivateKey(ALGORITHM, PROVIDER);
+
+    expect(key.type).toBe('private');
   });
 
   test('Key should be extractable', () => {
-    const key = new PrivateKey(ALGORITHM, PROVIDER);
+    const key = new StubPrivateKey(ALGORITHM, PROVIDER);
 
     expect(key.extractable).toBeTrue();
   });
 
   test('Algorithm should be honoured', () => {
-    const key = new PrivateKey(ALGORITHM, PROVIDER);
+    const key = new StubPrivateKey(ALGORITHM, PROVIDER);
 
-    expect(key.algorithm).toEqual(ALGORITHM);
+    expect(key.algorithm).toStrictEqual(ALGORITHM);
   });
 
   test('Provider should be honoured', () => {
-    const key = new PrivateKey(ALGORITHM, PROVIDER);
+    const key = new StubPrivateKey(ALGORITHM, PROVIDER);
 
-    expect(key.provider).toEqual(PROVIDER);
+    expect(key.provider).toStrictEqual(PROVIDER);
   });
 });
 
@@ -39,13 +48,13 @@ describe('RsaPssPrivateKey', () => {
   test('Key usages should only allow signing', () => {
     const key = new RsaPssPrivateKey(HASHING_ALGORITHM, PROVIDER);
 
-    expect(key.usages).toEqual(['sign']);
+    expect(key.usages).toStrictEqual(['sign']);
   });
 
   test('Hashing algorithm should be added to key algorithm', () => {
     const key = new RsaPssPrivateKey(HASHING_ALGORITHM, PROVIDER);
 
-    expect(key.algorithm).toEqual({
+    expect(key.algorithm).toStrictEqual({
       hash: { name: HASHING_ALGORITHM },
       name: 'RSA-PSS',
     });
@@ -54,6 +63,6 @@ describe('RsaPssPrivateKey', () => {
   test('Provider should be honoured', () => {
     const key = new RsaPssPrivateKey(HASHING_ALGORITHM, PROVIDER);
 
-    expect(key.provider).toEqual(PROVIDER);
+    expect(key.provider).toStrictEqual(PROVIDER);
   });
 });

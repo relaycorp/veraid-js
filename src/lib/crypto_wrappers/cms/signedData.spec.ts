@@ -1,25 +1,42 @@
-import * as asn1js from 'asn1js';
-import { type Certificate as PkijsCertificate, IssuerAndSerialNumber, SignerInfo } from 'pkijs';
+import { jest } from '@jest/globals';
+import {
+  type IBerConvertible,
+  Integer,
+  type ObjectIdentifier,
+  OctetString,
+  Sequence,
+} from 'asn1js';
+import {
+  type Attribute,
+  type Certificate as PkijsCertificate,
+  EncapsulatedContentInfo,
+  IssuerAndSerialNumber,
+  RelativeDistinguishedNames,
+  SignedAndUnsignedAttributes,
+  SignedData as PkijsSignedData,
+  SignerInfo,
+} from 'pkijs';
 
 import {
   arrayBufferFrom,
-  calculateDigestHex,
+  calculateDigest,
   expectAsn1ValuesToBeEqual,
-  expectArrayBuffersToEqual,
   expectPkijsValuesToBeEqual,
   generateStubCert,
-  sha256Hex,
 } from '../../_test_utils.js';
 import { CMS_OIDS } from '../../oids.js';
-import { HashingAlgorithm } from '../algorithms.js';
+import { type HashingAlgorithm } from '../algorithms.js';
 import { generateRSAKeyPair } from '../keys.js';
 import { RsaPssPrivateKey } from '../PrivateKey.js';
-import { MockRsaPssProvider } from '../webcrypto/_test_utils.js';
-import Certificate from '../x509/Certificate.js';
-import { deserializeContentInfo, serializeContentInfo } from '../../../testUtils/asn1.js';
+import type Certificate from '../x509/Certificate.js';
+import { asn1Serialise } from '../../../testUtils/asn1.js';
+import { expectFunctionToThrowError } from '../../../testUtils/errors.js';
+import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
+import { pkijsSerialise, serializeContentInfo } from '../../../testUtils/cms.js';
+
 import CmsError from './CmsError.js';
 import { SignedData } from './signedData.js';
-import { expectFunctionToThrowError } from '../../../testUtils/errors.js';
+import { deserializeContentInfo } from './utils.js';
 
 const plaintext = arrayBufferFrom('Winter is coming');
 
@@ -38,6 +55,13 @@ afterEach(() => {
 });
 
 describe('sign', () => {
+  function getSignerInfoAttribute(signerInfo: SignerInfo, attributeOid: string): Attribute {
+    const { attributes } = signerInfo.signedAttrs!;
+    const matchingAttributes = attributes.filter((attribute) => attribute.type === attributeOid);
+    expect(matchingAttributes).toHaveLength(1);
+    return matchingAttributes[0];
+  }
+
   test('SignedData version should be 1', async () => {
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
 
@@ -50,7 +74,7 @@ describe('sign', () => {
 
     await expect(SignedData.sign(plaintext, privateKey, certificate)).toResolve();
 
-    expect(provider.onSign).toBeCalled();
+    expect(provider.onSign).toHaveBeenCalledWith(expect.anything(), privateKey, expect.anything());
   });
 
   describe('SignerInfo', () => {
@@ -70,11 +94,14 @@ describe('sign', () => {
     test('SignerIdentifier should be IssuerAndSerialNumber', async () => {
       const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
 
-      const signerInfo = signedData.pkijsSignedData.signerInfos[0];
+      const [signerInfo] = signedData.pkijsSignedData.signerInfos;
       expect(signerInfo.sid).toBeInstanceOf(IssuerAndSerialNumber);
-      expectPkijsValuesToBeEqual(signerInfo.sid.issuer, certificate.pkijsCertificate.issuer);
+      expectPkijsValuesToBeEqual(
+        (signerInfo.sid as IssuerAndSerialNumber).issuer,
+        certificate.pkijsCertificate.issuer,
+      );
       expectAsn1ValuesToBeEqual(
-        signerInfo.sid.serialNumber,
+        (signerInfo.sid as IssuerAndSerialNumber).serialNumber,
         certificate.pkijsCertificate.serialNumber,
       );
     });
@@ -83,7 +110,7 @@ describe('sign', () => {
       test('Signed attributes should be present', async () => {
         const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
 
-        const signerInfo = signedData.pkijsSignedData.signerInfos[0];
+        const [signerInfo] = signedData.pkijsSignedData.signerInfos;
         expect(signerInfo.signedAttrs).toBeInstanceOf(SignedAndUnsignedAttributes);
         expect(signerInfo.signedAttrs).toHaveProperty('type', 0);
       });
@@ -95,12 +122,10 @@ describe('sign', () => {
           signedData.pkijsSignedData.signerInfos[0],
           CMS_OIDS.ATTR_CONTENT_TYPE,
         );
-        // @ts-ignore
         expect(contentTypeAttribute.values).toHaveLength(1);
         expect(
-          // @ts-ignore
-          contentTypeAttribute.values[0].valueBlock.toString(),
-        ).toEqual(CMS_OIDS.DATA);
+          (contentTypeAttribute.values[0] as ObjectIdentifier).valueBlock.toString(),
+        ).toStrictEqual(CMS_OIDS.DATA);
       });
 
       test('Plaintext digest should be present', async () => {
@@ -110,12 +135,9 @@ describe('sign', () => {
           signedData.pkijsSignedData.signerInfos[0],
           CMS_OIDS.ATTR_DIGEST,
         );
-        // @ts-ignore
         expect(digestAttribute.values).toHaveLength(1);
-        expect(
-          // @ts-ignore
-          digestAttribute.values[0].valueBlock.valueHex,
-        ).toBeTruthy();
+        const digest = (digestAttribute.values[0] as OctetString).valueBlock.valueHexView;
+        expect(Buffer.from(digest)).toStrictEqual(calculateDigest('sha256', plaintext));
       });
     });
   });
@@ -160,9 +182,8 @@ describe('sign', () => {
         CMS_OIDS.ATTR_DIGEST,
       );
       expect(
-        // @ts-ignore
-        Buffer.from(digestAttribute.values[0].valueBlock.valueHex).toString('hex'),
-      ).toEqual(sha256Hex(plaintext));
+        Buffer.from((digestAttribute.values[0] as OctetString).valueBlock.valueHexView),
+      ).toStrictEqual(calculateDigest('sha256', plaintext));
     });
 
     test.each(['SHA-384', 'SHA-512'] as readonly HashingAlgorithm[])(
@@ -177,24 +198,17 @@ describe('sign', () => {
           CMS_OIDS.ATTR_DIGEST,
         );
         const algorithmNameNodejs = hashingAlgorithmName.toLowerCase().replace('-', '');
-        const digest = (digestAttribute as any).values[0].valueBlock.valueHex;
-        expect(Buffer.from(digest).toString('hex')).toEqual(
-          calculateDigestHex(algorithmNameNodejs, plaintext),
-        );
+        const digest = (digestAttribute.values[0] as OctetString).valueBlock.valueHexView;
+        expect(Buffer.from(digest)).toStrictEqual(calculateDigest(algorithmNameNodejs, plaintext));
       },
     );
 
     test('SHA-1 should not be a valid hashing function', async () => {
-      expect.hasAssertions();
-
-      try {
-        await SignedData.sign(plaintext, keyPair.privateKey, certificate, [], {
-          hashingAlgorithmName: 'SHA-1',
-        } as any);
-      } catch (error: any) {
-        expect(error).toBeInstanceOf(CmsError);
-        expect(error.message).toEqual('SHA-1 is disallowed by RS-018');
-      }
+      await expect(async () =>
+        SignedData.sign(plaintext, keyPair.privateKey, certificate, [], {
+          hashingAlgorithmName: 'SHA-1' as HashingAlgorithm,
+        }),
+      ).rejects.toThrowWithMessage(CmsError, 'SHA-1 is disallowed by RS-018');
     });
   });
 
@@ -202,15 +216,13 @@ describe('sign', () => {
     test('Plaintext should be encapsulated by default', async () => {
       const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
 
-      const encapContentInfo = signedData.pkijsSignedData.encapContentInfo;
+      const { encapContentInfo } = signedData.pkijsSignedData;
       expect(encapContentInfo).toBeInstanceOf(EncapsulatedContentInfo);
-      expect(encapContentInfo).toHaveProperty('eContentType', CMS_OIDS.DATA);
-      expect(encapContentInfo).toHaveProperty('eContent');
-      const plaintextOctetString = encapContentInfo.eContent!.valueBlock
-        .value[0] as asn1js.OctetString;
-      expectArrayBuffersToEqual(
-        plaintextOctetString.valueBlock.valueHexView.slice().buffer,
-        plaintext,
+      expect(encapContentInfo.eContentType).toBe(CMS_OIDS.DATA);
+      expect(encapContentInfo.eContent).toBeInstanceOf(OctetString);
+      const plaintextOctetString = encapContentInfo.eContent!.valueBlock.value[0] as OctetString;
+      expect(Buffer.from(plaintext)).toStrictEqual(
+        Buffer.from(plaintextOctetString.valueBlock.valueHexView.slice().buffer),
       );
     });
 
@@ -223,10 +235,10 @@ describe('sign', () => {
         { encapsulatePlaintext: false },
       );
 
-      const encapContentInfo = signedData.pkijsSignedData.encapContentInfo;
+      const { encapContentInfo } = signedData.pkijsSignedData;
       expect(encapContentInfo).toBeInstanceOf(EncapsulatedContentInfo);
-      expect(encapContentInfo).toHaveProperty('eContentType', CMS_OIDS.DATA);
-      expect(encapContentInfo).toHaveProperty('eContent', undefined);
+      expect(encapContentInfo.eContentType).toBe(CMS_OIDS.DATA);
+      expect(encapContentInfo.eContent).toBeUndefined();
     });
   });
 });
@@ -238,8 +250,8 @@ describe('serialize', () => {
     const signedDataSerialized = signedData.serialize();
 
     const contentInfo = deserializeContentInfo(signedDataSerialized);
-    expect(contentInfo.content.toBER(false)).toEqual(
-      signedData.pkijsSignedData.toSchema(true).toBER(false),
+    expect(asn1Serialise(contentInfo.content as IBerConvertible)).toStrictEqual(
+      pkijsSerialise(signedData.pkijsSignedData),
     );
   });
 
@@ -249,30 +261,35 @@ describe('serialize', () => {
     const signedDataSerialized = signedData.serialize();
 
     const contentInfo = deserializeContentInfo(signedDataSerialized);
-    expect(contentInfo.contentType).toEqual(CMS_OIDS.SIGNED_DATA);
+    expect(contentInfo.contentType).toStrictEqual(CMS_OIDS.SIGNED_DATA);
   });
 });
 
 describe('deserialize', () => {
-  test('A non-DER-encoded value should be refused', async () => {
+  test('A non-DER-encoded value should be refused', () => {
     const invalidSignature = arrayBufferFrom('nope.jpeg');
-    expect(() => SignedData.deserialize(invalidSignature)).toThrowWithMessage(
-      CmsError,
-      'Could not deserialize CMS ContentInfo: Value is not DER-encoded',
+    expectFunctionToThrowError(
+      () => SignedData.deserialize(invalidSignature),
+      new CmsError('Could not deserialize CMS ContentInfo', {
+        cause: expect.objectContaining({ message: 'Value is not DER-encoded' }),
+      }),
     );
   });
 
-  test('ContentInfo wrapper should be required', async () => {
-    const invalidSignature = new asn1js.Sequence().toBER(false);
-    expect(() => SignedData.deserialize(invalidSignature)).toThrowWithMessage(
-      CmsError,
-      'Could not deserialize CMS ContentInfo: ' +
-        "Object's schema was not verified against input data for ContentInfo",
+  test('ContentInfo wrapper should be required', () => {
+    const invalidSignature = new Sequence().toBER(false);
+    expectFunctionToThrowError(
+      () => SignedData.deserialize(invalidSignature),
+      new CmsError('Could not deserialize CMS ContentInfo', {
+        cause: expect.objectContaining({
+          message: "Object's schema was not verified against input data for ContentInfo",
+        }),
+      }),
     );
   });
 
   test('Malformed SignedData values should be refused', () => {
-    const invalidSignature = serializeContentInfo(new asn1js.Sequence(), '1.2.3.4');
+    const invalidSignature = serializeContentInfo(new Sequence(), '1.2.3.4');
     expectFunctionToThrowError(
       () => SignedData.deserialize(invalidSignature),
       new CmsError('SignedData value is malformed', { cause: expect.anything() }),
@@ -285,7 +302,7 @@ describe('deserialize', () => {
 
     const signedDataDeserialized = SignedData.deserialize(signedDataSerialized);
 
-    expect(signedDataDeserialized.serialize()).toEqual(signedData.serialize());
+    expect(signedDataDeserialized.serialize()).toStrictEqual(signedData.serialize());
   });
 });
 
@@ -309,8 +326,9 @@ describe('verify', () => {
   test('Expected plaintext should be refused if one is already encapsulated', async () => {
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
 
-    await expect(signedData.verify(plaintext)).rejects.toEqual(
-      new CmsError('No specific plaintext should be expected because one is already encapsulated'),
+    await expect(signedData.verify(plaintext)).rejects.toThrowWithMessage(
+      CmsError,
+      'No specific plaintext should be expected because one is already encapsulated',
     );
   });
 
@@ -333,9 +351,8 @@ describe('verify', () => {
     // Let's tamper with the payload
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
     const differentPlaintext = arrayBufferFrom('Different');
-    // tslint:disable-next-line:no-object-mutation
     signedData.pkijsSignedData.encapContentInfo = new EncapsulatedContentInfo({
-      eContent: new asn1js.OctetString({ valueHex: differentPlaintext }),
+      eContent: new OctetString({ valueHex: differentPlaintext }),
       eContentType: CMS_OIDS.DATA,
     });
 
@@ -353,34 +370,34 @@ describe('verify', () => {
       },
     );
 
-    await signedData.verify(plaintext);
+    await expect(signedData.verify(plaintext)).toResolve();
   });
 
   test('Valid signature with encapsulated plaintext should be accepted', async () => {
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
-    await signedData.verify();
+    await expect(signedData.verify()).toResolve();
   });
 });
 
 describe('plaintext', () => {
-  test('Nothing should be output if plaintext is absent', async () => {
-    const pkijsSignedData = new SignedData();
+  test('Nothing should be output if plaintext is absent', () => {
+    const pkijsSignedData = new PkijsSignedData();
     const signedData = new SignedData(pkijsSignedData);
 
-    await expect(signedData.plaintext).toBeNull();
+    expect(signedData.plaintext).toBeNull();
   });
 
   test('Plaintext should be output if present', async () => {
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, certificate);
 
-    expectArrayBuffersToEqual(plaintext, signedData.plaintext!);
+    expect(Buffer.from(signedData.plaintext!)).toStrictEqual(Buffer.from(plaintext));
   });
 
   test('Large plaintexts chunked by PKI.js should be put back together', async () => {
     const largePlaintext = arrayBufferFrom('a'.repeat(2 ** 20));
     const signedData = await SignedData.sign(largePlaintext, keyPair.privateKey, certificate);
 
-    expectArrayBuffersToEqual(largePlaintext, signedData.plaintext!);
+    expect(Buffer.from(signedData.plaintext!)).toStrictEqual(Buffer.from(largePlaintext));
   });
 });
 
@@ -403,7 +420,8 @@ describe('signerCertificate', () => {
     });
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, signerCertificate);
     signedData.pkijsSignedData.signerInfos.forEach((signerInfo) => {
-      (signerInfo.sid as IssuerAndSerialNumber).serialNumber = new asn1js.Integer({
+      // eslint-disable-next-line no-param-reassign
+      (signerInfo.sid as IssuerAndSerialNumber).serialNumber = new Integer({
         value: -1,
       });
     });
@@ -417,8 +435,9 @@ describe('signerCertificate', () => {
       subjectPublicKey: keyPair.publicKey,
     });
     const signedData = await SignedData.sign(plaintext, keyPair.privateKey, signerCertificate);
-    signedData.pkijsSignedData.signerInfos.forEach((si) => {
-      (si.sid as IssuerAndSerialNumber).issuer = new RelativeDistinguishedNames();
+    signedData.pkijsSignedData.signerInfos.forEach((info) => {
+      // eslint-disable-next-line no-param-reassign
+      (info.sid as IssuerAndSerialNumber).issuer = new RelativeDistinguishedNames();
     });
 
     expect(signedData.signerCertificate).toBeNull();
@@ -435,12 +454,12 @@ describe('certificates', () => {
   test('Attached CA certificates should be output', async () => {
     const rootCaKeyPair = await generateRSAKeyPair();
     const rootCaCertificate = await generateStubCert({
-      attributes: { isCA: true },
+      attributes: { isCa: true },
       subjectPublicKey: rootCaKeyPair.publicKey,
     });
     const intermediateCaKeyPair = await generateRSAKeyPair();
     const intermediateCaCertificate = await generateStubCert({
-      attributes: { isCA: true },
+      attributes: { isCa: true },
       issuerCertificate: rootCaCertificate,
       issuerPrivateKey: rootCaKeyPair.privateKey,
       subjectPublicKey: intermediateCaKeyPair.publicKey,
@@ -459,15 +478,8 @@ describe('certificates', () => {
     );
 
     const certificates = Array.from(signedData.certificates);
-    expect(certificates.filter((c) => c.isEqual(rootCaCertificate))).toHaveLength(1);
-    expect(certificates.filter((c) => c.isEqual(intermediateCaCertificate))).toHaveLength(1);
-    expect(certificates.filter((c) => c.isEqual(signerCertificate))).toHaveLength(1);
+    expect(certificates.filter((cert) => cert.isEqual(rootCaCertificate))).toHaveLength(1);
+    expect(certificates.filter((cert) => cert.isEqual(intermediateCaCertificate))).toHaveLength(1);
+    expect(certificates.filter((cert) => cert.isEqual(signerCertificate))).toHaveLength(1);
   });
 });
-
-function getSignerInfoAttribute(signerInfo: SignerInfo, attributeOid: string): Attribute {
-  const attributes = (signerInfo.signedAttrs as SignedAndUnsignedAttributes).attributes;
-  const matchingAttrs = attributes.filter((a) => a.type === attributeOid);
-  expect(matchingAttrs).toHaveLength(1);
-  return matchingAttrs[0];
-}

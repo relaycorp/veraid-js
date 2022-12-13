@@ -2,9 +2,9 @@ import { Crypto } from '@peculiar/webcrypto';
 import bufferToArray from 'buffer-to-arraybuffer';
 import { AesKwProvider, SubtleCrypto } from 'webcrypto-core';
 import { arrayBufferFrom } from '../../_test_utils.js';
-import { MockAesKwProvider } from './_test_utils.js';
 
 import { AwalaAesKwProvider } from './AwalaAesKwProvider.js';
+import {MockAesKwProvider} from "../../../testUtils/webcrypto/MockAesKwProvider.js";
 
 const nodejsCrypto = new Crypto();
 const nodejsAesKwProvider = (nodejsCrypto.subtle as SubtleCrypto).providers.get(
