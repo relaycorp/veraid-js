@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { jest } from '@jest/globals';
 import { OctetString } from 'asn1js';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
@@ -5,20 +6,19 @@ import { addDays, addSeconds, setMilliseconds, subSeconds } from 'date-fns';
 import { advanceTo, clear as dateMockClear } from 'jest-date-mock';
 import {
   AuthorityKeyIdentifier,
-  BasicConstraints,
   Certificate as PkijsCertificate,
   CryptoEngine,
-  type Extension,
   PublicKeyInfo,
 } from 'pkijs';
 
-import { generateStubCert, reSerializeCertificate, sha256Hex } from '../../_test_utils.js';
+import { generateStubCert, sha256Hex } from '../../_test_utils.js';
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derDeserialize } from '../utils.js';
 import { derSerializePublicKey, generateRSAKeyPair, getIdFromIdentityKey } from '../keys.js';
 import { RsaPssPrivateKey } from '../PrivateKey.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
+import { getBasicConstraintsExtension, getExtension } from '../../../testUtils/pkijs.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
@@ -47,17 +47,6 @@ afterEach(() => {
   jest.restoreAllMocks();
   dateMockClear();
 });
-
-function getExtension(cert: Certificate, extensionOid: string): Extension | undefined {
-  const extensions = cert.pkijsCertificate.extensions!;
-  return extensions.find((extension) => extension.extnID === extensionOid);
-}
-
-function getBasicConstraintsExtension(cert: Certificate): BasicConstraints {
-  const bcExtension = getExtension(cert, BASIC_CONSTRAINTS);
-  const basicConstraintsAsn1 = derDeserialize(bcExtension!.extnValue.valueBlock.valueHex);
-  return new BasicConstraints({ schema: basicConstraintsAsn1 });
-}
 
 async function getPublicKeyDigest(publicKey: CryptoKey): Promise<string> {
   const publicKeyDer = await derSerializePublicKey(publicKey);
@@ -426,7 +415,7 @@ describe('issue()', () => {
         subjectPublicKey: subjectKeyPair.publicKey,
       });
 
-      const bcExtension = getExtension(cert, BASIC_CONSTRAINTS);
+      const bcExtension = getExtension(cert.pkijsCertificate, BASIC_CONSTRAINTS);
       expect(bcExtension).toHaveProperty('critical', true);
     });
 
@@ -437,7 +426,7 @@ describe('issue()', () => {
         subjectPublicKey: subjectKeyPair.publicKey,
       });
 
-      const basicConstraints = getBasicConstraintsExtension(cert);
+      const basicConstraints = getBasicConstraintsExtension(cert.pkijsCertificate);
       expect(basicConstraints).toHaveProperty('cA', false);
     });
 
@@ -448,7 +437,7 @@ describe('issue()', () => {
         issuerPrivateKey: subjectKeyPair.privateKey,
         subjectPublicKey: subjectKeyPair.publicKey,
       });
-      const basicConstraints = getBasicConstraintsExtension(cert);
+      const basicConstraints = getBasicConstraintsExtension(cert.pkijsCertificate);
       expect(basicConstraints).toHaveProperty('cA', true);
     });
 
@@ -459,7 +448,7 @@ describe('issue()', () => {
         subjectPublicKey: subjectKeyPair.publicKey,
       });
 
-      const basicConstraints = getBasicConstraintsExtension(cert);
+      const basicConstraints = getBasicConstraintsExtension(cert.pkijsCertificate);
       expect(basicConstraints).toHaveProperty('pathLenConstraint', 0);
     });
 
@@ -472,7 +461,7 @@ describe('issue()', () => {
         subjectPublicKey: subjectKeyPair.publicKey,
       });
 
-      const basicConstraints = getBasicConstraintsExtension(cert);
+      const basicConstraints = getBasicConstraintsExtension(cert.pkijsCertificate);
       expect(basicConstraints).toHaveProperty('pathLenConstraint', pathLengthConstraint);
     });
 
@@ -490,7 +479,7 @@ describe('issue()', () => {
 
   describe('Authority Key Identifier extension', () => {
     function getAkiExtension(subjectCert: Certificate): AuthorityKeyIdentifier {
-      const akiExtension = getExtension(subjectCert, AUTHORITY_KEY);
+      const akiExtension = getExtension(subjectCert.pkijsCertificate, AUTHORITY_KEY);
       const akiExtensionAsn1 = derDeserialize(akiExtension!.extnValue.valueBlock.valueHex);
       return new AuthorityKeyIdentifier({ schema: akiExtensionAsn1 });
     }
@@ -502,7 +491,7 @@ describe('issue()', () => {
         subjectPublicKey: subjectKeyPair.publicKey,
       });
 
-      const akiExtension = getExtension(cert, AUTHORITY_KEY);
+      const akiExtension = getExtension(cert.pkijsCertificate, AUTHORITY_KEY);
       expect(akiExtension!.critical).toBe(false);
     });
 
@@ -546,7 +535,7 @@ describe('issue()', () => {
       subjectPublicKey: subjectKeyPair.publicKey,
     });
 
-    const skiExtension = getExtension(subjectCert, SUBJECT_KEY);
+    const skiExtension = getExtension(subjectCert.pkijsCertificate, SUBJECT_KEY);
     expect(skiExtension!.critical).toBe(false);
     const skiExtensionAsn1 = derDeserialize(skiExtension!.extnValue.valueBlock.valueHex);
     expect(skiExtensionAsn1).toBeInstanceOf(OctetString);
@@ -770,22 +759,18 @@ describe('getCertificationPath', () => {
   beforeAll(async () => {
     const trustedCaKeyPair = await generateRSAKeyPair();
     stubTrustedCaPrivateKey = trustedCaKeyPair.privateKey;
-    stubRootCa = reSerializeCertificate(
-      await generateStubCert({
-        attributes: { isCa: true },
-        issuerPrivateKey: trustedCaKeyPair.privateKey,
-        subjectPublicKey: trustedCaKeyPair.publicKey,
-      }),
-    );
+    stubRootCa = await generateStubCert({
+      attributes: { isCa: true },
+      issuerPrivateKey: trustedCaKeyPair.privateKey,
+      subjectPublicKey: trustedCaKeyPair.publicKey,
+    });
   });
 
   test('Cert issued by trusted cert should be trusted', async () => {
-    const cert = reSerializeCertificate(
-      await generateStubCert({
-        issuerCertificate: stubRootCa,
-        issuerPrivateKey: stubTrustedCaPrivateKey,
-      }),
-    );
+    const cert = await generateStubCert({
+      issuerCertificate: stubRootCa,
+      issuerPrivateKey: stubTrustedCaPrivateKey,
+    });
 
     await expect(cert.getCertificationPath([], [stubRootCa])).resolves.toStrictEqual([
       cert,
@@ -815,21 +800,17 @@ describe('getCertificationPath', () => {
 
   test('Cert issued by untrusted intermediate should be trusted if root is trusted', async () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
-    const intermediateCaCert = reSerializeCertificate(
-      await generateStubCert({
-        attributes: { isCa: true },
-        issuerCertificate: stubRootCa,
-        issuerPrivateKey: stubTrustedCaPrivateKey,
-        subjectPublicKey: intermediateCaKeyPair.publicKey,
-      }),
-    );
+    const intermediateCaCert = await generateStubCert({
+      attributes: { isCa: true },
+      issuerCertificate: stubRootCa,
+      issuerPrivateKey: stubTrustedCaPrivateKey,
+      subjectPublicKey: intermediateCaKeyPair.publicKey,
+    });
 
-    const cert = reSerializeCertificate(
-      await generateStubCert({
-        issuerCertificate: intermediateCaCert,
-        issuerPrivateKey: intermediateCaKeyPair.privateKey,
-      }),
-    );
+    const cert = await generateStubCert({
+      issuerCertificate: intermediateCaCert,
+      issuerPrivateKey: intermediateCaKeyPair.privateKey,
+    });
 
     await expect(
       cert.getCertificationPath([intermediateCaCert], [stubRootCa]),
@@ -838,21 +819,17 @@ describe('getCertificationPath', () => {
 
   test('Cert issued by trusted intermediate CA should be trusted', async () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
-    const intermediateCaCert = reSerializeCertificate(
-      await generateStubCert({
-        attributes: { isCa: true },
-        issuerCertificate: stubRootCa,
-        issuerPrivateKey: stubTrustedCaPrivateKey,
-        subjectPublicKey: intermediateCaKeyPair.publicKey,
-      }),
-    );
+    const intermediateCaCert = await generateStubCert({
+      attributes: { isCa: true },
+      issuerCertificate: stubRootCa,
+      issuerPrivateKey: stubTrustedCaPrivateKey,
+      subjectPublicKey: intermediateCaKeyPair.publicKey,
+    });
 
-    const cert = reSerializeCertificate(
-      await generateStubCert({
-        issuerCertificate: intermediateCaCert,
-        issuerPrivateKey: intermediateCaKeyPair.privateKey,
-      }),
-    );
+    const cert = await generateStubCert({
+      issuerCertificate: intermediateCaCert,
+      issuerPrivateKey: intermediateCaKeyPair.privateKey,
+    });
 
     await expect(cert.getCertificationPath([], [intermediateCaCert])).resolves.toStrictEqual([
       cert,
@@ -868,18 +845,13 @@ describe('getCertificationPath', () => {
       subjectPublicKey: untrustedIntermediateCaKeyPair.publicKey,
     });
 
-    const cert = reSerializeCertificate(
-      await generateStubCert({
-        issuerCertificate: untrustedIntermediateCaCert,
-        issuerPrivateKey: untrustedIntermediateCaKeyPair.privateKey,
-      }),
-    );
+    const cert = await generateStubCert({
+      issuerCertificate: untrustedIntermediateCaCert,
+      issuerPrivateKey: untrustedIntermediateCaKeyPair.privateKey,
+    });
 
     await expect(
-      cert.getCertificationPath(
-        [reSerializeCertificate(untrustedIntermediateCaCert)],
-        [stubRootCa],
-      ),
+      cert.getCertificationPath([untrustedIntermediateCaCert], [stubRootCa]),
     ).rejects.toStrictEqual(new CertificateError('No valid certificate paths found'));
   });
 
@@ -900,21 +872,17 @@ describe('getCertificationPath', () => {
 
   test('Root certificate should be ignored if passed as intermediate unnecessarily', async () => {
     const intermediateCaKeyPair = await generateRSAKeyPair();
-    const intermediateCaCert = reSerializeCertificate(
-      await generateStubCert({
-        attributes: { isCa: true },
-        issuerCertificate: stubRootCa,
-        issuerPrivateKey: stubTrustedCaPrivateKey,
-        subjectPublicKey: intermediateCaKeyPair.publicKey,
-      }),
-    );
+    const intermediateCaCert = await generateStubCert({
+      attributes: { isCa: true },
+      issuerCertificate: stubRootCa,
+      issuerPrivateKey: stubTrustedCaPrivateKey,
+      subjectPublicKey: intermediateCaKeyPair.publicKey,
+    });
 
-    const cert = reSerializeCertificate(
-      await generateStubCert({
-        issuerCertificate: intermediateCaCert,
-        issuerPrivateKey: intermediateCaKeyPair.privateKey,
-      }),
-    );
+    const cert = await generateStubCert({
+      issuerCertificate: intermediateCaCert,
+      issuerPrivateKey: intermediateCaKeyPair.privateKey,
+    });
 
     await expect(
       cert.getCertificationPath([intermediateCaCert, stubRootCa], [intermediateCaCert]),
