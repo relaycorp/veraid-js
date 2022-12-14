@@ -172,12 +172,12 @@ export class SignedData {
         extendedMode: true,
         signer: 0,
       });
-
-      if (verificationResult.signatureVerified !== true) {
-        throw verificationResult;
-      }
     } catch (err) {
       throw new CmsError('Invalid signature', { cause: err });
+    }
+
+    if (verificationResult.signatureVerified !== true) {
+      throw new CmsError(`Invalid signature (PKI.js code: ${verificationResult.code!})`);
     }
   }
 }
