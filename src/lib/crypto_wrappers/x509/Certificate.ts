@@ -20,6 +20,8 @@ import type FullCertificateIssuanceOptions from './FullCertificateIssuanceOption
 
 const X509_CERTIFICATE_VERSION_3 = 2;
 
+const SIGNED_INTEGER_MAX_OCTET = 127;
+
 type FindIssuerSignature = (
   cert: PkijsCertificate,
   engine: CertificateChainValidationEngine,
@@ -31,7 +33,7 @@ function generatePositiveAsn1Integer(): Integer {
   // ASN.1 BER/DER INTEGER uses two's complement with big endian, so we ensure the integer is
   // positive by keeping the leftmost octet below 128.
   const positiveInteger = new Uint8Array(potentiallySignedInteger);
-  positiveInteger.set([Math.min(potentiallySignedInteger[0], 127)], 0);
+  positiveInteger.set([Math.min(potentiallySignedInteger[0], SIGNED_INTEGER_MAX_OCTET)], 0);
 
   return new Integer({ valueHex: positiveInteger });
 }
@@ -46,6 +48,7 @@ function makeBasicConstraintsExtension(isCa: boolean, pathLengthConstraint: numb
   });
   return new Extension({
     critical: true,
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     extnID: BASIC_CONSTRAINTS,
     extnValue: basicConstraints.toSchema().toBER(false),
   });
@@ -55,6 +58,7 @@ async function makeAuthorityKeyIdExtension(publicKey: CryptoKey): Promise<Extens
   const keyDigest = await getPublicKeyDigest(publicKey);
   const keyIdEncoded = new OctetString({ valueHex: keyDigest });
   return new Extension({
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     extnID: AUTHORITY_KEY,
     extnValue: new AuthorityKeyIdentifier({ keyIdentifier: keyIdEncoded }).toSchema().toBER(false),
   });
@@ -63,36 +67,15 @@ async function makeAuthorityKeyIdExtension(publicKey: CryptoKey): Promise<Extens
 async function makeSubjectKeyIdExtension(publicKey: CryptoKey): Promise<Extension> {
   const keyDigest = await getPublicKeyDigest(publicKey);
   return new Extension({
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     extnID: SUBJECT_KEY,
     extnValue: new OctetString({ valueHex: keyDigest }).toBER(false),
   });
 }
 
-function validateIssuerCertificate(issuerCertificate: Certificate): void {
-  const extensions = issuerCertificate.pkijsCertificate.extensions ?? [];
-  const bcExtension = extensions.find((extension) => extension.extnID === BASIC_CONSTRAINTS);
-  if (bcExtension === undefined) {
-    throw new CertificateError('Basic constraints extension is missing from issuer certificate');
-  }
-  const basicConstraintsAsn1 = derDeserialize(bcExtension.extnValue.valueBlock.valueHex);
-  const basicConstraints = new BasicConstraints({ schema: basicConstraintsAsn1 });
-  if (!basicConstraints.cA) {
-    throw new CertificateError('Issuer is not a CA');
-  }
-}
-
 function cloneAsn1jsValue<Type extends BaseBlock>(value: Type): Type {
   const valueSerialized = value.toBER(false);
   return derDeserialize(valueSerialized) as Type;
-}
-
-function isCertificateInArray(certificate: Certificate, array: readonly Certificate[]): boolean {
-  for (const certInArray of array) {
-    if (certInArray.isEqual(certificate)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
@@ -102,6 +85,31 @@ function isCertificateInArray(certificate: Certificate, array: readonly Certific
  * certificates easy and safe.
  */
 export default class Certificate {
+  protected static validateIssuerCertificate(issuerCertificate: Certificate): void {
+    const extensions = issuerCertificate.pkijsCertificate.extensions ?? [];
+    const bcExtension = extensions.find((extension) => extension.extnID === BASIC_CONSTRAINTS);
+    if (bcExtension === undefined) {
+      throw new CertificateError('Basic constraints extension is missing from issuer certificate');
+    }
+    const basicConstraintsAsn1 = derDeserialize(bcExtension.extnValue.valueBlock.valueHex);
+    const basicConstraints = new BasicConstraints({ schema: basicConstraintsAsn1 });
+    if (!basicConstraints.cA) {
+      throw new CertificateError('Issuer is not a CA');
+    }
+  }
+
+  protected static isCertificateInArray(
+    certificate: Certificate,
+    array: readonly Certificate[],
+  ): boolean {
+    for (const certInArray of array) {
+      if (certInArray.isEqual(certificate)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Deserialize certificate from DER-encoded value.
    *
@@ -132,7 +140,7 @@ export default class Certificate {
       throw new CertificateError('The end date must be later than the start date');
     }
     if (options.issuerCertificate) {
-      validateIssuerCertificate(options.issuerCertificate);
+      Certificate.validateIssuerCertificate(options.issuerCertificate);
     }
 
     // endregion
@@ -142,7 +150,7 @@ export default class Certificate {
       : options.subjectPublicKey;
     const pkijsCert = new PkijsCertificate({
       extensions: [
-        makeBasicConstraintsExtension(options.isCa === true, options.pathLenConstraint ?? 0),
+        makeBasicConstraintsExtension(Boolean(options.isCa), options.pathLenConstraint ?? 0),
         await makeAuthorityKeyIdExtension(issuerPublicKey),
         await makeSubjectKeyIdExtension(options.subjectPublicKey),
       ],
@@ -305,14 +313,16 @@ export default class Certificate {
         pkijsCertificate,
         validationEngine as CertificateChainValidationEngine,
       );
-      if (0 < issuers.length) {
+      if (issuers.length !== 0) {
         return issuers;
       }
 
       // If the certificate is actually an intermediate certificate, but it's passed as a trusted
       // certificate, accepted it.
       const certificate = new Certificate(pkijsCertificate);
-      return isCertificateInArray(certificate, trustedCertificates) ? [pkijsCertificate] : [];
+      return Certificate.isCertificateInArray(certificate, trustedCertificates)
+        ? [pkijsCertificate]
+        : [];
     }
 
     // Ignore any intermediate certificate that's also the issuer of a trusted certificate.
