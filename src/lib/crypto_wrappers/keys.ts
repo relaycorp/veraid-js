@@ -2,7 +2,7 @@ import bufferToArray from 'buffer-to-arraybuffer';
 import { getAlgorithmParameters } from 'pkijs';
 
 import { getPkijsCrypto } from './utils.js';
-import { HashingAlgorithm, RSAModulus } from './algorithms.js';
+import { type HashingAlgorithm, type RSAModulus } from './algorithms.js';
 import { PrivateKey } from './PrivateKey.js';
 
 const cryptoEngine = getPkijsCrypto();

@@ -1,8 +1,8 @@
 import { CryptoEngine, setEngine } from 'pkijs';
 
-import { AwalaCrypto } from './lib/crypto_wrappers/webcrypto/AwalaCrypto.js';
+import { VeraCrypto } from './lib/crypto_wrappers/webcrypto/VeraCrypto.js';
 
-const crypto = new AwalaCrypto();
+const crypto = new VeraCrypto();
 const cryptoEngine = new CryptoEngine({
   crypto,
   name: 'nodeEngine',

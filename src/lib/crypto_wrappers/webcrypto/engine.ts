@@ -3,7 +3,7 @@ import { type ProviderCrypto } from 'webcrypto-core';
 
 import { PrivateKey } from '../PrivateKey.js';
 
-import { AwalaCrypto } from './AwalaCrypto.js';
+import { VeraCrypto } from './VeraCrypto.js';
 
 const ENGINE_BY_PROVIDER = new WeakMap<ProviderCrypto, CryptoEngine>();
 
@@ -22,7 +22,7 @@ export function getEngineForPrivateKey(
     return cachedEngine;
   }
 
-  const crypto = new AwalaCrypto([privateKey.provider]);
+  const crypto = new VeraCrypto([privateKey.provider]);
   const engine = new CryptoEngine({ crypto });
   ENGINE_BY_PROVIDER.set(privateKey.provider, engine);
   return engine;

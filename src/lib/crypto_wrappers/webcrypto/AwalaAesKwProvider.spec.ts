@@ -1,10 +1,11 @@
 import { Crypto } from '@peculiar/webcrypto';
 import bufferToArray from 'buffer-to-arraybuffer';
-import { AesKwProvider, SubtleCrypto } from 'webcrypto-core';
-import { arrayBufferFrom } from '../../_test_utils.js';
+import { type AesKwProvider, type SubtleCrypto } from 'webcrypto-core';
+
+import { MockAesKwProvider } from '../../../testUtils/webcrypto/MockAesKwProvider.js';
+import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 
 import { AwalaAesKwProvider } from './AwalaAesKwProvider.js';
-import {MockAesKwProvider} from "../../../testUtils/webcrypto/MockAesKwProvider.js";
 
 const nodejsCrypto = new Crypto();
 const nodejsAesKwProvider = (nodejsCrypto.subtle as SubtleCrypto).providers.get(
@@ -12,12 +13,12 @@ const nodejsAesKwProvider = (nodejsCrypto.subtle as SubtleCrypto).providers.get(
 ) as AesKwProvider;
 
 const algorithm: AesKeyGenParams = { name: 'AES-KW', length: 128 };
-// tslint:disable-next-line:readonly-array
+
 const keyUsages: KeyUsage[] = ['wrapKey', 'unwrapKey'];
 
 let cryptoKey: CryptoKey;
 beforeAll(async () => {
-  cryptoKey = (await nodejsCrypto.subtle.generateKey(algorithm, true, keyUsages)) as CryptoKey;
+  cryptoKey = await nodejsCrypto.subtle.generateKey(algorithm, true, keyUsages);
 });
 
 const unwrappedKeySerialized = bufferToArray(
@@ -33,7 +34,7 @@ describe('onGenerateKey', () => {
     const generatedKey = await provider.onGenerateKey(algorithm, true, keyUsages);
 
     expect(generatedKey).toBe(cryptoKey);
-    expect(originalProvider.onGenerateKey).toBeCalledWith(algorithm, true, keyUsages);
+    expect(originalProvider.onGenerateKey).toHaveBeenCalledWith(algorithm, true, keyUsages);
   });
 });
 
@@ -48,7 +49,7 @@ describe('onExportKey', () => {
     const exportedKey = await provider.onExportKey(keyFormat, cryptoKey);
 
     expect(exportedKey).toBe(cryptoKeySerialized);
-    expect(originalProvider.onExportKey).toBeCalledWith(keyFormat, cryptoKey);
+    expect(originalProvider.onExportKey).toHaveBeenCalledWith(keyFormat, cryptoKey);
   });
 });
 
@@ -69,7 +70,7 @@ describe('onImportKey', () => {
     );
 
     expect(exportedKey).toBe(cryptoKey);
-    expect(originalProvider.onImportKey).toBeCalledWith(
+    expect(originalProvider.onImportKey).toHaveBeenCalledWith(
       keyFormat,
       cryptoKeySerialized,
       algorithm,
@@ -94,7 +95,7 @@ describe('onEncrypt', () => {
       true,
       keyUsages,
     );
-    await expect(nodejsAesKwProvider.exportKey('raw', unwrappedKey)).resolves.toEqual(
+    await expect(nodejsAesKwProvider.exportKey('raw', unwrappedKey)).resolves.toStrictEqual(
       unwrappedKeySerialized,
     );
   });
@@ -111,6 +112,6 @@ describe('onDecrypt', () => {
 
     const unwrappedKey = await provider.onDecrypt(algorithm, cryptoKey, nodejsWrappedKey);
 
-    expect(unwrappedKey).toEqual(unwrappedKeySerialized);
+    expect(unwrappedKey).toStrictEqual(unwrappedKeySerialized);
   });
 });
