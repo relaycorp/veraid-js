@@ -19,7 +19,7 @@ import {
 
 import { CMS_OIDS } from '../../oids.js';
 import { type HashingAlgorithm } from '../algorithms.js';
-import { generateRSAKeyPair } from '../keys.js';
+import { generateRsaKeyPair } from '../keys.js';
 import { RsaPssPrivateKey } from '../PrivateKey.js';
 import type Certificate from '../x509/Certificate.js';
 import { asn1Serialise, expectAsn1ValuesToBeEqual } from '../../../testUtils/asn1.js';
@@ -40,7 +40,7 @@ const plaintext = arrayBufferFrom('Winter is coming');
 let keyPair: CryptoKeyPair;
 let certificate: Certificate;
 beforeAll(async () => {
-  keyPair = await generateRSAKeyPair();
+  keyPair = await generateRsaKeyPair();
   certificate = await generateStubCert({
     issuerPrivateKey: keyPair.privateKey,
     subjectPublicKey: keyPair.publicKey,
@@ -463,19 +463,19 @@ describe('signerCertificate', () => {
 
 describe('certificates', () => {
   test('Attached CA certificates should be output', async () => {
-    const rootCaKeyPair = await generateRSAKeyPair();
+    const rootCaKeyPair = await generateRsaKeyPair();
     const rootCaCertificate = await generateStubCert({
       attributes: { isCa: true },
       subjectPublicKey: rootCaKeyPair.publicKey,
     });
-    const intermediateCaKeyPair = await generateRSAKeyPair();
+    const intermediateCaKeyPair = await generateRsaKeyPair();
     const intermediateCaCertificate = await generateStubCert({
       attributes: { isCa: true },
       issuerCertificate: rootCaCertificate,
       issuerPrivateKey: rootCaKeyPair.privateKey,
       subjectPublicKey: intermediateCaKeyPair.publicKey,
     });
-    const signerKeyPair = await generateRSAKeyPair();
+    const signerKeyPair = await generateRsaKeyPair();
     const signerCertificate = await generateStubCert({
       issuerCertificate: intermediateCaCertificate,
       issuerPrivateKey: intermediateCaKeyPair.privateKey,

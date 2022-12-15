@@ -7,49 +7,16 @@ import { PrivateKey } from './PrivateKey.js';
 
 const cryptoEngine = getPkijsCrypto();
 
+const MIN_RSA_MODULUS = 2048;
+
 const DEFAULT_RSA_KEY_PARAMS: RsaHashedImportParams = {
   hash: { name: 'SHA-256' },
   name: 'RSA-PSS',
 };
 
-export interface RSAKeyGenOptions {
+export interface RsaKeyGenOptions {
   readonly modulus: RSAModulus;
   readonly hashingAlgorithm: HashingAlgorithm;
-}
-
-/**
- * Generate an RSA-PSS key pair.
- *
- * @param options The RSA key generation options
- * @throws Error If the modulus or the hashing algorithm is disallowed by RS-018.
- */
-export async function generateRSAKeyPair(
-  options: Partial<RSAKeyGenOptions> = {},
-): Promise<CryptoKeyPair> {
-  const modulus = options.modulus ?? 2048;
-  if (modulus < 2048) {
-    throw new Error(`RSA modulus must be => 2048 per RS-018 (got ${modulus})`);
-  }
-
-  const hashingAlgorithm = options.hashingAlgorithm ?? 'SHA-256';
-  // RS-018 disallows MD5 and SHA-1, but only SHA-1 is supported in WebCrypto
-  if ((hashingAlgorithm as any) === 'SHA-1') {
-    throw new Error('SHA-1 is disallowed by RS-018');
-  }
-
-  const algorithm = getAlgorithmParameters('RSA-PSS', 'generateKey');
-  const rsaAlgorithm = algorithm.algorithm as RsaHashedKeyAlgorithm;
-  // tslint:disable-next-line:no-object-mutation
-  rsaAlgorithm.hash.name = hashingAlgorithm;
-  // tslint:disable-next-line:no-object-mutation
-  rsaAlgorithm.modulusLength = modulus;
-
-  return cryptoEngine.generateKey(rsaAlgorithm, true, algorithm.usages);
-}
-
-export async function getRSAPublicKeyFromPrivate(privateKey: CryptoKey): Promise<CryptoKey> {
-  const publicKeyDer = bufferToArray(await derSerializePublicKey(privateKey));
-  return cryptoEngine.importKey('spki', publicKeyDer, privateKey.algorithm, true, ['verify']);
 }
 
 /**
@@ -65,22 +32,17 @@ export async function derSerializePublicKey(publicKey: CryptoKey): Promise<Buffe
 
 /**
  * Return DER serialization of private key.
- *
- * @param privateKey
  */
 export async function derSerializePrivateKey(privateKey: CryptoKey): Promise<Buffer> {
-  const keyDer = (await cryptoEngine.exportKey('pkcs8', privateKey)) as ArrayBuffer;
+  const keyDer = await cryptoEngine.exportKey('pkcs8', privateKey);
   return Buffer.from(keyDer);
 }
 
 /**
  * Parse DER-serialized RSA public key.
- *
- * @param publicKeyDer
- * @param algorithmOptions
  */
-export async function derDeserializeRSAPublicKey(
-  publicKeyDer: Buffer | ArrayBuffer,
+export async function derDeserializeRsaPublicKey(
+  publicKeyDer: ArrayBuffer | Buffer,
   algorithmOptions: RsaHashedImportParams = DEFAULT_RSA_KEY_PARAMS,
 ): Promise<CryptoKey> {
   const keyData = publicKeyDer instanceof Buffer ? bufferToArray(publicKeyDer) : publicKeyDer;
@@ -89,11 +51,8 @@ export async function derDeserializeRSAPublicKey(
 
 /**
  * Parse DER-serialized RSA private key.
- *
- * @param privateKeyDer
- * @param algorithmOptions
  */
-export async function derDeserializeRSAPrivateKey(
+export async function derDeserializeRsaPrivateKey(
   privateKeyDer: Buffer,
   algorithmOptions: RsaHashedImportParams = DEFAULT_RSA_KEY_PARAMS,
 ): Promise<CryptoKey> {
@@ -103,9 +62,43 @@ export async function derDeserializeRSAPrivateKey(
 }
 
 /**
- * Return SHA-256 digest of public key.
+ * Generate an RSA-PSS key pair.
  *
- * @param publicKey
+ * @param options The RSA key generation options
+ * @throws Error If the modulus or the hashing algorithm is disallowed by RS-018.
+ */
+export async function generateRsaKeyPair(
+  options: Partial<RsaKeyGenOptions> = {},
+): Promise<CryptoKeyPair> {
+  const modulus = options.modulus ?? MIN_RSA_MODULUS;
+  if (modulus < MIN_RSA_MODULUS) {
+    throw new Error(`RSA modulus must be => 2048 per RS-018 (got ${modulus})`);
+  }
+
+  const hashingAlgorithm = options.hashingAlgorithm ?? 'SHA-256';
+
+  // RS-018 disallows MD5 and SHA-1, but only SHA-1 is supported in WebCrypto
+  if ((hashingAlgorithm as any) === 'SHA-1') {
+    throw new Error('SHA-1 is disallowed by RS-018');
+  }
+
+  const algorithm = getAlgorithmParameters('RSA-PSS', 'generateKey');
+  const rsaAlgorithm = algorithm.algorithm as RsaHashedKeyAlgorithm;
+
+  rsaAlgorithm.hash.name = hashingAlgorithm;
+
+  rsaAlgorithm.modulusLength = modulus;
+
+  return cryptoEngine.generateKey(rsaAlgorithm, true, algorithm.usages);
+}
+
+export async function getRsaPublicKeyFromPrivate(privateKey: CryptoKey): Promise<CryptoKey> {
+  const publicKeyDer = bufferToArray(await derSerializePublicKey(privateKey));
+  return cryptoEngine.importKey('spki', publicKeyDer, privateKey.algorithm, true, ['verify']);
+}
+
+/**
+ * Return SHA-256 digest of public key.
  */
 export async function getPublicKeyDigest(publicKey: CryptoKey): Promise<ArrayBuffer> {
   const publicKeyDer = await derSerializePublicKey(publicKey);
@@ -114,8 +107,6 @@ export async function getPublicKeyDigest(publicKey: CryptoKey): Promise<ArrayBuf
 
 /**
  * Return hexadecimal, SHA-256 digest of public key.
- *
- * @param publicKey
  */
 export async function getPublicKeyDigestHex(publicKey: CryptoKey): Promise<string> {
   const digest = Buffer.from(await getPublicKeyDigest(publicKey));

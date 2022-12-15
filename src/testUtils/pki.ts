@@ -1,5 +1,5 @@
 import Certificate from '../lib/crypto_wrappers/x509/Certificate.js';
-import { generateRSAKeyPair, getPublicKeyDigestHex } from '../lib/crypto_wrappers/keys.js';
+import { generateRsaKeyPair, getPublicKeyDigestHex } from '../lib/crypto_wrappers/keys.js';
 import FullCertificateIssuanceOptions from '../lib/crypto_wrappers/x509/FullCertificateIssuanceOptions.js';
 
 interface StubCertConfig {
@@ -22,7 +22,7 @@ export function reSerializeCertificate(cert: Certificate): Certificate {
  * @deprecated Use {Certificate.issue} instead
  */
 export async function generateStubCert(config: Partial<StubCertConfig> = {}): Promise<Certificate> {
-  const keyPair = await generateRSAKeyPair();
+  const keyPair = await generateRsaKeyPair();
   const futureDate = new Date();
   futureDate.setDate(futureDate.getDate() + 1);
   futureDate.setMilliseconds(0);

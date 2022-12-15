@@ -13,7 +13,7 @@ import {
 
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derDeserialize } from '../utils.js';
-import { derSerializePublicKey, generateRSAKeyPair, getIdFromIdentityKey } from '../keys.js';
+import { derSerializePublicKey, generateRsaKeyPair, getIdFromIdentityKey } from '../keys.js';
 import { RsaPssPrivateKey } from '../PrivateKey.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
@@ -33,7 +33,7 @@ let issuerKeyPair: CryptoKeyPair;
 let issuerCertificate: Certificate;
 let subjectKeyPair: CryptoKeyPair;
 beforeAll(async () => {
-  issuerKeyPair = await generateRSAKeyPair();
+  issuerKeyPair = await generateRsaKeyPair();
   issuerCertificate = await Certificate.issue({
     ...baseCertificateOptions,
     isCa: true,
@@ -41,7 +41,7 @@ beforeAll(async () => {
     subjectPublicKey: issuerKeyPair.publicKey,
   });
 
-  subjectKeyPair = await generateRSAKeyPair();
+  subjectKeyPair = await generateRsaKeyPair();
 });
 
 afterEach(() => {
@@ -639,7 +639,7 @@ describe('getCommonName()', () => {
 
 describe('calculateSubjectId', () => {
   test('Private node address should be returned', async () => {
-    const nodeKeyPair = await generateRSAKeyPair();
+    const nodeKeyPair = await generateRsaKeyPair();
     const nodeCertificate = await generateStubCert({
       issuerPrivateKey: nodeKeyPair.privateKey,
       subjectPublicKey: nodeKeyPair.publicKey,
@@ -651,7 +651,7 @@ describe('calculateSubjectId', () => {
   });
 
   test('Computation should be cached', async () => {
-    const nodeKeyPair = await generateRSAKeyPair();
+    const nodeKeyPair = await generateRsaKeyPair();
     const nodeCertificate = await generateStubCert({
       issuerPrivateKey: nodeKeyPair.privateKey,
       subjectPublicKey: nodeKeyPair.publicKey,
@@ -758,7 +758,7 @@ describe('getCertificationPath', () => {
   let stubTrustedCaPrivateKey: CryptoKey;
   let stubRootCa: Certificate;
   beforeAll(async () => {
-    const trustedCaKeyPair = await generateRSAKeyPair();
+    const trustedCaKeyPair = await generateRsaKeyPair();
     stubTrustedCaPrivateKey = trustedCaKeyPair.privateKey;
     stubRootCa = await generateStubCert({
       attributes: { isCa: true },
@@ -800,7 +800,7 @@ describe('getCertificationPath', () => {
   });
 
   test('Cert issued by untrusted intermediate should be trusted if root is trusted', async () => {
-    const intermediateCaKeyPair = await generateRSAKeyPair();
+    const intermediateCaKeyPair = await generateRsaKeyPair();
     const intermediateCaCert = await generateStubCert({
       attributes: { isCa: true },
       issuerCertificate: stubRootCa,
@@ -819,7 +819,7 @@ describe('getCertificationPath', () => {
   });
 
   test('Cert issued by trusted intermediate CA should be trusted', async () => {
-    const intermediateCaKeyPair = await generateRSAKeyPair();
+    const intermediateCaKeyPair = await generateRsaKeyPair();
     const intermediateCaCert = await generateStubCert({
       attributes: { isCa: true },
       issuerCertificate: stubRootCa,
@@ -839,7 +839,7 @@ describe('getCertificationPath', () => {
   });
 
   test('Cert issued by untrusted intermediate CA should not be trusted', async () => {
-    const untrustedIntermediateCaKeyPair = await generateRSAKeyPair();
+    const untrustedIntermediateCaKeyPair = await generateRsaKeyPair();
     const untrustedIntermediateCaCert = await generateStubCert({
       attributes: { isCa: true },
       issuerPrivateKey: untrustedIntermediateCaKeyPair.privateKey,
@@ -857,7 +857,7 @@ describe('getCertificationPath', () => {
   });
 
   test('Including trusted intermediate CA should not make certificate trusted', async () => {
-    const intermediateCaKeyPair = await generateRSAKeyPair();
+    const intermediateCaKeyPair = await generateRsaKeyPair();
     const trustedIntermediateCaCert = await generateStubCert({
       attributes: { isCa: true },
       issuerPrivateKey: intermediateCaKeyPair.privateKey,
@@ -872,7 +872,7 @@ describe('getCertificationPath', () => {
   });
 
   test('Root certificate should be ignored if passed as intermediate unnecessarily', async () => {
-    const intermediateCaKeyPair = await generateRSAKeyPair();
+    const intermediateCaKeyPair = await generateRsaKeyPair();
     const intermediateCaCert = await generateStubCert({
       attributes: { isCa: true },
       issuerCertificate: stubRootCa,
