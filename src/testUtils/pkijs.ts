@@ -6,7 +6,7 @@ import {
 } from 'pkijs';
 
 import { BASIC_CONSTRAINTS } from '../lib/oids.js';
-import { derDeserialize } from '../lib/crypto_wrappers/utils.js';
+import { derDeserialize } from '../lib/utils/asn1.js';
 
 import { expectAsn1ValuesToBeEqual } from './asn1.js';
 

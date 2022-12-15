@@ -11,7 +11,7 @@ import {
   SignerInfo,
 } from 'pkijs';
 
-import { getPkijsCrypto } from '../utils.js';
+import { getPkijsCrypto } from '../pkijs.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import Certificate from '../x509/Certificate.js';
 import { CMS_OIDS } from '../../oids.js';

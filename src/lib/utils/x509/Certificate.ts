@@ -10,10 +10,11 @@ import {
   type FindIssuerCallback,
 } from 'pkijs';
 
-import { derDeserialize, generateRandom64BitValue } from '../utils.js';
 import { getIdFromIdentityKey, getPublicKeyDigest } from '../keys.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
+import { derDeserialize } from '../asn1.js';
+import { generateRandom64BitValue } from '../crypto.js';
 
 import CertificateError from './CertificateError.js';
 import type FullCertificateIssuanceOptions from './FullCertificateIssuanceOptions.js';

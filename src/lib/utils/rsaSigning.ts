@@ -3,7 +3,7 @@
  * doesn't (yet) have a certificate.
  */
 
-import { getPkijsCrypto } from './utils.js';
+import { getPkijsCrypto } from './pkijs.js';
 import { PrivateKey } from './PrivateKey.js';
 
 const rsaPssParameters = {

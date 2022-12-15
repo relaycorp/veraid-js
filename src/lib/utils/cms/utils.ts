@@ -1,6 +1,6 @@
 import { ContentInfo } from 'pkijs';
 
-import { derDeserialize } from '../utils.js';
+import { derDeserialize } from '../asn1.js';
 
 import CmsError from './CmsError.js';
 

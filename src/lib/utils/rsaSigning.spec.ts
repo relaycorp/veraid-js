@@ -1,7 +1,7 @@
 import { MockRsaPssProvider } from '../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 
-import { getPkijsCrypto } from './utils.js';
+import { getPkijsCrypto } from './pkijs.js';
 import { generateRsaKeyPair } from './keys.js';
 import { RsaPssPrivateKey } from './PrivateKey.js';
 import { sign, verify } from './rsaSigning.js';

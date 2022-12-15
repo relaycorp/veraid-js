@@ -1,6 +1,6 @@
-import Certificate from '../lib/crypto_wrappers/x509/Certificate.js';
-import { generateRsaKeyPair, getPublicKeyDigestHex } from '../lib/crypto_wrappers/keys.js';
-import FullCertificateIssuanceOptions from '../lib/crypto_wrappers/x509/FullCertificateIssuanceOptions.js';
+import Certificate from '../lib/utils/x509/Certificate.js';
+import { generateRsaKeyPair, getPublicKeyDigestHex } from '../lib/utils/keys.js';
+import type FullCertificateIssuanceOptions from '../lib/utils/x509/FullCertificateIssuanceOptions.js';
 
 interface StubCertConfig {
   readonly attributes: Partial<FullCertificateIssuanceOptions>;

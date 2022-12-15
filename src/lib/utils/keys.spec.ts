@@ -8,7 +8,7 @@ import { MockRsaPssProvider } from '../../testUtils/webcrypto/MockRsaPssProvider
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { sha256Hex } from '../../testUtils/crypto.js';
 
-import { type HashingAlgorithm, type RSAModulus } from './algorithms.js';
+import { type HashingAlgorithm, type RsaModulus } from './algorithms.js';
 import {
   derDeserializeRsaPrivateKey,
   derDeserializeRsaPublicKey,
@@ -52,7 +52,7 @@ describe('generateRsaKeyPair', () => {
       expect(keyPair.privateKey.algorithm).toHaveProperty('modulusLength', 2048);
     });
 
-    test.each([2048, 3072, 4096] as readonly RSAModulus[])(
+    test.each([2048, 3072, 4096] as readonly RsaModulus[])(
       'Modulus %s should be used if explicitly requested',
       async () => {
         const modulus = 4096;
