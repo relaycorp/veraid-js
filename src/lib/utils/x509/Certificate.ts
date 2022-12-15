@@ -10,7 +10,7 @@ import {
   type FindIssuerCallback,
 } from 'pkijs';
 
-import { getIdFromIdentityKey, getPublicKeyDigest } from '../keys.js';
+import { getPublicKeyDigest } from '../keys.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derDeserialize } from '../asn1.js';
@@ -22,11 +22,6 @@ import type CertificateIssuanceOptions from './CertificateIssuanceOptions.js';
 const X509_CERTIFICATE_VERSION_3 = 2;
 
 const SIGNED_INTEGER_MAX_OCTET = 127;
-
-type FindIssuerSignature = (
-  cert: PkijsCertificate,
-  engine: CertificateChainValidationEngine,
-) => Promise<readonly PkijsCertificate[]>;
 
 function generatePositiveAsn1Integer(): Integer {
   const potentiallySignedInteger = new Uint8Array(generateRandom64BitValue());
@@ -92,7 +87,7 @@ export default class Certificate {
     if (bcExtension === undefined) {
       throw new CertificateError('Basic constraints extension is missing from issuer certificate');
     }
-    const basicConstraintsAsn1 = derDeserialize(bcExtension.extnValue.valueBlock.valueHex);
+    const basicConstraintsAsn1 = derDeserialize(bcExtension.extnValue.valueBlock.valueHexView);
     const basicConstraints = new BasicConstraints({ schema: basicConstraintsAsn1 });
     if (!basicConstraints.cA) {
       throw new CertificateError('Issuer is not a CA');
@@ -191,8 +186,6 @@ export default class Certificate {
     return new Certificate(pkijsCert);
   }
 
-  protected subjectIdCache: string | null = null;
-
   public constructor(public readonly pkijsCertificate: PkijsCertificate) {
     this.pkijsCertificate = pkijsCertificate;
   }
@@ -268,30 +261,8 @@ export default class Certificate {
     }
   }
 
-  public getIssuerId(): string | null {
-    const authorityKeyAttribute = this.pkijsCertificate.extensions?.find(
-      (attribute) => attribute.extnID === AUTHORITY_KEY,
-    );
-    if (!authorityKeyAttribute) {
-      return null;
-    }
-    const authorityKeyId = authorityKeyAttribute.parsedValue as AuthorityKeyIdentifier;
-    if (!authorityKeyId.keyIdentifier) {
-      throw new CertificateError('Key identifier is missing from AKI extension');
-    }
-    const id = Buffer.from(authorityKeyId.keyIdentifier.valueBlock.valueHexView).toString('hex');
-    return `0${id}`;
-  }
-
   public async getPublicKey(): Promise<CryptoKey> {
     return this.pkijsCertificate.getPublicKey();
-  }
-
-  public async calculateSubjectId(): Promise<string> {
-    if (this.subjectIdCache === null) {
-      this.subjectIdCache = await getIdFromIdentityKey(await this.getPublicKey());
-    }
-    return this.subjectIdCache;
   }
 
   /**
@@ -308,12 +279,9 @@ export default class Certificate {
   ): Promise<readonly Certificate[]> {
     async function findIssuer(
       pkijsCertificate: PkijsCertificate,
-      validationEngine: { readonly defaultFindIssuer: FindIssuerSignature },
+      validationEngine: CertificateChainValidationEngine,
     ): Promise<readonly PkijsCertificate[]> {
-      const issuers = await validationEngine.defaultFindIssuer(
-        pkijsCertificate,
-        validationEngine as CertificateChainValidationEngine,
-      );
+      const issuers = await validationEngine.defaultFindIssuer(pkijsCertificate, validationEngine);
       if (issuers.length !== 0) {
         return issuers;
       }

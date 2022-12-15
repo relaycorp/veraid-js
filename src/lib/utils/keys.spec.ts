@@ -15,7 +15,6 @@ import {
   derSerializePrivateKey,
   derSerializePublicKey,
   generateRsaKeyPair,
-  getIdFromIdentityKey,
   getPublicKeyDigest,
   getPublicKeyDigestHex,
   getRsaPublicKeyFromPrivate,
@@ -323,14 +322,4 @@ test('getPublicKeyDigestHex should return the SHA-256 hex digest of the public k
   const digestHex = await getPublicKeyDigestHex(keyPair.publicKey);
 
   expect(digestHex).toStrictEqual(sha256Hex(await derSerializePublicKey(keyPair.publicKey)));
-});
-
-describe('getIdFromIdentityKey', () => {
-  test('Id should be computed from identity key', async () => {
-    const keyPair = await generateRsaKeyPair();
-
-    const id = await getIdFromIdentityKey(keyPair.publicKey);
-
-    expect(id).toBe(`0${sha256Hex(await derSerializePublicKey(keyPair.publicKey))}`);
-  });
 });

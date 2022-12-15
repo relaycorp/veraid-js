@@ -12,7 +12,7 @@ import {
 } from 'pkijs';
 
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
-import { derSerializePublicKey, generateRsaKeyPair, getIdFromIdentityKey } from '../keys.js';
+import { derSerializePublicKey, generateRsaKeyPair } from '../keys.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { getBasicConstraintsExtension, getExtension } from '../../../testUtils/pkijs.js';
@@ -634,63 +634,6 @@ describe('getCommonName()', () => {
       CertificateError,
       'Distinguished Name does not contain Common Name',
     );
-  });
-});
-
-describe('calculateSubjectId', () => {
-  test('Private node address should be returned', async () => {
-    const nodeKeyPair = await generateRsaKeyPair();
-    const nodeCertificate = await generateStubCert({
-      issuerPrivateKey: nodeKeyPair.privateKey,
-      subjectPublicKey: nodeKeyPair.publicKey,
-    });
-
-    await expect(nodeCertificate.calculateSubjectId()).resolves.toStrictEqual(
-      await getIdFromIdentityKey(nodeKeyPair.publicKey),
-    );
-  });
-
-  test('Computation should be cached', async () => {
-    const nodeKeyPair = await generateRsaKeyPair();
-    const nodeCertificate = await generateStubCert({
-      issuerPrivateKey: nodeKeyPair.privateKey,
-      subjectPublicKey: nodeKeyPair.publicKey,
-    });
-    const getPublicKeySpy = jest.spyOn(nodeCertificate, 'getPublicKey');
-
-    const address = await nodeCertificate.calculateSubjectId();
-    await expect(nodeCertificate.calculateSubjectId()).resolves.toStrictEqual(address);
-
-    expect(getPublicKeySpy).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('getIssuerId', () => {
-  test('Nothing should be output if there are no extensions', async () => {
-    const certificate = await generateStubCert({});
-
-    delete certificate.pkijsCertificate.extensions;
-
-    expect(certificate.getIssuerId()).toBeNull();
-  });
-
-  test('Nothing should be output if extension is missing', async () => {
-    const certificate = await generateStubCert({});
-
-    certificate.pkijsCertificate.extensions = certificate.pkijsCertificate.extensions!.filter(
-      (extension) => extension.extnID !== AUTHORITY_KEY,
-    );
-
-    expect(certificate.getIssuerId()).toBeNull();
-  });
-
-  test('Issuer id should be output if extension is present', async () => {
-    const certificate = await generateStubCert({
-      issuerCertificate,
-      issuerPrivateKey: issuerKeyPair.privateKey,
-    });
-
-    expect(certificate.getIssuerId()).toStrictEqual(await issuerCertificate.calculateSubjectId());
   });
 });
 
