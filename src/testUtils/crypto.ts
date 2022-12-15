@@ -4,10 +4,6 @@ export function calculateDigest(algorithm: string, plaintext: ArrayBuffer | Buff
   return createHash(algorithm).update(Buffer.from(plaintext)).digest();
 }
 
-export function calculateDigestHex(algorithm: string, plaintext: ArrayBuffer | Buffer): string {
-  return calculateDigest(algorithm, plaintext).toString('hex');
-}
-
 export function sha256Hex(plaintext: ArrayBuffer | Buffer): string {
-  return calculateDigestHex('sha256', plaintext);
+  return calculateDigest('sha256', plaintext).toString('hex');
 }

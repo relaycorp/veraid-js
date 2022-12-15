@@ -19,8 +19,8 @@ export class VeraCrypto extends BaseCrypto {
       providers.set(new AwalaAesKwProvider(nodejsAesKwProvider));
     }
 
-    customProviders.forEach((p) => {
-      providers.set(p);
+    customProviders.forEach((provider) => {
+      providers.set(provider);
     });
   }
 }

@@ -20,7 +20,6 @@ import {
 import { CMS_OIDS } from '../../oids.js';
 import { type HashingAlgorithm } from '../algorithms.js';
 import { generateRsaKeyPair } from '../keys.js';
-import { RsaPssPrivateKey } from '../PrivateKey.js';
 import type Certificate from '../x509/Certificate.js';
 import { asn1Serialise, expectAsn1ValuesToBeEqual } from '../../../testUtils/asn1.js';
 import { expectFunctionToThrowError } from '../../../testUtils/errors.js';
@@ -30,6 +29,7 @@ import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 import { calculateDigest } from '../../../testUtils/crypto.js';
 import { generateStubCert } from '../../../testUtils/pki.js';
 import { expectPkijsValuesToBeEqual } from '../../../testUtils/pkijs.js';
+import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 
 import { deserializeContentInfo } from './utils.js';
 import { SignedData } from './signedData.js';

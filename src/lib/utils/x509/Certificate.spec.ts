@@ -13,13 +13,13 @@ import {
 
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derSerializePublicKey, generateRsaKeyPair, getIdFromIdentityKey } from '../keys.js';
-import { RsaPssPrivateKey } from '../PrivateKey.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { getBasicConstraintsExtension, getExtension } from '../../../testUtils/pkijs.js';
 import { sha256Hex } from '../../../testUtils/crypto.js';
 import { generateStubCert } from '../../../testUtils/pki.js';
 import { derDeserialize } from '../asn1.js';
+import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';

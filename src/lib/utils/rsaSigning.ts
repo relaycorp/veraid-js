@@ -4,7 +4,7 @@
  */
 
 import { getPkijsCrypto } from './pkijs.js';
-import { PrivateKey } from './PrivateKey.js';
+import { PrivateKey } from './keys/PrivateKey.js';
 
 const rsaPssParameters = {
   hash: { name: 'SHA-256' },

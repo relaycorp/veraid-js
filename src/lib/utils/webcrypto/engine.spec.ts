@@ -1,13 +1,13 @@
 import { type SubtleCrypto } from 'webcrypto-core';
 
-import { RsaPssPrivateKey } from '../PrivateKey.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
+import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 
 import { getEngineForPrivateKey } from './engine.js';
 
-describe('getEngine', () => {
-  const PROVIDER = new MockRsaPssProvider();
+const PROVIDER = new MockRsaPssProvider();
 
+describe('getEngine', () => {
   test('undefined should be returned if CryptoKey is used', () => {
     const engine = getEngineForPrivateKey(null as unknown as CryptoKey);
 

@@ -3,7 +3,7 @@ import { getAlgorithmParameters } from 'pkijs';
 
 import { getPkijsCrypto } from './pkijs.js';
 import { type HashingAlgorithm, type RsaModulus } from './algorithms.js';
-import { PrivateKey } from './PrivateKey.js';
+import { PrivateKey } from './keys/PrivateKey.js';
 
 const cryptoEngine = getPkijsCrypto();
 

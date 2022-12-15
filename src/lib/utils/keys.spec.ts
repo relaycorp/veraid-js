@@ -21,7 +21,7 @@ import {
   getRsaPublicKeyFromPrivate,
   type RsaKeyGenOptions,
 } from './keys.js';
-import { RsaPssPrivateKey } from './PrivateKey.js';
+import { RsaPssPrivateKey } from './keys/RsaPssPrivateKey.js';
 
 describe('generateRsaKeyPair', () => {
   test('Keys should be RSA-PSS', async () => {

@@ -3,8 +3,8 @@ import { arrayBufferFrom } from '../../testUtils/buffers.js';
 
 import { getPkijsCrypto } from './pkijs.js';
 import { generateRsaKeyPair } from './keys.js';
-import { RsaPssPrivateKey } from './PrivateKey.js';
 import { sign, verify } from './rsaSigning.js';
+import { RsaPssPrivateKey } from './keys/RsaPssPrivateKey.js';
 
 const plaintext = arrayBufferFrom('the plaintext');
 
