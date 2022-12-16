@@ -33,11 +33,11 @@
     "clean": "del-cli build test"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=16.9"
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",
-    "@relaycorp/eslint-config": "^1.1.40",
+    "@relaycorp/eslint-config": "^1.1.50",
     "@relaycorp/shared-config": "^1.9.2",
     "@types/jest": "^29.2.4",
     "@typescript-eslint/parser": "^5.46.1",
@@ -57,5 +57,12 @@
   "publishConfig": {
     "access": "public",
     "tag": "latest"
+  },
+  "dependencies": {
+    "@peculiar/webcrypto": "^1.4.1",
+    "asn1js": "^3.0.5",
+    "date-fns": "^2.29.3",
+    "pkijs": "^3.0.9",
+    "webcrypto-core": "^1.7.5"
   }
 }

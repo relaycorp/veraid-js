@@ -1,11 +1,10 @@
+import { Crypto } from '@peculiar/webcrypto';
 import { CryptoEngine, setEngine } from 'pkijs';
 
-import { VeraCrypto } from './lib/utils/webcrypto/VeraCrypto.js';
-
-const crypto = new VeraCrypto();
+const crypto = new Crypto();
 const cryptoEngine = new CryptoEngine({
   crypto,
   name: 'nodeEngine',
   subtle: crypto.subtle,
 });
-setEngine('nodeEngine', cryptoEngine);
+setEngine('nodeEngine', crypto, cryptoEngine);

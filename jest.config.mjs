@@ -1,3 +1,9 @@
+import * as path from "path";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default {
   // All imported modules in your tests should be mocked automatically
   // automock: false,
@@ -123,7 +129,7 @@ export default {
   setupFiles: ["jest-date-mock"],
 
   // A list of paths to modules that run some code to configure or set up the testing framework before each test
-  setupFilesAfterEnv: ["jest-extended/all"],
+  setupFilesAfterEnv: ["jest-extended/all", path.join(__dirname, "jest.setup.mjs")],
 
   // A list of paths to snapshot serializer modules Jest should use for snapshot testing
   // snapshotSerializers: [],
