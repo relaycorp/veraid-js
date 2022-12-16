@@ -19,10 +19,10 @@ import { sha256Hex } from '../../../testUtils/crypto.js';
 import { generateStubCert } from '../../../testUtils/pki.js';
 import { derDeserialize } from '../asn1.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
+import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
-import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 
 const baseCertificateOptions = {
   commonName: 'the CN',
