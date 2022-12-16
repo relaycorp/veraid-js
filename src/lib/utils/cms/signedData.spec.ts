@@ -205,7 +205,7 @@ describe('sign', () => {
         SignedData.sign(plaintext, keyPair.privateKey, certificate, [], {
           hashingAlgorithmName: 'SHA-1' as HashingAlgorithm,
         }),
-      ).rejects.toThrowWithMessage(CmsError, 'SHA-1 is disallowed by RS-018');
+      ).rejects.toThrowWithMessage(CmsError, 'SHA-1 is unsupported');
     });
   });
 

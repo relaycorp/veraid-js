@@ -76,9 +76,8 @@ export class SignedData {
     caCertificates: readonly Certificate[] = [],
     options: Partial<SignedDataOptions> = {},
   ): Promise<SignedData> {
-    // RS-018 prohibits the use of MD5 and SHA-1, but WebCrypto doesn't support MD5
     if ((options.hashingAlgorithmName as any) === 'SHA-1') {
-      throw new CmsError('SHA-1 is disallowed by RS-018');
+      throw new CmsError('SHA-1 is unsupported');
     }
 
     const hashingAlgorithmName = options.hashingAlgorithmName ?? 'SHA-256';

@@ -64,7 +64,7 @@ describe('generateRsaKeyPair', () => {
     test('Modulus < 2048 should not supported', async () => {
       await expect(
         generateRsaKeyPair({ modulus: 1024 } as unknown as RsaKeyGenOptions),
-      ).rejects.toThrow('RSA modulus must be => 2048 per RS-018 (got 1024)');
+      ).rejects.toThrow('RSA modulus must be => 2048 (got 1024)');
     });
   });
 
@@ -87,7 +87,7 @@ describe('generateRsaKeyPair', () => {
     test('SHA-1 should not be supported', async () => {
       await expect(
         generateRsaKeyPair({ hashingAlgorithm: 'SHA-1' } as unknown as RsaKeyGenOptions),
-      ).rejects.toThrow('SHA-1 is disallowed by RS-018');
+      ).rejects.toThrow('SHA-1 is unsupported');
     });
   });
 });
