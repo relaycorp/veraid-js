@@ -1,10 +1,9 @@
 import { type HashingAlgorithm } from '../algorithms.js';
-import { AwalaAesKwProvider } from '../webcrypto/AwalaAesKwProvider.js';
-import { MockAesKwProvider } from '../../../testUtils/webcrypto/MockAesKwProvider.js';
+import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 
 import { RsaPssPrivateKey } from './RsaPssPrivateKey.js';
 
-const PROVIDER = new AwalaAesKwProvider(new MockAesKwProvider());
+const PROVIDER = new MockRsaPssProvider();
 
 const HASHING_ALGORITHM: HashingAlgorithm = 'SHA-384';
 

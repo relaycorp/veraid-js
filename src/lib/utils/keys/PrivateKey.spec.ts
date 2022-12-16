@@ -1,11 +1,10 @@
 import { type KeyAlgorithm as WebCryptoKeyAlgorithm, type ProviderCrypto } from 'webcrypto-core';
 
-import { MockAesKwProvider } from '../../../testUtils/webcrypto/MockAesKwProvider.js';
-import { AwalaAesKwProvider } from '../webcrypto/AwalaAesKwProvider.js';
+import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 
 import { PrivateKey } from './PrivateKey.js';
 
-const PROVIDER = new AwalaAesKwProvider(new MockAesKwProvider());
+const PROVIDER = new MockRsaPssProvider();
 const ALGORITHM: KeyAlgorithm = { name: 'RSA-PSS' };
 
 describe('PrivateKey', () => {
