@@ -1,7 +1,7 @@
 import { Integer } from 'asn1js';
-import bufferToArray from 'buffer-to-arraybuffer';
 
 import { derDeserialize } from './asn1.js';
+import { bufferToArray } from './buffers.js';
 
 describe('deserializeDer', () => {
   test('should return ASN.1 object given a valid DER-encoded buffer', () => {

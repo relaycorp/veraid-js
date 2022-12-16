@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
 import { jest } from '@jest/globals';
-import bufferToArray from 'buffer-to-arraybuffer';
 import { CryptoEngine } from 'pkijs';
 
 import { MockRsaPssProvider } from '../../testUtils/webcrypto/MockRsaPssProvider.js';
@@ -21,6 +20,7 @@ import {
   type RsaKeyGenOptions,
 } from './keys.js';
 import { RsaPssPrivateKey } from './keys/RsaPssPrivateKey.js';
+import { bufferToArray } from './buffers.js';
 
 describe('generateRsaKeyPair', () => {
   test('Keys should be RSA-PSS', async () => {

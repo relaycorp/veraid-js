@@ -1,7 +1,6 @@
 /* eslint-disable max-lines */
 import { jest } from '@jest/globals';
 import { OctetString } from 'asn1js';
-import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { addDays, addSeconds, setMilliseconds, subSeconds } from 'date-fns';
 import { advanceTo, clear as dateMockClear } from 'jest-date-mock';
 import {
@@ -23,6 +22,7 @@ import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
+import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 
 const baseCertificateOptions = {
   commonName: 'the CN',
@@ -71,7 +71,7 @@ describe('deserialize()', () => {
   });
 
   test('should error out with invalid DER values', () => {
-    const invalidDer = bufferToArrayBuffer(Buffer.from('nope'));
+    const invalidDer = arrayBufferFrom('nope');
     expect(() => Certificate.deserialize(invalidDer)).toThrowWithMessage(
       Error,
       'Value is not DER-encoded',

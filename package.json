@@ -61,7 +61,6 @@
   "dependencies": {
     "@peculiar/webcrypto": "^1.4.1",
     "asn1js": "^3.0.5",
-    "buffer-to-arraybuffer": "^0.0.6",
     "date-fns": "^2.29.3",
     "pkijs": "^3.0.9",
     "webcrypto-core": "^1.7.5"
