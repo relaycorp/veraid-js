@@ -7,7 +7,6 @@ import {
   Certificate as PkijsCertificate,
   CertificateChainValidationEngine,
   Extension,
-  type FindIssuerCallback,
 } from 'pkijs';
 
 import { getPublicKeyDigest } from '../keys.js';
@@ -92,18 +91,6 @@ export default class Certificate {
     if (!basicConstraints.cA) {
       throw new CertificateError('Issuer is not a CA');
     }
-  }
-
-  protected static isCertificateInArray(
-    certificate: Certificate,
-    array: readonly Certificate[],
-  ): boolean {
-    for (const certInArray of array) {
-      if (certInArray.isEqual(certificate)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**
@@ -277,23 +264,6 @@ export default class Certificate {
     intermediateCaCertificates: readonly Certificate[],
     trustedCertificates: readonly Certificate[],
   ): Promise<readonly Certificate[]> {
-    async function findIssuer(
-      pkijsCertificate: PkijsCertificate,
-      validationEngine: CertificateChainValidationEngine,
-    ): Promise<readonly PkijsCertificate[]> {
-      const issuers = await validationEngine.defaultFindIssuer(pkijsCertificate, validationEngine);
-      if (issuers.length !== 0) {
-        return issuers;
-      }
-
-      // If the certificate is actually an intermediate certificate, but it's passed as a trusted
-      // certificate, accepted it.
-      const certificate = new Certificate(pkijsCertificate);
-      return Certificate.isCertificateInArray(certificate, trustedCertificates)
-        ? [pkijsCertificate]
-        : [];
-    }
-
     // Ignore any intermediate certificate that's also the issuer of a trusted certificate.
     // The main reason for doing this isn't performance, but the fact that PKI.js would fail to
     // compute the path.
@@ -314,7 +284,6 @@ export default class Certificate {
         this.pkijsCertificate,
       ],
 
-      findIssuer: findIssuer as unknown as FindIssuerCallback,
       trustedCerts: trustedCertificates.map((certificate) => certificate.pkijsCertificate),
     });
     const verification = await chainValidator.verify({ passedWhenNotRevValues: false });
