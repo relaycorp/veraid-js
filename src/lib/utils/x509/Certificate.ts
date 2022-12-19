@@ -186,32 +186,19 @@ export default class Certificate {
   }
 
   /**
-   * Serialize certificate as DER-encoded buffer.
-   */
-  public serialize(): ArrayBuffer {
-    const certAsn1js = this.pkijsCertificate.toSchema(true);
-    return certAsn1js.toBER(false);
-  }
-
-  /**
    * Return serial number.
    *
    * This doesn't return a `number` or `BigInt` because the serial number could require more than
    * 8 octets (which is the maximum number of octets required to represent a 64-bit unsigned
    * integer).
    */
-  public getSerialNumber(): Buffer {
+  public get serialNumber(): Buffer {
     const serialNumberBlock = this.pkijsCertificate.serialNumber;
     const serialNumber = serialNumberBlock.valueBlock.toBER();
     return Buffer.from(serialNumber);
   }
 
-  public getSerialNumberHex(): string {
-    const serialNumber = this.getSerialNumber();
-    return serialNumber.toString('hex');
-  }
-
-  public getCommonName(): string {
+  public get commonName(): string {
     const commonNameAttribute = this.pkijsCertificate.subject.typesAndValues.find(
       (attribute) => (attribute.type as unknown as string) === COMMON_NAME,
     );
@@ -219,6 +206,14 @@ export default class Certificate {
       throw new CertificateError('Distinguished Name does not contain Common Name');
     }
     return commonNameAttribute.value.valueBlock.value;
+  }
+
+  /**
+   * Serialize certificate as DER-encoded buffer.
+   */
+  public serialize(): ArrayBuffer {
+    const certAsn1js = this.pkijsCertificate.toSchema(true);
+    return certAsn1js.toBER(false);
   }
 
   /**

@@ -417,7 +417,7 @@ describe('issue()', () => {
       });
 
       const bcExtension = getExtension(cert.pkijsCertificate, BASIC_CONSTRAINTS);
-      expect(bcExtension).toHaveProperty('critical', true);
+      expect(bcExtension?.critical).toBeTrue();
     });
 
     test('CA flag should be false by default', async () => {
@@ -559,12 +559,12 @@ test('serialize() should return a DER-encoded buffer', async () => {
   const subjectDnAttributes = pkijsCert.subject.typesAndValues;
   expect(subjectDnAttributes).toHaveLength(1);
   expect(subjectDnAttributes[0].type).toBe(COMMON_NAME);
-  expect(subjectDnAttributes[0].value.valueBlock.value).toBe(cert.getCommonName());
+  expect(subjectDnAttributes[0].value.valueBlock.value).toBe(cert.commonName);
 
   const issuerDnAttributes = pkijsCert.issuer.typesAndValues;
   expect(issuerDnAttributes).toHaveLength(1);
   expect(issuerDnAttributes[0].type).toBe(COMMON_NAME);
-  expect(issuerDnAttributes[0].value.valueBlock.value).toBe(cert.getCommonName());
+  expect(issuerDnAttributes[0].value.valueBlock.value).toBe(cert.commonName);
 });
 
 test('startDate should return the start date', async () => {
@@ -603,26 +603,18 @@ describe('expiryDate', () => {
 test('getSerialNumber() should return the serial number as a buffer', async () => {
   const cert = await generateStubCert();
 
-  const serialNumberBuffer = cert.getSerialNumber();
-  expect(serialNumberBuffer).toStrictEqual(
-    Buffer.from(cert.pkijsCertificate.serialNumber.valueBlock.valueHex),
+  expect(cert.serialNumber).toStrictEqual(
+    Buffer.from(cert.pkijsCertificate.serialNumber.valueBlock.valueHexView),
   );
 });
 
-test('getSerialNumberHex() should return the hex representation of serial number', async () => {
-  const cert = await generateStubCert();
-
-  const serialNumberHex = cert.getSerialNumberHex();
-  expect(Buffer.from(serialNumberHex, 'hex')).toStrictEqual(cert.getSerialNumber());
-});
-
-describe('getCommonName()', () => {
+describe('commonName', () => {
   test('should return the address when found', async () => {
     const cert = await generateStubCert();
 
     const subjectDn = cert.pkijsCertificate.subject.typesAndValues;
 
-    expect(cert.getCommonName()).toStrictEqual(subjectDn[0].value.valueBlock.value);
+    expect(cert.commonName).toStrictEqual(subjectDn[0].value.valueBlock.value);
   });
 
   test('should error out when the address is not found', async () => {
@@ -630,7 +622,7 @@ describe('getCommonName()', () => {
 
     cert.pkijsCertificate.subject.typesAndValues = [];
 
-    expect(() => cert.getCommonName()).toThrowWithMessage(
+    expect(() => cert.commonName).toThrowWithMessage(
       CertificateError,
       'Distinguished Name does not contain Common Name',
     );
