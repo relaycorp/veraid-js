@@ -9,8 +9,9 @@ import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { selfIssueOrganisationCertificate } from './organisation.js';
 
 const COMMON_NAME = 'example.com';
-const START_DATE = setMilliseconds(subMinutes(new Date(), 5), 0);
-const EXPIRY_DATE = addMinutes(START_DATE, 5);
+const NOW = setMilliseconds(new Date(), 0);
+const START_DATE = subMinutes(NOW, 5);
+const EXPIRY_DATE = addMinutes(NOW, 5);
 
 let keyPair: CryptoKeyPair;
 beforeAll(async () => {
