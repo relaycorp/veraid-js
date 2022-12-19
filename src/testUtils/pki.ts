@@ -1,9 +1,9 @@
 import Certificate from '../lib/utils/x509/Certificate.js';
 import { generateRsaKeyPair, getPublicKeyDigestHex } from '../lib/utils/keys.js';
-import type CertificateIssuanceOptions from '../lib/utils/x509/CertificateIssuanceOptions.js';
+import type FullIssuanceOptions from '../lib/utils/x509/FullIssuanceOptions.js';
 
 interface StubCertConfig {
-  readonly attributes: Partial<CertificateIssuanceOptions>;
+  readonly attributes: Partial<FullIssuanceOptions>;
   readonly issuerCertificate: Certificate;
   readonly issuerPrivateKey: CryptoKey;
   readonly subjectPublicKey: CryptoKey;

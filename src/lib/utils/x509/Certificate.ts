@@ -16,7 +16,7 @@ import { derDeserialize } from '../asn1.js';
 import { generateRandom64BitValue } from '../crypto.js';
 
 import CertificateError from './CertificateError.js';
-import type CertificateIssuanceOptions from './CertificateIssuanceOptions.js';
+import type FullIssuanceOptions from './FullIssuanceOptions.js';
 
 const X509_CERTIFICATE_VERSION_3 = 2;
 
@@ -107,7 +107,7 @@ export default class Certificate {
   /**
    * Issue a Relaynet PKI certificate.
    */
-  public static async issue(options: CertificateIssuanceOptions): Promise<Certificate> {
+  public static async issue(options: FullIssuanceOptions): Promise<Certificate> {
     // PKI.js should round down to the nearest second per X.509. We should do it ourselves to
     // avoid discrepancies when the validity dates of a freshly-issued certificate are used.
     const validityStartDate = setMilliseconds(options.validityStartDate ?? new Date(), 0);

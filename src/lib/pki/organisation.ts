@@ -1,14 +1,12 @@
 import Certificate from '../utils/x509/Certificate.js';
 
-export interface OrganisationCertificateIssuanceOptions {
-  readonly startDate: Date;
-}
+import { type CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';
 
 export async function selfIssueOrganisationCertificate(
   name: string,
   keyPair: CryptoKeyPair,
   expiryDate: Date,
-  options: Partial<OrganisationCertificateIssuanceOptions> = {},
+  options: Partial<CertificateIssuanceOptions> = {},
 ): Promise<ArrayBuffer> {
   const certificate = await Certificate.issue({
     commonName: name,

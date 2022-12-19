@@ -1,6 +1,6 @@
 import type Certificate from './Certificate.js';
 
-export default interface CertificateIssuanceOptions {
+export default interface FullIssuanceOptions {
   readonly issuerPrivateKey: CryptoKey;
   readonly subjectPublicKey: CryptoKey;
   readonly validityStartDate?: Date;
