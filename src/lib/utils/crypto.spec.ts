@@ -4,9 +4,11 @@ import { getEngine, type ICryptoEngine, setEngine } from 'pkijs';
 import { generateRandom64BitValue } from './crypto.js';
 
 const originalEngine = getEngine();
-beforeEach(() => {
+const restoreEngine = () => {
   setEngine(originalEngine.name, originalEngine.crypto!);
-});
+};
+beforeEach(restoreEngine);
+afterAll(restoreEngine);
 
 test('generateRandom64BitValue() should generate a cryptographically secure value', () => {
   const expectedBytes: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -21,8 +23,8 @@ test('generateRandom64BitValue() should generate a cryptographically secure valu
 
   const randomValue = generateRandom64BitValue();
 
-  expect(randomValue).toBeInstanceOf(ArrayBuffer);
-  expect(randomValue).toHaveProperty('byteLength', 8);
-
+  expect(mockWebcrypto.getRandomValues).toHaveBeenCalledWith(
+    expect.toSatisfy<ArrayBuffer>((buffer) => buffer.byteLength === 8),
+  );
   expect(Buffer.from(randomValue)).toStrictEqual(Buffer.from(expectedBytes));
 });
