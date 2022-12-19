@@ -417,7 +417,7 @@ describe('issue()', () => {
       });
 
       const bcExtension = getExtension(cert.pkijsCertificate, BASIC_CONSTRAINTS);
-      expect(bcExtension).toHaveProperty('critical', true);
+      expect(bcExtension?.critical).toBeTrue();
     });
 
     test('CA flag should be false by default', async () => {

@@ -4,6 +4,7 @@ import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import type CertificateIssuanceOptions from '../utils/x509/CertificateIssuanceOptions.js';
 import Certificate from '../utils/x509/Certificate.js';
+import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 
 import { selfIssueOrganisationCertificate } from './organisation.js';
 
@@ -76,6 +77,34 @@ describe('selfIssueOrganisationCertificate', () => {
 
       const certificate = Certificate.deserialize(serialisation);
       expect(certificate.startDate).toStrictEqual(START_DATE);
+    });
+  });
+
+  describe('Basic constraints extension', () => {
+    test('Subject should be a CA', async () => {
+      const serialisation = await selfIssueOrganisationCertificate(
+        COMMON_NAME,
+        keyPair,
+        EXPIRY_DATE,
+        { startDate: START_DATE },
+      );
+
+      const certificate = Certificate.deserialize(serialisation);
+      const basicConstraints = getBasicConstraintsExtension(certificate.pkijsCertificate);
+      expect(basicConstraints.cA).toBeTrue();
+    });
+
+    test('Path length should be zero', async () => {
+      const serialisation = await selfIssueOrganisationCertificate(
+        COMMON_NAME,
+        keyPair,
+        EXPIRY_DATE,
+        { startDate: START_DATE },
+      );
+
+      const certificate = Certificate.deserialize(serialisation);
+      const basicConstraints = getBasicConstraintsExtension(certificate.pkijsCertificate);
+      expect(basicConstraints.pathLenConstraint).toBe(0);
     });
   });
 });

@@ -16,6 +16,7 @@ export async function selfIssueOrganisationCertificate(
     issuerPrivateKey: keyPair.privateKey,
     validityEndDate: expiryDate,
     validityStartDate: options.startDate,
+    isCa: true,
   });
   return certificate.serialize();
 }
