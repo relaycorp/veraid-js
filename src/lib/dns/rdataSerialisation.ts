@@ -3,9 +3,9 @@ import { secondsInDay } from 'date-fns';
 import VeraError from '../VeraError.js';
 import { derSerializePublicKey } from '../utils/keys.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
+import { KeyIdType } from '../KeyIdType.js';
 
 import { type RdataGenerationOptions } from './RdataGenerationOptions.js';
-import { KeyIdType } from './KeyIdType.js';
 
 const CRYPTO_ENGINE = getPkijsCrypto();
 

@@ -1,4 +1,4 @@
-import { type KeyIdType } from './KeyIdType.js';
+import { type KeyIdType } from '../KeyIdType.js';
 
 export interface RdataGenerationOptions {
   readonly keyIdType: KeyIdType;

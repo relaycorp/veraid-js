@@ -5,10 +5,10 @@ import { type RsaModulus } from '../utils/algorithms.js';
 import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
 import VeraError from '../VeraError.js';
+import { KeyIdType } from '../KeyIdType.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
 
 import { generateTxtRdata } from './rdataSerialisation.js';
-import { KeyIdType } from './KeyIdType.js';
 
 const TTL_OVERRIDE = 42;
 
