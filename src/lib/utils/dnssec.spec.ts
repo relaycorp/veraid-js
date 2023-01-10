@@ -1,4 +1,4 @@
-import { beforeEach, jest } from '@jest/globals';
+import { jest } from '@jest/globals';
 import { Question } from '@relaycorp/dnssec';
 import { DNSoverHTTPS } from 'dohdec';
 
