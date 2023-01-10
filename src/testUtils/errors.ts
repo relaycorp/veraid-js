@@ -18,3 +18,18 @@ export function expectFunctionToThrowError(
 
   expectErrorToEqual(error!, expectedError);
 }
+
+export async function getPromiseRejection<ErrorType extends Error>(
+  rejectingFunction: () => Promise<unknown>,
+  expectedErrorType: new () => ErrorType,
+): Promise<ErrorType> {
+  let error: ErrorType | undefined;
+  try {
+    await rejectingFunction();
+  } catch (err) {
+    error = err as ErrorType;
+  }
+
+  expect(error).toBeInstanceOf(expectedErrorType);
+  return error!;
+}
