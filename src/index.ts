@@ -13,3 +13,4 @@ export type { CertificateIssuanceOptions } from './lib/pki/CertificateIssuanceOp
 export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export type { RdataGenerationOptions } from './lib/dns/RdataGenerationOptions.js';
 export { KeyIdType } from './lib/KeyIdType.js';
+export { retrieveDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
