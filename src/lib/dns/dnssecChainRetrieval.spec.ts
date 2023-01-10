@@ -49,7 +49,7 @@ describe('retrieveDnssecChain', () => {
   test('TXT subdomain _vera of specified domain should be queried', async () => {
     const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
-    await retrieveDnssecChain(STUB_DOMAIN, trustAnchors, mockResolver);
+    await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
 
     expect(mockResolver).toHaveBeenCalledWith(
       expect.toSatisfy<Question>(
@@ -61,7 +61,7 @@ describe('retrieveDnssecChain', () => {
   test('DoH resolver should be used by default', async () => {
     const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
-    await retrieveDnssecChain(STUB_DOMAIN, trustAnchors, mockResolver);
+    await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
 
     expect(mockResolver).toHaveBeenCalledWith(
       expect.toSatisfy<Question>(
@@ -75,7 +75,7 @@ describe('retrieveDnssecChain', () => {
     mockResolver.mockRejectedValue(originalError);
 
     const error = await getPromiseRejection(
-      async () => retrieveDnssecChain(STUB_DOMAIN, undefined, mockResolver),
+      async () => retrieveDnssecChain(STUB_DOMAIN, mockResolver, undefined),
       VeraError,
     );
 
@@ -88,17 +88,27 @@ describe('retrieveDnssecChain', () => {
     const trustAnchors = generateFixture(status);
 
     const error = await getPromiseRejection(
-      async () => retrieveDnssecChain(STUB_DOMAIN, trustAnchors, mockResolver),
+      async () => retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors),
       VeraError,
     );
 
     expect(error.message).toStartWith(`DNSSEC chain validation failed (${status}): `);
   });
 
+  test('Responses in wire format should be supported', async () => {
+    const trustAnchors = generateFixture(SecurityStatus.SECURE);
+    const resolver: Resolver = async (question) => {
+      const response = (await mockResolver(question)) as Message;
+      return Buffer.from(response.serialise());
+    };
+
+    await expect(retrieveDnssecChain(STUB_DOMAIN, resolver, trustAnchors)).toResolve();
+  });
+
   test('Responses should be wrapped in an explicitly tagged SET', async () => {
     const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
-    const chainSerialised = await retrieveDnssecChain(STUB_DOMAIN, trustAnchors, mockResolver);
+    const chainSerialised = await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
 
     const chain = AsnParser.parse(chainSerialised, DnssecChain);
     expect(chain).toHaveLength(mockResolver.mock.calls.length);
