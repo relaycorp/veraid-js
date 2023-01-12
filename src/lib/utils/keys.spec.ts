@@ -5,7 +5,6 @@ import { CryptoEngine } from 'pkijs';
 
 import { MockRsaPssProvider } from '../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
-import { sha256Hex } from '../../testUtils/crypto.js';
 
 import { type HashingAlgorithm, type RsaModulus } from './algorithms.js';
 import {
@@ -15,7 +14,6 @@ import {
   derSerializePublicKey,
   generateRsaKeyPair,
   getPublicKeyDigest,
-  getPublicKeyDigestHex,
   getRsaPublicKeyFromPrivate,
   type RsaKeyGenOptions,
 } from './keys.js';
@@ -314,12 +312,4 @@ describe('getPublicKeyDigest', () => {
       createHash('sha256').update(Buffer.from(mockPublicKeySerialized)).digest(),
     );
   });
-});
-
-test('getPublicKeyDigestHex should return the SHA-256 hex digest of the public key', async () => {
-  const keyPair = await generateRsaKeyPair();
-
-  const digestHex = await getPublicKeyDigestHex(keyPair.publicKey);
-
-  expect(digestHex).toStrictEqual(sha256Hex(await derSerializePublicKey(keyPair.publicKey)));
 });

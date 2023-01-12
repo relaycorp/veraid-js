@@ -7,8 +7,11 @@ import { getPkijsCrypto } from '../utils/pkijs.js';
 import VeraError from '../VeraError.js';
 import { KeyIdType } from '../KeyIdType.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
+import { SERVICE_OID } from '../../testUtils/veraStubs.js';
 
-import { generateTxtRdata } from './rdataSerialisation.js';
+import { generateTxtRdata, parseTxtRdata } from './rdataSerialisation.js';
+import { KeyAlgorithmType } from './KeyAlgorithmType.js';
+import { type VeraRdataFields } from './VeraRdataFields.js';
 
 const TTL_OVERRIDE = 42;
 
@@ -21,22 +24,22 @@ async function generatePublicKey(
   return keyPair.publicKey;
 }
 
-describe('generateTxtRdata', () => {
-  let rsaPublicKey: CryptoKey;
-  beforeAll(async () => {
-    const rsaKeyPair = await generateRsaKeyPair();
-    rsaPublicKey = rsaKeyPair.publicKey;
-  });
+let rsaPublicKey: CryptoKey;
+beforeAll(async () => {
+  const rsaKeyPair = await generateRsaKeyPair();
+  rsaPublicKey = rsaKeyPair.publicKey;
+});
 
+describe('generateTxtRdata', () => {
   function splitAndGetField(rdata: string, index: number): string | undefined {
     return rdata.split(' ')[index];
   }
 
   describe('Key algorithm', () => {
     test.each<[RsaModulus, number]>([
-      [2048, 0],
-      [3072, 1],
-      [4096, 2],
+      [2048, 1],
+      [3072, 2],
+      [4096, 3],
     ])('RSA-%s should use algorithm %s', async (modulus, expectedAlgorithm) => {
       const { publicKey } = await generateRsaKeyPair({ modulus });
 
@@ -148,11 +151,10 @@ describe('generateTxtRdata', () => {
     });
 
     test('Service should be specified if set', async () => {
-      const serviceOid = '1.2.3.4.5';
-      const rdata = await generateTxtRdata(rsaPublicKey, TTL_OVERRIDE, { serviceOid });
+      const rdata = await generateTxtRdata(rsaPublicKey, TTL_OVERRIDE, { serviceOid: SERVICE_OID });
 
       const service = splitAndGetField(rdata, 4);
-      expect(service).toStrictEqual(serviceOid);
+      expect(service).toStrictEqual(SERVICE_OID);
     });
   });
 
@@ -164,5 +166,125 @@ describe('generateTxtRdata', () => {
       VeraError,
       `Only RSA-PSS keys are supported (got ${algorithmName})`,
     );
+  });
+});
+
+describe('parseTxtRdata', () => {
+  const algorithmId = KeyAlgorithmType.RSA_2048;
+  const keyIdType = KeyIdType.SHA256;
+  let keyId: string;
+  beforeAll(async () => {
+    keyId = calculateDigest('sha256', await derSerializePublicKey(rsaPublicKey)).toString('base64');
+  });
+
+  test('There should be at least 4 space-separated fields', () => {
+    const malformedRdata = 'one two three';
+
+    expect(() => parseTxtRdata(malformedRdata)).toThrowWithMessage(
+      VeraError,
+      'RDATA should have at least 4 space-separated fields (got 3)',
+    );
+  });
+
+  test('Invalid key algorithm should be refused', () => {
+    const invalidAlgorithmId = 4;
+    const rdata = `${invalidAlgorithmId} ${keyIdType} ${keyId} ${TTL_OVERRIDE}`;
+
+    expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
+      VeraError,
+      `Unknown algorithm id ("${invalidAlgorithmId}")`,
+    );
+  });
+
+  test('Invalid key id type should be refused', () => {
+    const invalidKeyIdType = 4;
+    const rdata = `${algorithmId} ${invalidKeyIdType} ${keyId} ${TTL_OVERRIDE}`;
+
+    expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
+      VeraError,
+      `Unknown key id type ("${invalidKeyIdType}")`,
+    );
+  });
+
+  describe('TTL override validation', () => {
+    test('Non-integer value should be refused', () => {
+      const invalidTtlOverride = 4.5;
+      const rdata = `${algorithmId} ${keyIdType} ${keyId} ${invalidTtlOverride}`;
+
+      expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
+        VeraError,
+        `Malformed TTL override ("${invalidTtlOverride}")`,
+      );
+    });
+
+    test('Negative value should be refused', () => {
+      const invalidTtlOverride = -4;
+      const rdata = `${algorithmId} ${keyIdType} ${keyId} ${invalidTtlOverride}`;
+
+      expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
+        VeraError,
+        `Malformed TTL override ("${invalidTtlOverride}")`,
+      );
+    });
+  });
+
+  test('Fields should be output if value is valid', () => {
+    const rdata = `${algorithmId} ${keyIdType} ${keyId} ${TTL_OVERRIDE}`;
+
+    const fields = parseTxtRdata(rdata);
+
+    expect(fields).toMatchObject<Partial<VeraRdataFields>>({
+      algorithm: algorithmId,
+      keyIdType,
+      keyId,
+      ttlOverride: TTL_OVERRIDE,
+    });
+  });
+
+  test('Service OID should be absent if unspecified', () => {
+    const rdata = `${algorithmId} ${keyIdType} ${keyId} ${TTL_OVERRIDE}`;
+
+    const fields = parseTxtRdata(rdata);
+
+    expect(fields.serviceOid).toBeUndefined();
+  });
+
+  test('Service OID should be present if specified', () => {
+    const rdata = `${algorithmId} ${keyIdType} ${keyId} ${TTL_OVERRIDE} ${SERVICE_OID}`;
+
+    const fields = parseTxtRdata(rdata);
+
+    expect(fields.serviceOid).toStrictEqual(SERVICE_OID);
+  });
+
+  describe('Extraneous whitespace tolerance', () => {
+    let expectedFields: VeraRdataFields;
+    beforeAll(() => {
+      expectedFields = {
+        algorithm: algorithmId,
+        keyIdType,
+        keyId,
+        ttlOverride: TTL_OVERRIDE,
+        serviceOid: undefined,
+      };
+    });
+
+    test('Leading whitespace should be ignored', () => {
+      const rdata = ` \t ${algorithmId} ${keyIdType} ${keyId} ${TTL_OVERRIDE}`;
+
+      expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
+    });
+
+    test('Trailing whitespace should be ignored', () => {
+      const rdata = `${algorithmId} ${keyIdType} ${keyId} ${TTL_OVERRIDE} \t `;
+
+      expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
+    });
+
+    test('Extra whitespace in separator should be ignored', () => {
+      const rdata = `${algorithmId} \t ${keyIdType}   ${keyId} ${TTL_OVERRIDE}`;
+
+      expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
+    });
   });
 });
