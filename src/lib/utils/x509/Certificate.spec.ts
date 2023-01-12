@@ -15,7 +15,7 @@ import { derSerializePublicKey, generateRsaKeyPair } from '../keys.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { getBasicConstraintsExtension, getExtension } from '../../../testUtils/pkijs.js';
-import { sha256Hex } from '../../../testUtils/crypto.js';
+import { calculateDigest } from '../../../testUtils/crypto.js';
 import { generateStubCert } from '../../../testUtils/pki.js';
 import { derDeserialize } from '../asn1.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
@@ -51,7 +51,7 @@ afterEach(() => {
 
 async function getPublicKeyDigest(publicKey: CryptoKey): Promise<string> {
   const publicKeyDer = await derSerializePublicKey(publicKey);
-  return sha256Hex(publicKeyDer);
+  return calculateDigest('sha256', publicKeyDer).toString('hex');
 }
 
 describe('deserialize()', () => {

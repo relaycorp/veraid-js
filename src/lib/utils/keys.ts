@@ -103,11 +103,3 @@ export async function getPublicKeyDigest(publicKey: CryptoKey): Promise<ArrayBuf
   const publicKeyDer = await derSerializePublicKey(publicKey);
   return cryptoEngine.digest({ name: 'SHA-256' }, publicKeyDer);
 }
-
-/**
- * Return hexadecimal, SHA-256 digest of public key.
- */
-export async function getPublicKeyDigestHex(publicKey: CryptoKey): Promise<string> {
-  const digest = Buffer.from(await getPublicKeyDigest(publicKey));
-  return digest.toString('hex');
-}
