@@ -5,10 +5,10 @@ import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import type FullIssuanceOptions from '../utils/x509/FullIssuanceOptions.js';
 import Certificate from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
+import { ORG_NAME } from '../../testUtils/veraStubs.js';
 
 import { selfIssueOrganisationCertificate } from './organisation.js';
 
-const ORG_NAME = 'example.com';
 const NOW = setMilliseconds(new Date(), 0);
 const START_DATE = subMinutes(NOW, 5);
 const EXPIRY_DATE = addMinutes(NOW, 5);
