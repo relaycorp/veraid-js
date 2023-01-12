@@ -3,12 +3,11 @@ import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import Certificate from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
+import { MEMBER_NAME, ORG_NAME } from '../../testUtils/veraStubs.js';
 
 import { selfIssueOrganisationCertificate } from './organisation.js';
 import { issueMemberCertificate } from './member.js';
 
-const ORG_NAME = 'example.com';
-const MEMBER_NAME = 'alice';
 const NOW = setMilliseconds(new Date(), 0);
 const START_DATE = subMinutes(NOW, 5);
 const EXPIRY_DATE = addMinutes(NOW, 5);

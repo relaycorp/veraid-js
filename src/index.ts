@@ -14,3 +14,4 @@ export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export type { RdataGenerationOptions } from './lib/dns/RdataGenerationOptions.js';
 export { KeyIdType } from './lib/KeyIdType.js';
 export { retrieveDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
+export { serialiseMemberIdBundle } from './lib/memberIdBundle.js';
