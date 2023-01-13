@@ -2,15 +2,15 @@ import { DnsRecord, MockChain, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 
-import { MEMBER_NAME, ORG_NAME } from '../testUtils/veraStubs.js';
-import { arrayBufferFrom } from '../testUtils/buffers.js';
+import { MEMBER_NAME, ORG_NAME } from '../../testUtils/veraStubs.js';
+import { arrayBufferFrom } from '../../testUtils/buffers.js';
+import { generateRsaKeyPair } from '../utils/keys.js';
+import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
+import { issueMemberCertificate } from '../pki/member.js';
+import { DnssecChain } from '../dns/DnssecChain.js';
+import VeraError from '../VeraError.js';
 
-import { generateRsaKeyPair } from './utils/keys.js';
-import { selfIssueOrganisationCertificate } from './pki/organisation.js';
-import { issueMemberCertificate } from './pki/member.js';
-import { DnssecChain } from './dns/DnssecChain.js';
-import { serialiseMemberIdBundle } from './memberIdBundle.js';
-import VeraError from './VeraError.js';
+import { serialiseMemberIdBundle } from './serialisation.js';
 import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
 
 let orgCertificate: ArrayBuffer;

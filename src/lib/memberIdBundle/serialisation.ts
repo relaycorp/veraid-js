@@ -1,8 +1,9 @@
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
-import VeraError from './VeraError.js';
-import { DnssecChain } from './dns/DnssecChain.js';
+import VeraError from '../VeraError.js';
+import { DnssecChain } from '../dns/DnssecChain.js';
+
 import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
 
 export function serialiseMemberIdBundle(
