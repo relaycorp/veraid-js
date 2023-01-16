@@ -66,7 +66,7 @@
     "asn1js": "^3.0.5",
     "date-fns": "^2.29.3",
     "dohdec": "https://gitpkg.now.sh/hildjj/dohdec/pkg/dohdec?acd49694a83825a461bdff55e4a4a63ca7a4bbef",
-    "pkijs": "^3.0.9",
+    "pkijs": "^3.0.11",
     "webcrypto-core": "^1.7.5"
   }
 }
