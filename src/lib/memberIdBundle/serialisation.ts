@@ -2,7 +2,7 @@ import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
 import VeraError from '../VeraError.js';
-import { DnssecChain } from '../dns/DnssecChain.js';
+import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
 
 import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
 
@@ -25,9 +25,9 @@ export function serialiseMemberIdBundle(
     throw new VeraError('Organisation certificate is malformed', { cause: err });
   }
 
-  let dnssecChain: DnssecChain;
+  let dnssecChain: DnssecChainSchema;
   try {
-    dnssecChain = AsnParser.parse(dnssecChainSerialised, DnssecChain);
+    dnssecChain = AsnParser.parse(dnssecChainSerialised, DnssecChainSchema);
   } catch (err) {
     throw new VeraError('DNSSEC chain is malformed', { cause: err });
   }

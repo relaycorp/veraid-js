@@ -16,7 +16,7 @@ import { getPromiseRejection } from '../../testUtils/errors.js';
 import VeraError from '../VeraError.js';
 
 import { retrieveDnssecChain } from './dnssecChainRetrieval.js';
-import { DnssecChain } from './DnssecChain.js';
+import { DnssecChainSchema } from './DnssecChainSchema.js';
 
 const mockResolver = jest.fn<Resolver>();
 beforeEach(() => {
@@ -110,7 +110,7 @@ describe('retrieveDnssecChain', () => {
 
     const chainSerialised = await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
 
-    const chain = AsnParser.parse(chainSerialised, DnssecChain);
+    const chain = AsnParser.parse(chainSerialised, DnssecChainSchema);
     expect(chain).toHaveLength(mockResolver.mock.calls.length);
     expect(chain.length).toBeGreaterThan(0);
     const responses = await Promise.all(

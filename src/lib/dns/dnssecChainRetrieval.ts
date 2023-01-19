@@ -12,7 +12,7 @@ import {
 import { bufferToArray } from '../utils/buffers.js';
 import VeraError from '../VeraError.js';
 
-import { DnssecChain } from './DnssecChain.js';
+import { DnssecChainSchema } from './DnssecChainSchema.js';
 
 export async function retrieveDnssecChain(
   domainName: string,
@@ -39,6 +39,6 @@ export async function retrieveDnssecChain(
     throw new VeraError(`DNSSEC chain validation failed (${result.status}): ${reasons}`);
   }
 
-  const chain = new DnssecChain(responses);
+  const chain = new DnssecChainSchema(responses);
   return AsnSerializer.serialize(chain);
 }

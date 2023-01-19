@@ -7,7 +7,7 @@ import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { generateRsaKeyPair } from '../utils/keys.js';
 import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
 import { issueMemberCertificate } from '../pki/member.js';
-import { DnssecChain } from '../dns/DnssecChain.js';
+import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
 import VeraError from '../VeraError.js';
 
 import { serialiseMemberIdBundle } from './serialisation.js';
@@ -41,7 +41,7 @@ beforeAll(async () => {
   const veraRecord = new DnsRecord(`_vera.${ORG_NAME}.`, 'TXT', 'IN', 42, 'foo');
   const rrset = RrSet.init(veraRecord.makeQuestion(), [veraRecord]);
   const { responses } = mockChain.generateFixture(rrset, SecurityStatus.SECURE);
-  const dnssecChain = new DnssecChain(responses.map((response) => response.serialise()));
+  const dnssecChain = new DnssecChainSchema(responses.map((response) => response.serialise()));
   dnssecChainSerialised = AsnSerializer.serialize(dnssecChain);
 });
 

@@ -2,11 +2,11 @@
 import { AsnProp } from '@peculiar/asn1-schema';
 import { Certificate } from '@peculiar/asn1-x509';
 
-import { DnssecChain } from '../dns/DnssecChain.js';
+import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
 
 export class MemberIdBundleSchema {
-  @AsnProp({ type: DnssecChain })
-  public dnssecChain!: DnssecChain;
+  @AsnProp({ type: DnssecChainSchema })
+  public dnssecChain!: DnssecChainSchema;
 
   @AsnProp({ type: Certificate })
   public organisationCertificate!: Certificate;
