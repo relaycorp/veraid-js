@@ -120,7 +120,8 @@ function getTtlOverrideFromString(ttlOverrideString: string): number {
   if (!TTL_OVERRIDE_REGEX.test(ttlOverrideString)) {
     throw new VeraError(`Malformed TTL override ("${ttlOverrideString}")`);
   }
-  return Number.parseInt(ttlOverrideString, 10);
+  const ttl = Number.parseInt(ttlOverrideString, 10);
+  return Math.min(ttl, MAX_TTL_OVERRIDE_SECONDS);
 }
 
 export async function generateTxtRdata(

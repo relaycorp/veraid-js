@@ -207,6 +207,8 @@ describe('parseTxtRdata', () => {
   });
 
   describe('TTL override validation', () => {
+    const ninetyDaysInSeconds = secondsInDay * 90;
+
     test('Non-integer value should be refused', () => {
       const invalidTtlOverride = 4.5;
       const rdata = `${algorithmId} ${keyIdType} ${KEY_ID} ${invalidTtlOverride}`;
@@ -225,6 +227,22 @@ describe('parseTxtRdata', () => {
         VeraError,
         `Malformed TTL override ("${invalidTtlOverride}")`,
       );
+    });
+
+    test('90 days should be allowed', () => {
+      const rdata = `${algorithmId} ${keyIdType} ${KEY_ID} ${ninetyDaysInSeconds}`;
+
+      const fields = parseTxtRdata(rdata);
+
+      expect(fields.ttlOverride).toStrictEqual(ninetyDaysInSeconds);
+    });
+
+    test('TTL should be capped at 90 days', () => {
+      const rdata = `${algorithmId} ${keyIdType} ${KEY_ID} ${ninetyDaysInSeconds + 1}`;
+
+      const fields = parseTxtRdata(rdata);
+
+      expect(fields.ttlOverride).toStrictEqual(ninetyDaysInSeconds);
     });
   });
 
