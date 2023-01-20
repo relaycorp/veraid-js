@@ -1,8 +1,8 @@
-import { DnsRecord, MockChain, RrSet, SecurityStatus } from '@relaycorp/dnssec';
+import { MockChain, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 
-import { MEMBER_NAME, ORG_NAME } from '../../testUtils/veraStubs.js';
+import { MEMBER_NAME, ORG_DOMAIN, ORG_NAME, VERA_RECORD } from '../../testUtils/veraStubs.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { generateRsaKeyPair } from '../utils/keys.js';
 import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
@@ -37,9 +37,8 @@ beforeAll(async () => {
 
 let dnssecChainSerialised: ArrayBuffer;
 beforeAll(async () => {
-  const mockChain = await MockChain.generate(`${ORG_NAME}.`);
-  const veraRecord = new DnsRecord(`_vera.${ORG_NAME}.`, 'TXT', 'IN', 42, 'foo');
-  const rrset = RrSet.init(veraRecord.makeQuestion(), [veraRecord]);
+  const mockChain = await MockChain.generate(ORG_DOMAIN);
+  const rrset = RrSet.init(VERA_RECORD.makeQuestion(), [VERA_RECORD]);
   const { responses } = mockChain.generateFixture(rrset, SecurityStatus.SECURE);
   const dnssecChain = new DnssecChainSchema(responses.map((response) => response.serialise()));
   dnssecChainSerialised = AsnSerializer.serialize(dnssecChain);
