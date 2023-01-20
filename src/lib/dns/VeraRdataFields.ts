@@ -1,8 +1,6 @@
-import { type KeyAlgorithmType } from './KeyAlgorithmType.js';
+import { type OrganisationKeySpec } from './OrganisationKeySpec.js';
 
-export interface VeraRdataFields {
-  readonly keyAlgorithm: KeyAlgorithmType;
-  readonly keyId: string;
+export interface VeraRdataFields extends OrganisationKeySpec {
   readonly ttlOverride: number;
   readonly serviceOid?: string;
 }

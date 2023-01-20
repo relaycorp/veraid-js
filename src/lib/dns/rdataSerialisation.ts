@@ -4,7 +4,6 @@ import VeraError from '../VeraError.js';
 import { derSerializePublicKey } from '../utils/keys.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
 
-import { type RdataGenerationOptions } from './RdataGenerationOptions.js';
 import { type VeraRdataFields } from './VeraRdataFields.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 
@@ -110,17 +109,13 @@ function getTtlOverrideFromString(ttlOverrideString: string): number {
 export async function generateTxtRdata(
   orgPublicKey: CryptoKey,
   ttlOverride: number,
-  options: Partial<RdataGenerationOptions> = {},
+  serviceOid?: string,
 ): Promise<string> {
   const algorithm = getAlgorithmIdForKey(orgPublicKey);
   const keyId = await getKeyId(orgPublicKey);
   validateTtlOverride(ttlOverride);
-  const fields = [
-    algorithm,
-    keyId,
-    ttlOverride,
-    ...(options.serviceOid === undefined ? [] : [options.serviceOid]),
-  ];
+  const optionalFields = serviceOid === undefined ? [] : [serviceOid];
+  const fields = [algorithm, keyId, ttlOverride, ...optionalFields];
   return fields.join(' ');
 }
 

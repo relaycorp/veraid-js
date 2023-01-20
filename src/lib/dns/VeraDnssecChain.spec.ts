@@ -231,9 +231,11 @@ describe('VeraDnssecChain', () => {
     });
 
     test('Multiple RData should be output if there were multiple TXT records', async () => {
-      const additionalVeraRdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, {
-        serviceOid: SERVICE_OID,
-      });
+      const additionalVeraRdata = await generateTxtRdata(
+        ORG_KEY_PAIR.publicKey,
+        TTL_OVERRIDE,
+        SERVICE_OID,
+      );
       const additionalVeraRecord = VERA_RECORD.shallowCopy({ data: additionalVeraRdata });
       const rrset = RrSet.init(VERA_RECORD.makeQuestion(), [VERA_RECORD, additionalVeraRecord]);
       const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(

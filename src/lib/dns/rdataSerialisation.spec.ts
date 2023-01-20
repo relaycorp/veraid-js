@@ -128,9 +128,7 @@ describe('generateTxtRdata', () => {
     });
 
     test('Service should be specified if set', async () => {
-      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, {
-        serviceOid: SERVICE_OID,
-      });
+      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, SERVICE_OID);
 
       const service = splitAndGetField(rdata, 3);
       expect(service).toStrictEqual(SERVICE_OID);
