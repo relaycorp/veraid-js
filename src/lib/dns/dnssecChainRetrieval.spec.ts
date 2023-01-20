@@ -14,6 +14,7 @@ import {
 
 import { getPromiseRejection } from '../../testUtils/errors.js';
 import VeraError from '../VeraError.js';
+import { ORG_DOMAIN } from '../../testUtils/veraStubs.js';
 
 import { retrieveDnssecChain } from './dnssecChainRetrieval.js';
 import { DnssecChainSchema } from './DnssecChainSchema.js';
@@ -23,10 +24,8 @@ beforeEach(() => {
   mockResolver.mockReset();
 });
 
-const STUB_DOMAIN = 'example.com.';
-
 const STUB_RECORD = new DnsRecord(
-  `_vera.${STUB_DOMAIN}`,
+  `_vera.${ORG_DOMAIN}`,
   'TXT',
   DnsClass.IN,
   42,
@@ -36,7 +35,7 @@ const RRSET = RrSet.init(STUB_RECORD.makeQuestion(), [STUB_RECORD]);
 
 let mockChain: MockChain;
 beforeAll(async () => {
-  mockChain = await MockChain.generate(STUB_DOMAIN);
+  mockChain = await MockChain.generate(ORG_DOMAIN);
 });
 
 describe('retrieveDnssecChain', () => {
@@ -49,11 +48,11 @@ describe('retrieveDnssecChain', () => {
   test('TXT subdomain _vera of specified domain should be queried', async () => {
     const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
-    await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
+    await retrieveDnssecChain(ORG_DOMAIN, mockResolver, trustAnchors);
 
     expect(mockResolver).toHaveBeenCalledWith(
       expect.toSatisfy<Question>(
-        (question) => question.name === `_vera.${STUB_DOMAIN}` && question.getTypeName() === 'TXT',
+        (question) => question.name === `_vera.${ORG_DOMAIN}` && question.getTypeName() === 'TXT',
       ),
     );
   });
@@ -61,11 +60,11 @@ describe('retrieveDnssecChain', () => {
   test('DoH resolver should be used by default', async () => {
     const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
-    await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
+    await retrieveDnssecChain(ORG_DOMAIN, mockResolver, trustAnchors);
 
     expect(mockResolver).toHaveBeenCalledWith(
       expect.toSatisfy<Question>(
-        (question) => question.name === `_vera.${STUB_DOMAIN}` && question.getTypeName() === 'TXT',
+        (question) => question.name === `_vera.${ORG_DOMAIN}` && question.getTypeName() === 'TXT',
       ),
     );
   });
@@ -75,7 +74,7 @@ describe('retrieveDnssecChain', () => {
     mockResolver.mockRejectedValue(originalError);
 
     const error = await getPromiseRejection(
-      async () => retrieveDnssecChain(STUB_DOMAIN, mockResolver, undefined),
+      async () => retrieveDnssecChain(ORG_DOMAIN, mockResolver, undefined),
       VeraError,
     );
 
@@ -88,7 +87,7 @@ describe('retrieveDnssecChain', () => {
     const trustAnchors = generateFixture(status);
 
     const error = await getPromiseRejection(
-      async () => retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors),
+      async () => retrieveDnssecChain(ORG_DOMAIN, mockResolver, trustAnchors),
       VeraError,
     );
 
@@ -102,13 +101,13 @@ describe('retrieveDnssecChain', () => {
       return Buffer.from(response.serialise());
     };
 
-    await expect(retrieveDnssecChain(STUB_DOMAIN, resolver, trustAnchors)).toResolve();
+    await expect(retrieveDnssecChain(ORG_DOMAIN, resolver, trustAnchors)).toResolve();
   });
 
   test('Responses should be wrapped in an explicitly tagged SET', async () => {
     const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
-    const chainSerialised = await retrieveDnssecChain(STUB_DOMAIN, mockResolver, trustAnchors);
+    const chainSerialised = await retrieveDnssecChain(ORG_DOMAIN, mockResolver, trustAnchors);
 
     const chain = AsnParser.parse(chainSerialised, DnssecChainSchema);
     expect(chain).toHaveLength(mockResolver.mock.calls.length);
