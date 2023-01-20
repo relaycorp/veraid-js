@@ -4,7 +4,8 @@ import { DNSoverHTTPS } from 'dohdec';
 
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import VeraError from '../VeraError.js';
-import { ORG_NAME } from '../../testUtils/veraStubs.js';
+import { ORG_NAME } from '../../testUtils/vera/stubs.js';
+import { serialiseMessage } from '../../testUtils/dns.js';
 
 import { dnssecOnlineResolve, makeDnssecOfflineResolver } from './dnssec.js';
 
@@ -88,9 +89,7 @@ describe('makeDnssecOfflineResolver', () => {
       const resolver = makeDnssecOfflineResolver([arrayBufferFrom(STUB_DNS_RESPONSE_SERIALISED)]);
 
       const response = (await resolver(STUB_QUESTION)) as Message;
-      expect(Buffer.from(response.serialise())).toStrictEqual(
-        Buffer.from(STUB_DNS_RESPONSE_SERIALISED),
-      );
+      expect(serialiseMessage(response)).toStrictEqual(Buffer.from(STUB_DNS_RESPONSE_SERIALISED));
     });
 
     test('Missing response should result in error', async () => {

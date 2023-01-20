@@ -5,7 +5,7 @@ import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import type FullIssuanceOptions from '../utils/x509/FullIssuanceOptions.js';
 import Certificate from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
-import { ORG_NAME } from '../../testUtils/veraStubs.js';
+import { ORG_NAME } from '../../testUtils/vera/stubs.js';
 
 import { selfIssueOrganisationCertificate } from './organisation.js';
 

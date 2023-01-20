@@ -53,6 +53,21 @@ const KEY_ID_TYPE_BY_STRING: { readonly [type: string]: KeyIdType } = {
   '3': KeyIdType.SHA512,
 };
 
+function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
+  let rdataSanitised: string;
+  if (typeof rdata === 'string') {
+    rdataSanitised = rdata;
+  } else if (Buffer.isBuffer(rdata)) {
+    rdataSanitised = rdata.toString();
+  } else {
+    if (rdata.length !== 1) {
+      throw new VeraError(`TXT rdata array must contain a single item (got ${rdata.length})`);
+    }
+    rdataSanitised = rdata[0].toString();
+  }
+  return rdataSanitised.replace(FIELDS_REGEX, '$<fields>');
+}
+
 function getAlgorithmIdForKey(key: CryptoKey): number {
   if (key.algorithm.name !== 'RSA-PSS') {
     throw new VeraError(`Only RSA-PSS keys are supported (got ${key.algorithm.name})`);
@@ -127,8 +142,8 @@ export async function generateTxtRdata(
   return fields.join(' ');
 }
 
-export function parseTxtRdata(rdata: string): VeraRdataFields {
-  const rdataSanitised = rdata.replace(FIELDS_REGEX, '$<fields>');
+export function parseTxtRdata(rdata: Buffer | string | readonly Buffer[]): VeraRdataFields {
+  const rdataSanitised = sanitiseRdata(rdata);
   const fields = rdataSanitised.split(FIELD_SEPARATOR_REGEX);
   if (fields.length < MIN_RDATA_FIELDS) {
     throw new VeraError(

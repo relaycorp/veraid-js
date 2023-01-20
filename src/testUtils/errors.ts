@@ -1,4 +1,4 @@
-function expectErrorToEqual(error: Error, expectedError: Error) {
+export function expectErrorToEqual(error: Error, expectedError: Error) {
   expect(typeof expectedError).toEqual(typeof error);
   expect(expectedError.name).toEqual(error.name);
   expect(expectedError.message).toEqual(error.message);

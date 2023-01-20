@@ -3,7 +3,7 @@ import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import Certificate from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
-import { MEMBER_NAME, ORG_NAME } from '../../testUtils/veraStubs.js';
+import { MEMBER_NAME, ORG_NAME } from '../../testUtils/vera/stubs.js';
 
 import { selfIssueOrganisationCertificate } from './organisation.js';
 import { issueMemberCertificate } from './member.js';

@@ -2,13 +2,14 @@ import { MockChain, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 
-import { MEMBER_NAME, ORG_DOMAIN, ORG_NAME, VERA_RECORD } from '../../testUtils/veraStubs.js';
+import { MEMBER_NAME, ORG_DOMAIN, ORG_NAME } from '../../testUtils/vera/stubs.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { generateRsaKeyPair } from '../utils/keys.js';
 import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
 import { issueMemberCertificate } from '../pki/member.js';
 import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
 import VeraError from '../VeraError.js';
+import { VERA_RECORD } from '../../testUtils/vera/dns.js';
 
 import { serialiseMemberIdBundle } from './serialisation.js';
 import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';

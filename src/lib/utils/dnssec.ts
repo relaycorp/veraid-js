@@ -3,6 +3,8 @@ import { DNSoverHTTPS } from 'dohdec';
 
 import VeraError from '../VeraError.js';
 
+const NXDOMAIN_RCODE = 3;
+
 const DOH = new DNSoverHTTPS({ url: 'https://cloudflare-dns.com/dns-query' });
 
 export async function dnssecOnlineResolve(question: Question): Promise<Buffer> {
@@ -30,7 +32,7 @@ export function makeDnssecOfflineResolver(responsesSerialised: readonly ArrayBuf
   return async (question) => {
     const matchingResponse = responses.find((response) => response.answersQuestion(question));
     if (!matchingResponse) {
-      throw new VeraError(`Could not find response for ${question.key}`);
+      return new Message({ rcode: NXDOMAIN_RCODE }, [question], []);
     }
     return matchingResponse;
   };
