@@ -3,7 +3,6 @@ import { secondsInDay } from 'date-fns';
 import VeraError from '../VeraError.js';
 import { derSerializePublicKey } from '../utils/keys.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
-import { KeyIdType } from '../KeyIdType.js';
 
 import { type RdataGenerationOptions } from './RdataGenerationOptions.js';
 import { type VeraRdataFields } from './VeraRdataFields.js';
@@ -18,7 +17,7 @@ const MAX_TTL_OVERRIDE_DAYS = 90;
 const MAX_TTL_OVERRIDE_SECONDS = secondsInDay * MAX_TTL_OVERRIDE_DAYS;
 const TTL_OVERRIDE_REGEX = /^\d+$/u;
 
-const MIN_RDATA_FIELDS = 4;
+const MIN_RDATA_FIELDS = 3;
 
 const ALGORITHM_ID_BY_RSA_MODULUS: { readonly [modulus: number]: KeyAlgorithmType } = {
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -38,19 +37,13 @@ const ALGORITHM_ID_BY_STRING: { readonly [id: string]: KeyAlgorithmType } = {
   '3': KeyAlgorithmType.RSA_4096,
 };
 
-const HASH_BY_KEY_ID_TYPE = {
-  [KeyIdType.SHA256]: 'SHA-256',
-  [KeyIdType.SHA384]: 'SHA-384',
-  [KeyIdType.SHA512]: 'SHA-512',
-};
-
-const KEY_ID_TYPE_BY_STRING: { readonly [type: string]: KeyIdType } = {
+const HASH_BY_RSA_MODULUS: { readonly [modulus: number]: string } = {
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  '1': KeyIdType.SHA256,
+  2048: 'SHA-256',
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  '2': KeyIdType.SHA384,
+  3072: 'SHA-384',
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  '3': KeyIdType.SHA512,
+  4096: 'SHA-512',
 };
 
 function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
@@ -87,19 +80,9 @@ function getAlgorithmId(algorithmString: string): KeyAlgorithmType {
   return id;
 }
 
-function getKeyIdTypeFromString(keyIdTypeString: string): KeyIdType {
-  const type = KEY_ID_TYPE_BY_STRING[keyIdTypeString] as KeyIdType | undefined;
-  if (!type) {
-    throw new VeraError(`Unknown key id type ("${keyIdTypeString}")`);
-  }
-  return type;
-}
-
-async function getKeyId(orgPublicKey: CryptoKey, keyIdType: KeyIdType): Promise<string> {
-  if (!(keyIdType in HASH_BY_KEY_ID_TYPE)) {
-    throw new VeraError(`Unsupported key id type (${keyIdType})`);
-  }
-  const hashName = HASH_BY_KEY_ID_TYPE[keyIdType];
+async function getKeyId(orgPublicKey: CryptoKey): Promise<string> {
+  const { modulusLength } = orgPublicKey.algorithm as RsaKeyAlgorithm;
+  const hashName = HASH_BY_RSA_MODULUS[modulusLength];
   const keySerialised = await derSerializePublicKey(orgPublicKey);
   const digest = await CRYPTO_ENGINE.digest({ name: hashName }, keySerialised);
   return Buffer.from(digest).toString('base64');
@@ -130,12 +113,10 @@ export async function generateTxtRdata(
   options: Partial<RdataGenerationOptions> = {},
 ): Promise<string> {
   const algorithm = getAlgorithmIdForKey(orgPublicKey);
-  const keyIdType = options.keyIdType ?? KeyIdType.SHA256;
-  const keyId = await getKeyId(orgPublicKey, keyIdType);
+  const keyId = await getKeyId(orgPublicKey);
   validateTtlOverride(ttlOverride);
   const fields = [
     algorithm,
-    keyIdType,
     keyId,
     ttlOverride,
     ...(options.serviceOid === undefined ? [] : [options.serviceOid]),
@@ -148,13 +129,12 @@ export function parseTxtRdata(rdata: Buffer | string | readonly Buffer[]): VeraR
   const fields = rdataSanitised.split(FIELD_SEPARATOR_REGEX);
   if (fields.length < MIN_RDATA_FIELDS) {
     throw new VeraError(
-      `RDATA should have at least 4 space-separated fields (got ${fields.length})`,
+      `RDATA should have at least 3 space-separated fields (got ${fields.length})`,
     );
   }
 
-  const [algorithmString, keyIdTypeString, keyId, ttlOverrideString, serviceOid] = fields;
+  const [algorithmString, keyId, ttlOverrideString, serviceOid] = fields;
   const algorithm = getAlgorithmId(algorithmString);
-  const keyIdType = getKeyIdTypeFromString(keyIdTypeString);
   const ttlOverride = getTtlOverrideFromString(ttlOverrideString);
-  return { algorithm, keyId, keyIdType, ttlOverride, serviceOid };
+  return { keyAlgorithm: algorithm, keyId, ttlOverride, serviceOid };
 }
