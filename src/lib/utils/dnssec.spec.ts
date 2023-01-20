@@ -92,13 +92,15 @@ describe('makeDnssecOfflineResolver', () => {
       expect(serialiseMessage(response)).toStrictEqual(Buffer.from(STUB_DNS_RESPONSE_SERIALISED));
     });
 
-    test('Missing response should result in error', async () => {
+    test('Missing response should result in NXDOMAIN response', async () => {
       const resolver = makeDnssecOfflineResolver([]);
 
-      await expect(resolver(STUB_QUESTION)).rejects.toThrowWithMessage(
-        VeraError,
-        `Could not find response for ${STUB_QUESTION.key}`,
-      );
+      const response = (await resolver(STUB_QUESTION)) as Message;
+
+      expect(response.header.rcode).toBe(3);
+      expect(response.questions).toHaveLength(1);
+      expect(response.questions[0].equals(STUB_QUESTION)).toBeTrue();
+      expect(response.answers).toBeEmpty();
     });
   });
 });
