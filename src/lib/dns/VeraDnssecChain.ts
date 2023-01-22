@@ -108,7 +108,7 @@ export class VeraDnssecChain {
     resolver: Resolver,
     datePeriod: DatePeriod,
     trustAnchors?: readonly TrustAnchor[],
-  ) {
+  ): Promise<void> {
     const dnssecOptions = { trustAnchors, dateOrPeriod: datePeriod };
     let dnssecResult: ChainVerificationResult;
     try {
@@ -120,7 +120,6 @@ export class VeraDnssecChain {
       const reasons = dnssecResult.reasonChain.join(', ');
       throw new VeraError(`Vera DNSSEC chain is invalid ${dnssecResult.status}: ${reasons}`);
     }
-    return dnssecResult.result;
   }
 
   public async verify(
