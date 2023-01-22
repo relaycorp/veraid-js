@@ -5,6 +5,7 @@ import {
   Message,
   Question,
   type Resolver,
+  RrSet,
   SecurityStatus,
   type TrustAnchor,
 } from '@relaycorp/dnssec';
@@ -15,11 +16,52 @@ import VeraError from '../VeraError.js';
 import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
 
 import { DnssecChainSchema } from './DnssecChainSchema.js';
-import { type VeraRdataFields } from './VeraRdataFields.js';
+import { type OrganisationKeySpec } from './OrganisationKeySpec.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
+import { type VeraRdataFields } from './VeraRdataFields.js';
 
 function makeQuestion(domainName: string) {
   return new Question(`_vera.${domainName}`, 'TXT');
+}
+
+function deserialiseResponses(responsesSerialised: readonly ArrayBuffer[]) {
+  return responsesSerialised.map((responseSerialised) => {
+    let response: Message;
+    try {
+      response = Message.deserialise(Buffer.from(responseSerialised));
+    } catch (err) {
+      throw new VeraError('At least one of the response messages is malformed', { cause: err });
+    }
+    return response;
+  });
+}
+
+function getRelevantVeraRdata(
+  responses: Message[],
+  veraQuestion: Question,
+  keySpec: OrganisationKeySpec,
+  serviceOid: string,
+): VeraRdataFields {
+  const veraTxtResponse = responses.find((response) => response.answersQuestion(veraQuestion));
+  if (!veraTxtResponse) {
+    throw new VeraError('Chain is missing Vera TXT response');
+  }
+
+  const veraRrset = RrSet.init(veraQuestion, veraTxtResponse.answers);
+  const veraRdataFields = veraRrset.records.map((record) =>
+    parseTxtRdata(record.dataFields as string),
+  );
+  const relevantRdata = veraRdataFields.find(
+    (fields) =>
+      fields.keyAlgorithm === keySpec.keyAlgorithm &&
+      fields.keyId === keySpec.keyId &&
+      (fields.serviceOid === undefined || fields.serviceOid === serviceOid),
+  );
+  if (!relevantRdata) {
+    throw new VeraError('Could not find Vera record for specified key and/or service');
+  }
+
+  return relevantRdata;
 }
 
 export class VeraDnssecChain {
@@ -61,12 +103,12 @@ export class VeraDnssecChain {
     return AsnSerializer.serialize(chain);
   }
 
-  public async verify(
+  protected async resolveRrSet(
+    question: Question,
+    resolver: Resolver,
     datePeriod: DatePeriod,
     trustAnchors?: readonly TrustAnchor[],
-  ): Promise<readonly VeraRdataFields[]> {
-    const resolver = makeDnssecOfflineResolver(this.responses);
-    const question = makeQuestion(this.domainName);
+  ) {
     const dnssecOptions = { trustAnchors, dateOrPeriod: datePeriod };
     let dnssecResult: ChainVerificationResult;
     try {
@@ -78,6 +120,21 @@ export class VeraDnssecChain {
       const reasons = dnssecResult.reasonChain.join(', ');
       throw new VeraError(`Vera DNSSEC chain is invalid ${dnssecResult.status}: ${reasons}`);
     }
-    return dnssecResult.result.records.map((record) => parseTxtRdata(record.dataFields as string));
+    return dnssecResult.result;
+  }
+
+  public async verify(
+    keySpec: OrganisationKeySpec,
+    serviceOid: string,
+    datePeriod: DatePeriod,
+    trustAnchors?: readonly TrustAnchor[],
+  ): Promise<void> {
+    const responses = deserialiseResponses(this.responses);
+    const resolver = makeDnssecOfflineResolver(responses);
+    const veraQuestion = makeQuestion(this.domainName);
+
+    getRelevantVeraRdata(responses, veraQuestion, keySpec, serviceOid);
+
+    await this.resolveRrSet(veraQuestion, resolver, datePeriod, trustAnchors);
   }
 }

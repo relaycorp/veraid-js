@@ -1,8 +1,11 @@
 import { DnsClass, DnsRecord } from '@relaycorp/dnssec';
+import { secondsInDay } from 'date-fns';
 
-import { generateRsaKeyPair } from '../../lib/utils/keys.js';
-import { generateTxtRdata, parseTxtRdata } from '../../lib/dns/rdataSerialisation.js';
-import { type VeraRdataFields } from '../../lib/dns/VeraRdataFields.js';
+import { derSerializePublicKey, generateRsaKeyPair } from '../../lib/utils/keys.js';
+import { generateTxtRdata } from '../../lib/dns/rdataSerialisation.js';
+import { type OrganisationKeySpec } from '../../lib/dns/OrganisationKeySpec.js';
+import { KeyAlgorithmType } from '../../lib/dns/KeyAlgorithmType.js';
+import { calculateDigest } from '../crypto.js';
 
 import { ORG_DOMAIN } from './stubs.js';
 
@@ -10,7 +13,8 @@ export const ORG_VERA_DOMAIN = `_vera.${ORG_DOMAIN}`;
 
 export const ORG_KEY_PAIR = await generateRsaKeyPair();
 
-export const TTL_OVERRIDE = 42;
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+export const TTL_OVERRIDE = 30 * secondsInDay;
 
 export const VERA_RECORD = new DnsRecord(
   ORG_VERA_DOMAIN,
@@ -21,4 +25,10 @@ export const VERA_RECORD = new DnsRecord(
   await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE),
 );
 
-export const VERA_RDATA_FIELDS: VeraRdataFields = parseTxtRdata(VERA_RECORD.dataFields as string);
+export const ORG_KEY_SPEC: OrganisationKeySpec = {
+  keyAlgorithm: KeyAlgorithmType.RSA_2048,
+
+  keyId: calculateDigest('sha256', await derSerializePublicKey(ORG_KEY_PAIR.publicKey)).toString(
+    'base64',
+  ),
+};
