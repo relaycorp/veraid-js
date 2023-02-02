@@ -1,10 +1,10 @@
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
-import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
+import { AsnParser } from '@peculiar/asn1-schema';
 
 import VeraError from '../VeraError.js';
 import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
 
-import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
+import { MemberIdBundle } from './MemberIdBundle.js';
 
 export function serialiseMemberIdBundle(
   memberCertificateSerialised: ArrayBuffer,
@@ -32,9 +32,6 @@ export function serialiseMemberIdBundle(
     throw new VeraError('DNSSEC chain is malformed', { cause: err });
   }
 
-  const bundle = new MemberIdBundleSchema();
-  bundle.memberCertificate = memberCertificate;
-  bundle.organisationCertificate = orgCertificate;
-  bundle.dnssecChain = dnssecChain;
-  return AsnSerializer.serialize(bundle);
+  const bundle = new MemberIdBundle(dnssecChain, orgCertificate, memberCertificate);
+  return bundle.serialise();
 }
