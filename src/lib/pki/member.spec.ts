@@ -85,7 +85,7 @@ describe('issueMemberCertificate', () => {
     );
 
     const certificate = Certificate.deserialize(serialisation);
-    expect(certificate.expiryDate).toStrictEqual(EXPIRY_DATE);
+    expect(certificate.validityPeriod.end).toStrictEqual(EXPIRY_DATE);
   });
 
   describe('Start date', () => {
@@ -101,7 +101,10 @@ describe('issueMemberCertificate', () => {
       );
 
       const certificate = Certificate.deserialize(serialisation);
-      expect(certificate.startDate).toBeBetween(setMilliseconds(preIssuanceDate, 0), new Date());
+      expect(certificate.validityPeriod.start).toBeBetween(
+        setMilliseconds(preIssuanceDate, 0),
+        new Date(),
+      );
     });
 
     test('should match explicit date if set', async () => {
@@ -115,7 +118,7 @@ describe('issueMemberCertificate', () => {
       );
 
       const certificate = Certificate.deserialize(serialisation);
-      expect(certificate.startDate).toStrictEqual(START_DATE);
+      expect(certificate.validityPeriod.start).toStrictEqual(START_DATE);
     });
   });
 

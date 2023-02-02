@@ -14,6 +14,7 @@ import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../.
 import { derDeserialize } from '../asn1.js';
 import { generateRandom64BitValue } from '../crypto.js';
 import { getPublicKeyDigest } from '../keys/digest.js';
+import { DatePeriod } from '../DatePeriod.js';
 
 import CertificateError from './CertificateError.js';
 import type FullIssuanceOptions from './FullIssuanceOptions.js';
@@ -113,20 +114,14 @@ export default class Certificate {
     const validityStartDate = setMilliseconds(options.validityStartDate ?? new Date(), 0);
     const validityEndDate = setMilliseconds(
       options.issuerCertificate
-        ? min([options.issuerCertificate.expiryDate, options.validityEndDate])
+        ? min([options.issuerCertificate.validityPeriod.end, options.validityEndDate])
         : options.validityEndDate,
       0,
     );
 
-    // region Validation
-    if (validityEndDate < validityStartDate) {
-      throw new CertificateError('The end date must be later than the start date');
-    }
     if (options.issuerCertificate) {
       Certificate.validateIssuerCertificate(options.issuerCertificate);
     }
-
-    // endregion
 
     const issuerPublicKey = options.issuerCertificate
       ? await options.issuerCertificate.pkijsCertificate.getPublicKey()
@@ -173,16 +168,15 @@ export default class Certificate {
     return new Certificate(pkijsCert);
   }
 
+  public readonly validityPeriod: DatePeriod;
+
   public constructor(public readonly pkijsCertificate: PkijsCertificate) {
     this.pkijsCertificate = pkijsCertificate;
-  }
 
-  public get startDate(): Date {
-    return this.pkijsCertificate.notBefore.value;
-  }
-
-  public get expiryDate(): Date {
-    return this.pkijsCertificate.notAfter.value;
+    this.validityPeriod = DatePeriod.init(
+      pkijsCertificate.notBefore.value,
+      pkijsCertificate.notAfter.value,
+    );
   }
 
   /**
@@ -223,24 +217,6 @@ export default class Certificate {
     const thisCertSerialized = Buffer.from(this.serialize());
     const otherCertSerialized = Buffer.from(otherCertificate.serialize());
     return thisCertSerialized.equals(otherCertSerialized);
-  }
-
-  public validate(): void {
-    // X.509 versioning starts at 0
-    const x509CertVersion = this.pkijsCertificate.version;
-    if (x509CertVersion !== X509_CERTIFICATE_VERSION_3) {
-      throw new CertificateError(
-        `Only X.509 v3 certificates are supported (got v${x509CertVersion + 1})`,
-      );
-    }
-
-    const currentDate = new Date();
-    if (currentDate < this.startDate) {
-      throw new CertificateError('Certificate is not yet valid');
-    }
-    if (this.expiryDate < currentDate) {
-      throw new CertificateError('Certificate already expired');
-    }
   }
 
   public async getPublicKey(): Promise<CryptoKey> {
