@@ -1,7 +1,7 @@
 import { secondsInDay } from 'date-fns';
 
 import VeraError from '../VeraError.js';
-import { derSerializePublicKey } from '../utils/keys.js';
+import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
 
 import { type VeraRdataFields } from './VeraRdataFields.js';

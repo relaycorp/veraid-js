@@ -1,6 +1,6 @@
 import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 
-import { derSerializePublicKey } from '../utils/keys.js';
+import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import Certificate from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';

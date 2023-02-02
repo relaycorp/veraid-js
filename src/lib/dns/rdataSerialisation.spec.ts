@@ -2,12 +2,13 @@ import { secondsInDay } from 'date-fns';
 import { getAlgorithmParameters } from 'pkijs';
 
 import { type RsaModulus } from '../utils/algorithms.js';
-import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
+import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
 import VeraError from '../VeraError.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
 import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
+import { generateRsaKeyPair } from '../utils/keys/generation.js';
 
 import { generateTxtRdata, parseTxtRdata } from './rdataSerialisation.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';

@@ -9,11 +9,11 @@ import {
   Extension,
 } from 'pkijs';
 
-import { getPublicKeyDigest } from '../keys.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derDeserialize } from '../asn1.js';
 import { generateRandom64BitValue } from '../crypto.js';
+import { getPublicKeyDigest } from '../keys/digest.js';
 
 import CertificateError from './CertificateError.js';
 import type FullIssuanceOptions from './FullIssuanceOptions.js';

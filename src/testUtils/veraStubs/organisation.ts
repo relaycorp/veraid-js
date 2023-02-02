@@ -1,11 +1,12 @@
 import { secondsInDay } from 'date-fns';
 import { DnsClass, DnsRecord } from '@relaycorp/dnssec';
 
-import { derSerializePublicKey, generateRsaKeyPair } from '../../lib/utils/keys.js';
+import { derSerializePublicKey } from '../../lib/utils/keys/serialisation.js';
 import { type OrganisationKeySpec } from '../../lib/dns/OrganisationKeySpec.js';
 import { KeyAlgorithmType } from '../../lib/dns/KeyAlgorithmType.js';
 import { calculateDigest } from '../crypto.js';
 import { generateTxtRdata } from '../../lib/dns/rdataSerialisation.js';
+import { generateRsaKeyPair } from '../../lib/utils/keys/generation.js';
 
 export const ORG_NAME = 'example.com';
 export const ORG_DOMAIN = `${ORG_NAME}.`;

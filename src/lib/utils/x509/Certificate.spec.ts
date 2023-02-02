@@ -11,7 +11,7 @@ import {
 } from 'pkijs';
 
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
-import { derSerializePublicKey, generateRsaKeyPair } from '../keys.js';
+import { derSerializePublicKey } from '../keys/serialisation.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { getBasicConstraintsExtension, getExtension } from '../../../testUtils/pkijs.js';
@@ -20,6 +20,7 @@ import { generateStubCert } from '../../../testUtils/pki.js';
 import { derDeserialize } from '../asn1.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 import { arrayBufferFrom } from '../../../testUtils/buffers.js';
+import { generateRsaKeyPair } from '../keys/generation.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
