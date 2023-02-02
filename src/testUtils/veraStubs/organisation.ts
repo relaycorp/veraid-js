@@ -8,6 +8,8 @@ import { calculateDigest } from '../crypto.js';
 import { generateTxtRdata } from '../../lib/dns/rdataSerialisation.js';
 import { generateRsaKeyPair } from '../../lib/utils/keys/generation.js';
 
+const VERA_RECORD_TTL = 42;
+
 export const ORG_NAME = 'example.com';
 export const ORG_DOMAIN = `${ORG_NAME}.`;
 export const ORG_VERA_DOMAIN = `_vera.${ORG_DOMAIN}`;
@@ -18,8 +20,7 @@ export const VERA_RECORD = new DnsRecord(
   ORG_VERA_DOMAIN,
   'TXT',
   DnsClass.IN,
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-  42,
+  VERA_RECORD_TTL,
   await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE),
 );
 export const ORG_KEY_SPEC: OrganisationKeySpec = {

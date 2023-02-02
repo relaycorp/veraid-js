@@ -1,20 +1,20 @@
 import { jest } from '@jest/globals';
 import { AsnParser } from '@peculiar/asn1-schema';
-import { MockChain, type Resolver, RrSet, SecurityStatus } from '@relaycorp/dnssec';
+import { type Resolver, SecurityStatus } from '@relaycorp/dnssec';
 
-import { ORG_DOMAIN, VERA_RECORD } from '../../testUtils/veraStubs/organisation.js';
+import { MOCK_CHAIN, VERA_RRSET } from '../../testUtils/veraStubs/dnssec.js';
+import { ORG_DOMAIN } from '../../testUtils/veraStubs/organisation.js';
 
 import { retrieveDnssecChain } from './dnssecChainRetrieval.js';
 import { DnssecChainSchema } from './DnssecChainSchema.js';
 import { VeraDnssecChain } from './VeraDnssecChain.js';
 
-const RRSET = RrSet.init(VERA_RECORD.makeQuestion(), [VERA_RECORD]);
-
-const MOCK_CHAIN = await MockChain.generate(ORG_DOMAIN);
-
 describe('retrieveDnssecChain', () => {
   test('TXT subdomain _vera of specified domain should be queried', async () => {
-    const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(RRSET, SecurityStatus.SECURE);
+    const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(
+      VERA_RRSET,
+      SecurityStatus.SECURE,
+    );
     const retrieveSpy = jest.spyOn(VeraDnssecChain, 'retrieve');
 
     await retrieveDnssecChain(ORG_DOMAIN, resolver, trustAnchors);
@@ -23,7 +23,10 @@ describe('retrieveDnssecChain', () => {
   });
 
   test('Responses should be wrapped in an explicitly tagged SET', async () => {
-    const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(RRSET, SecurityStatus.SECURE);
+    const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(
+      VERA_RRSET,
+      SecurityStatus.SECURE,
+    );
     const resolverSpy = jest.fn<Resolver>().mockImplementation(resolver);
 
     const chainSerialised = await retrieveDnssecChain(ORG_DOMAIN, resolverSpy, trustAnchors);

@@ -2,7 +2,6 @@ import { jest } from '@jest/globals';
 import {
   DatePeriod,
   Message,
-  MockChain,
   Question,
   type Resolver,
   RrSet,
@@ -25,6 +24,7 @@ import {
   VERA_RECORD_TTL_OVERRIDE,
 } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
+import { MOCK_CHAIN, VERA_RRSET } from '../../testUtils/veraStubs/dnssec.js';
 
 import { VeraDnssecChain } from './VeraDnssecChain.js';
 import { DnssecChainSchema } from './DnssecChainSchema.js';
@@ -34,9 +34,6 @@ const mockResolver = jest.fn<Resolver>();
 beforeEach(() => {
   mockResolver.mockReset();
 });
-
-const VERA_RRSET = RrSet.init(VERA_RECORD.makeQuestion(), [VERA_RECORD]);
-const MOCK_CHAIN = await MockChain.generate(ORG_DOMAIN);
 
 describe('VeraDnssecChain', () => {
   describe('retrieve', () => {
