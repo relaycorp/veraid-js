@@ -162,185 +162,189 @@ describe('VeraDnssecChain', () => {
       ).rejects.toThrowWithMessage(VeraError, 'Chain is missing Vera TXT response');
     });
 
-    test('Rdata algorithm id should match that of specified key spec', async () => {
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
-      const spec = { ...ORG_KEY_SPEC, keyAlgorithm: ORG_KEY_SPEC.keyAlgorithm + 1 };
+    describe('Rdata', () => {
+      test('Algorithm id should match that of specified key spec', async () => {
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+        const spec = { ...ORG_KEY_SPEC, keyAlgorithm: ORG_KEY_SPEC.keyAlgorithm + 1 };
 
-      await expect(async () =>
-        chain.verify(spec, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(
-        VeraError,
-        'Could not find Vera record for specified key and/or service',
-      );
-    });
-
-    test('Rdata key id should match that of specified key spec', async () => {
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
-      const spec = { ...ORG_KEY_SPEC, keyId: `not-${ORG_KEY_SPEC.keyId}` };
-
-      await expect(async () =>
-        chain.verify(spec, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(
-        VeraError,
-        'Could not find Vera record for specified key and/or service',
-      );
-    });
-
-    test('Chain should verify if matching TXT does not restrict the service', async () => {
-      const record = VERA_RECORD.shallowCopy({
-        data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE),
+        await expect(async () =>
+          chain.verify(spec, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(
+          VeraError,
+          'Could not find Vera record for specified key and/or service',
+        );
       });
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        RrSet.init(record.makeQuestion(), [record]),
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toResolve();
-    });
+      test('Key id should match that of specified key spec', async () => {
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+        const spec = { ...ORG_KEY_SPEC, keyId: `not-${ORG_KEY_SPEC.keyId}` };
 
-    test('Chain should verify if matching TXT restricts the same service', async () => {
-      const record = VERA_RECORD.shallowCopy({
-        data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, SERVICE_OID),
+        await expect(async () =>
+          chain.verify(spec, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(
+          VeraError,
+          'Could not find Vera record for specified key and/or service',
+        );
       });
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        RrSet.init(record.makeQuestion(), [record]),
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toResolve();
-    });
+      test('Absence of service OID should allow any service', async () => {
+        const record = VERA_RECORD.shallowCopy({
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE),
+        });
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          RrSet.init(record.makeQuestion(), [record]),
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-    test('Chain should not verify if matching TXT restricts different service', async () => {
-      const record = VERA_RECORD.shallowCopy({
-        data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, `1.${SERVICE_OID}`),
+        await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toResolve();
       });
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        RrSet.init(record.makeQuestion(), [record]),
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(async () =>
-        chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(
-        VeraError,
-        'Could not find Vera record for specified key and/or service',
-      );
+      test('Presence of service OID should only allow matching service', async () => {
+        const record = VERA_RECORD.shallowCopy({
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, SERVICE_OID),
+        });
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          RrSet.init(record.makeQuestion(), [record]),
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+
+        await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toResolve();
+      });
+
+      test('Presence of service OID should only deny mismatching service', async () => {
+        const record = VERA_RECORD.shallowCopy({
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, `1.${SERVICE_OID}`),
+        });
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          RrSet.init(record.makeQuestion(), [record]),
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+
+        await expect(async () =>
+          chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(
+          VeraError,
+          'Could not find Vera record for specified key and/or service',
+        );
+      });
     });
 
-    test('Invalid DNSSEC chain should be refused', async () => {
-      const status = SecurityStatus.INSECURE;
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        status,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+    describe('DNSSEC', () => {
+      test('Invalid chain should be refused', async () => {
+        const status = SecurityStatus.INSECURE;
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          status,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(async () =>
-        chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(
-        VeraError,
-        // eslint-disable-next-line security/detect-non-literal-regexp,require-unicode-regexp
-        new RegExp(`^Vera DNSSEC chain is invalid (${status}): `),
-      );
-    });
+        await expect(async () =>
+          chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(
+          VeraError,
+          // eslint-disable-next-line security/detect-non-literal-regexp,require-unicode-regexp
+          new RegExp(`^Vera DNSSEC chain is invalid (${status}): `),
+        );
+      });
 
-    test('DNSSEC lookup errors should be wrapped', async () => {
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const invalidResponse = new Message({ rcode: 0 }, [new Question('.', 'DNSKEY', 'IN')], []);
-      const veraTxtResponse = responses.find((response) =>
-        response.answersQuestion(VERA_RECORD.makeQuestion()),
-      )!;
-      const finalResponses = [veraTxtResponse, invalidResponse]
-        .map((response) => response.serialise())
-        .map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, finalResponses);
+      test('Lookup errors should be wrapped', async () => {
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const invalidResponse = new Message({ rcode: 0 }, [new Question('.', 'DNSKEY', 'IN')], []);
+        const veraTxtResponse = responses.find((response) =>
+          response.answersQuestion(VERA_RECORD.makeQuestion()),
+        )!;
+        const finalResponses = [veraTxtResponse, invalidResponse]
+          .map((response) => response.serialise())
+          .map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, finalResponses);
 
-      const error = await getPromiseRejection(
-        async () => chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-        VeraError,
-      );
+        const error = await getPromiseRejection(
+          async () => chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
+          VeraError,
+        );
 
-      expectErrorToEqual(
-        error,
-        new VeraError('Failed to process DNSSEC verification offline', {
-          cause: expect.any(Error),
-        }),
-      );
-    });
+        expectErrorToEqual(
+          error,
+          new VeraError('Failed to process DNSSEC verification offline', {
+            cause: expect.any(Error),
+          }),
+        );
+      });
 
-    test('Expired chain should be refused', async () => {
-      const pastPeriod = DatePeriod.init(
-        subSeconds(datePeriod.start, 2),
-        subSeconds(datePeriod.start, 1),
-      );
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        SecurityStatus.SECURE,
-        pastPeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+      test('Expired chain should be refused', async () => {
+        const pastPeriod = DatePeriod.init(
+          subSeconds(datePeriod.start, 2),
+          subSeconds(datePeriod.start, 1),
+        );
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          SecurityStatus.SECURE,
+          pastPeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(async () =>
-        chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is invalid /u);
-    });
+        await expect(async () =>
+          chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is invalid /u);
+      });
 
-    test('Chain valid in the future should be refused', async () => {
-      const futurePeriod = DatePeriod.init(
-        addSeconds(datePeriod.end, 1),
-        addSeconds(datePeriod.end, 2),
-      );
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        SecurityStatus.SECURE,
-        futurePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+      test('Chain valid in the future should be refused', async () => {
+        const futurePeriod = DatePeriod.init(
+          addSeconds(datePeriod.end, 1),
+          addSeconds(datePeriod.end, 2),
+        );
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          SecurityStatus.SECURE,
+          futurePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(async () =>
-        chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is invalid /u);
-    });
+        await expect(async () =>
+          chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is invalid /u);
+      });
 
-    test('Valid chain should verify successfully', async () => {
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        VERA_RRSET,
-        SecurityStatus.SECURE,
-        datePeriod,
-      );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+      test('Valid chain should verify successfully', async () => {
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          VERA_RRSET,
+          SecurityStatus.SECURE,
+          datePeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
 
-      await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toResolve();
+        await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toResolve();
+      });
     });
   });
 });
