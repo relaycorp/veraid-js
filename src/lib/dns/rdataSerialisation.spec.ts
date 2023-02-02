@@ -6,8 +6,8 @@ import { derSerializePublicKey, generateRsaKeyPair } from '../utils/keys.js';
 import { getPkijsCrypto } from '../utils/pkijs.js';
 import VeraError from '../VeraError.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
-import { SERVICE_OID } from '../../testUtils/vera/stubs.js';
-import { ORG_KEY_PAIR } from '../../testUtils/vera/dns.js';
+import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
+import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 
 import { generateTxtRdata, parseTxtRdata } from './rdataSerialisation.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';

@@ -2,14 +2,18 @@ import { MockChain, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 
-import { MEMBER_NAME, ORG_DOMAIN, ORG_NAME } from '../../testUtils/vera/stubs.js';
+import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
-import { generateRsaKeyPair } from '../utils/keys.js';
 import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
 import { issueMemberCertificate } from '../pki/member.js';
 import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
 import VeraError from '../VeraError.js';
-import { VERA_RECORD } from '../../testUtils/vera/dns.js';
+import {
+  ORG_DOMAIN,
+  ORG_KEY_PAIR,
+  ORG_NAME,
+  VERA_RECORD,
+} from '../../testUtils/veraStubs/organisation.js';
 
 import { serialiseMemberIdBundle } from './serialisation.js';
 import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
@@ -21,17 +25,15 @@ beforeAll(async () => {
   const startDate = subMinutes(now, 5);
   const expiryDate = addMinutes(now, 5);
 
-  const orgKeyPair = await generateRsaKeyPair();
-  orgCertificate = await selfIssueOrganisationCertificate(ORG_NAME, orgKeyPair, expiryDate, {
+  orgCertificate = await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, expiryDate, {
     startDate,
   });
 
-  const memberKeyPair = await generateRsaKeyPair();
   memberCertificate = await issueMemberCertificate(
     MEMBER_NAME,
-    memberKeyPair.publicKey,
+    MEMBER_KEY_PAIR.publicKey,
     orgCertificate,
-    orgKeyPair.privateKey,
+    ORG_KEY_PAIR.privateKey,
     expiryDate,
   );
 });

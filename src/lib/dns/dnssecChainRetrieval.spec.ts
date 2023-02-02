@@ -2,8 +2,7 @@ import { jest } from '@jest/globals';
 import { AsnParser } from '@peculiar/asn1-schema';
 import { MockChain, type Resolver, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 
-import { ORG_DOMAIN } from '../../testUtils/vera/stubs.js';
-import { VERA_RECORD } from '../../testUtils/vera/dns.js';
+import { ORG_DOMAIN, VERA_RECORD } from '../../testUtils/veraStubs/organisation.js';
 
 import { retrieveDnssecChain } from './dnssecChainRetrieval.js';
 import { DnssecChainSchema } from './DnssecChainSchema.js';

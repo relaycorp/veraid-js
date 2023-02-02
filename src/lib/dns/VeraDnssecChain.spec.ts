@@ -14,16 +14,17 @@ import { addSeconds, setMilliseconds, subSeconds } from 'date-fns';
 
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
 import VeraError from '../VeraError.js';
-import { ORG_DOMAIN, SERVICE_OID } from '../../testUtils/vera/stubs.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import {
+  ORG_DOMAIN,
   ORG_KEY_PAIR,
   ORG_KEY_SPEC,
   ORG_VERA_DOMAIN,
-  TTL_OVERRIDE,
   VERA_RECORD,
-} from '../../testUtils/vera/dns.js';
+  VERA_RECORD_TTL_OVERRIDE,
+} from '../../testUtils/veraStubs/organisation.js';
+import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 
 import { VeraDnssecChain } from './VeraDnssecChain.js';
 import { DnssecChainSchema } from './DnssecChainSchema.js';
@@ -201,7 +202,7 @@ describe('VeraDnssecChain', () => {
 
       test('Absence of service OID should allow any service', async () => {
         const record = VERA_RECORD.shallowCopy({
-          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE),
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE),
         });
         const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
           RrSet.init(record.makeQuestion(), [record]),
@@ -216,7 +217,11 @@ describe('VeraDnssecChain', () => {
 
       test('Presence of service OID should only allow matching service', async () => {
         const record = VERA_RECORD.shallowCopy({
-          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, SERVICE_OID),
+          data: await generateTxtRdata(
+            ORG_KEY_PAIR.publicKey,
+            VERA_RECORD_TTL_OVERRIDE,
+            SERVICE_OID,
+          ),
         });
         const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
           RrSet.init(record.makeQuestion(), [record]),
@@ -231,7 +236,11 @@ describe('VeraDnssecChain', () => {
 
       test('Presence of service OID should only deny mismatching service', async () => {
         const record = VERA_RECORD.shallowCopy({
-          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, `1.${SERVICE_OID}`),
+          data: await generateTxtRdata(
+            ORG_KEY_PAIR.publicKey,
+            VERA_RECORD_TTL_OVERRIDE,
+            `1.${SERVICE_OID}`,
+          ),
         });
         const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
           RrSet.init(record.makeQuestion(), [record]),

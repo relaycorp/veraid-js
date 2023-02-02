@@ -2,8 +2,8 @@ import { jest } from '@jest/globals';
 import { DnsRecord, Message } from '@relaycorp/dnssec';
 import { DNSoverHTTPS } from 'dohdec';
 
-import { ORG_NAME } from '../../testUtils/vera/stubs.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
+import { ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
 
 import { dnssecOnlineResolve, makeDnssecOfflineResolver } from './dnssec.js';
 
