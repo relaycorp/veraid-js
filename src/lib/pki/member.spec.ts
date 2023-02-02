@@ -4,21 +4,16 @@ import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import Certificate from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
-import { ORG_KEY_PAIR, ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
+import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
+import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
 
-import { selfIssueOrganisationCertificate } from './organisation.js';
 import { issueMemberCertificate } from './member.js';
 
 const NOW = setMilliseconds(new Date(), 0);
 const START_DATE = subMinutes(NOW, 5);
 const EXPIRY_DATE = addMinutes(NOW, 5);
 
-let orgCertificate: ArrayBuffer;
-beforeAll(async () => {
-  orgCertificate = await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, EXPIRY_DATE, {
-    startDate: START_DATE,
-  });
-});
+const { organisationCertificate } = await generateMemberIdFixture();
 
 describe('issueMemberCertificate', () => {
   describe('Common Name', () => {
@@ -26,7 +21,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         undefined,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificate,
+        organisationCertificate,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -39,7 +34,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificate,
+        organisationCertificate,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -53,7 +48,7 @@ describe('issueMemberCertificate', () => {
     const serialisation = await issueMemberCertificate(
       MEMBER_NAME,
       MEMBER_KEY_PAIR.publicKey,
-      orgCertificate,
+      organisationCertificate,
       ORG_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
@@ -68,13 +63,13 @@ describe('issueMemberCertificate', () => {
     const serialisation = await issueMemberCertificate(
       MEMBER_NAME,
       MEMBER_KEY_PAIR.publicKey,
-      orgCertificate,
+      organisationCertificate,
       ORG_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
 
     const memberCertificate = Certificate.deserialize(serialisation);
-    const orgCertificateDeserialised = Certificate.deserialize(orgCertificate);
+    const orgCertificateDeserialised = Certificate.deserialize(organisationCertificate);
     await expect(
       memberCertificate.getCertificationPath([], [orgCertificateDeserialised]),
     ).resolves.toHaveLength(2);
@@ -84,7 +79,7 @@ describe('issueMemberCertificate', () => {
     const serialisation = await issueMemberCertificate(
       MEMBER_NAME,
       MEMBER_KEY_PAIR.publicKey,
-      orgCertificate,
+      organisationCertificate,
       ORG_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
@@ -100,7 +95,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificate,
+        organisationCertificate,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -113,7 +108,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificate,
+        organisationCertificate,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
         { startDate: START_DATE },
@@ -129,7 +124,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificate,
+        organisationCertificate,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -143,7 +138,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificate,
+        organisationCertificate,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );

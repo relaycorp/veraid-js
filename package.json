@@ -62,7 +62,7 @@
     "@peculiar/asn1-schema": "^2.3.3",
     "@peculiar/asn1-x509": "^2.3.4",
     "@peculiar/webcrypto": "^1.4.1",
-    "@relaycorp/dnssec": "^1.10.2",
+    "@relaycorp/dnssec": "^1.11.0",
     "asn1js": "^3.0.5",
     "date-fns": "^2.29.3",
     "dohdec": "https://gitpkg.now.sh/hildjj/dohdec/pkg/dohdec?acd49694a83825a461bdff55e4a4a63ca7a4bbef",
