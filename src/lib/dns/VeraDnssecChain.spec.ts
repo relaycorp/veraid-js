@@ -1,6 +1,5 @@
 import { jest } from '@jest/globals';
 import {
-  DatePeriod,
   Message,
   Question,
   type Resolver,
@@ -25,6 +24,7 @@ import {
 } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 import { MOCK_CHAIN, VERA_RRSET } from '../../testUtils/veraStubs/dnssec.js';
+import { DatePeriod } from '../utils/DatePeriod.js';
 
 import { VeraDnssecChain } from './VeraDnssecChain.js';
 import { DnssecChainSchema } from './DnssecChainSchema.js';
@@ -272,7 +272,7 @@ describe('VeraDnssecChain', () => {
         ).rejects.toThrowWithMessage(
           VeraError,
           // eslint-disable-next-line security/detect-non-literal-regexp,require-unicode-regexp
-          new RegExp(`^Vera DNSSEC chain is invalid (${status}): `),
+          new RegExp(`^Vera DNSSEC chain is ${status}: `),
         );
       });
 
@@ -319,7 +319,7 @@ describe('VeraDnssecChain', () => {
 
         await expect(async () =>
           chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is invalid /u);
+        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is BOGUS: /u);
       });
 
       test('Chain valid in the future should be refused', async () => {
@@ -337,7 +337,7 @@ describe('VeraDnssecChain', () => {
 
         await expect(async () =>
           chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
-        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is invalid /u);
+        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is BOGUS: /u);
       });
 
       test('Valid chain should verify successfully', async () => {

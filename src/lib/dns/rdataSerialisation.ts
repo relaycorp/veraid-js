@@ -1,13 +1,10 @@
 import { secondsInDay } from 'date-fns';
 
 import VeraError from '../VeraError.js';
-import { derSerializePublicKey } from '../utils/keys/serialisation.js';
-import { getPkijsCrypto } from '../utils/pkijs.js';
 
 import { type VeraRdataFields } from './VeraRdataFields.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
-
-const CRYPTO_ENGINE = getPkijsCrypto();
+import { getKeySpec } from './organisationKeys.js';
 
 const FIELDS_REGEX = /^\s*(?<fields>\S.+\S)\s*$/u;
 const FIELD_SEPARATOR_REGEX = /\s+/u;
@@ -18,15 +15,6 @@ const TTL_OVERRIDE_REGEX = /^\d+$/u;
 
 const MIN_RDATA_FIELDS = 3;
 
-const ALGORITHM_ID_BY_RSA_MODULUS: { readonly [modulus: number]: KeyAlgorithmType } = {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  2048: KeyAlgorithmType.RSA_2048,
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  3072: KeyAlgorithmType.RSA_3072,
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  4096: KeyAlgorithmType.RSA_4096,
-};
-
 const ALGORITHM_ID_BY_STRING: { readonly [id: string]: KeyAlgorithmType } = {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   '1': KeyAlgorithmType.RSA_2048,
@@ -34,15 +22,6 @@ const ALGORITHM_ID_BY_STRING: { readonly [id: string]: KeyAlgorithmType } = {
   '2': KeyAlgorithmType.RSA_3072,
   // eslint-disable-next-line @typescript-eslint/naming-convention
   '3': KeyAlgorithmType.RSA_4096,
-};
-
-const HASH_BY_RSA_MODULUS: { readonly [modulus: number]: string } = {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  2048: 'SHA-256',
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  3072: 'SHA-384',
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  4096: 'SHA-512',
 };
 
 function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
@@ -60,31 +39,12 @@ function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
   return rdataSanitised.replace(FIELDS_REGEX, '$<fields>');
 }
 
-function getAlgorithmIdForKey(key: CryptoKey): number {
-  if (key.algorithm.name !== 'RSA-PSS') {
-    throw new VeraError(`Only RSA-PSS keys are supported (got ${key.algorithm.name})`);
-  }
-  const { modulusLength } = key.algorithm as RsaKeyAlgorithm;
-  if (!(modulusLength in ALGORITHM_ID_BY_RSA_MODULUS)) {
-    throw new VeraError(`RSA key with modulus ${modulusLength} is unsupported`);
-  }
-  return ALGORITHM_ID_BY_RSA_MODULUS[modulusLength];
-}
-
 function getAlgorithmId(algorithmString: string): KeyAlgorithmType {
   const id = ALGORITHM_ID_BY_STRING[algorithmString] as KeyAlgorithmType | undefined;
   if (!id) {
     throw new VeraError(`Unknown algorithm id ("${algorithmString}")`);
   }
   return id;
-}
-
-async function getKeyId(orgPublicKey: CryptoKey): Promise<string> {
-  const { modulusLength } = orgPublicKey.algorithm as RsaKeyAlgorithm;
-  const hashName = HASH_BY_RSA_MODULUS[modulusLength];
-  const keySerialised = await derSerializePublicKey(orgPublicKey);
-  const digest = await CRYPTO_ENGINE.digest({ name: hashName }, keySerialised);
-  return Buffer.from(digest).toString('base64');
 }
 
 function validateTtlOverride(ttlOverride: number): void {
@@ -111,11 +71,10 @@ export async function generateTxtRdata(
   ttlOverride: number,
   serviceOid?: string,
 ): Promise<string> {
-  const algorithm = getAlgorithmIdForKey(orgPublicKey);
-  const keyId = await getKeyId(orgPublicKey);
+  const keySpec = await getKeySpec(orgPublicKey);
   validateTtlOverride(ttlOverride);
   const optionalFields = serviceOid === undefined ? [] : [serviceOid];
-  const fields = [algorithm, keyId, ttlOverride, ...optionalFields];
+  const fields = [keySpec.keyAlgorithm, keySpec.keyId, ttlOverride, ...optionalFields];
   return fields.join(' ');
 }
 

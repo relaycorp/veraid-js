@@ -1,6 +1,5 @@
 import {
   type ChainVerificationResult,
-  type DatePeriod,
   dnssecLookUp,
   Message,
   Question,
@@ -8,15 +7,17 @@ import {
   RrSet,
   SecurityStatus,
   type TrustAnchor,
+  type VerificationOptions,
 } from '@relaycorp/dnssec';
 import { AsnSerializer } from '@peculiar/asn1-schema';
 
 import { bufferToArray } from '../utils/buffers.js';
 import VeraError from '../VeraError.js';
 import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
+import { type DatePeriod } from '../utils/DatePeriod.js';
 
 import { DnssecChainSchema } from './DnssecChainSchema.js';
-import { type OrganisationKeySpec } from './OrganisationKeySpec.js';
+import { type OrganisationKeySpec } from './organisationKeys.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
 import { type VeraRdataFields } from './VeraRdataFields.js';
 
@@ -109,7 +110,7 @@ export class VeraDnssecChain {
     datePeriod: DatePeriod,
     trustAnchors?: readonly TrustAnchor[],
   ): Promise<void> {
-    const dnssecOptions = { trustAnchors, dateOrPeriod: datePeriod };
+    const dnssecOptions: Partial<VerificationOptions> = { trustAnchors, dateOrPeriod: datePeriod };
     let dnssecResult: ChainVerificationResult;
     try {
       dnssecResult = await dnssecLookUp(question, resolver, dnssecOptions);
@@ -118,7 +119,7 @@ export class VeraDnssecChain {
     }
     if (dnssecResult.status !== SecurityStatus.SECURE) {
       const reasons = dnssecResult.reasonChain.join(', ');
-      throw new VeraError(`Vera DNSSEC chain is invalid ${dnssecResult.status}: ${reasons}`);
+      throw new VeraError(`Vera DNSSEC chain is ${dnssecResult.status}: ${reasons}`);
     }
   }
 

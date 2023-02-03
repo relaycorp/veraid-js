@@ -1,78 +1,29 @@
 import { secondsInDay } from 'date-fns';
-import { getAlgorithmParameters } from 'pkijs';
 
-import { type RsaModulus } from '../utils/algorithms.js';
-import { derSerializePublicKey } from '../utils/keys/serialisation.js';
-import { getPkijsCrypto } from '../utils/pkijs.js';
 import VeraError from '../VeraError.js';
-import { calculateDigest } from '../../testUtils/crypto.js';
-import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
+import {
+  ORG_KEY_PAIR,
+  ORG_KEY_SPEC,
+  VERA_RECORD_TTL_OVERRIDE,
+} from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
-import { generateRsaKeyPair } from '../utils/keys/generation.js';
 
 import { generateTxtRdata, parseTxtRdata } from './rdataSerialisation.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 import { type VeraRdataFields } from './VeraRdataFields.js';
-
-const TTL_OVERRIDE = 42;
-
-const CRYPTO_ENGINE = getPkijsCrypto();
-
-const KEY_ID = calculateDigest(
-  'sha256',
-  await derSerializePublicKey(ORG_KEY_PAIR.publicKey),
-).toString('base64');
-
-async function generatePublicKey(
-  algorithm: EcKeyGenParams | RsaHashedKeyGenParams,
-): Promise<CryptoKey> {
-  const keyPair = await CRYPTO_ENGINE.generateKey(algorithm, true, ['sign', 'verify']);
-  return keyPair.publicKey;
-}
 
 describe('generateTxtRdata', () => {
   function splitAndGetField(rdata: string, index: number): string | undefined {
     return rdata.split(' ')[index];
   }
 
-  describe('Key algorithm and id', () => {
-    test.each<[RsaModulus, number, string]>([
-      [2048, 1, 'sha256'],
-      [3072, 2, 'sha384'],
-      [4096, 3, 'sha512'],
-    ])(
-      'RSA-%s should use algorithm %s and %s',
-      async (modulus, expectedAlgorithm, expectedHash) => {
-        const { publicKey } = await generateRsaKeyPair({ modulus });
+  test('Key algorithm and id should be defined correctly', async () => {
+    const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE);
 
-        const rdata = await generateTxtRdata(publicKey, TTL_OVERRIDE);
-
-        const algorithm = splitAndGetField(rdata, 0);
-        expect(algorithm).toStrictEqual(expectedAlgorithm.toString());
-        const digest = splitAndGetField(rdata, 1);
-        const expectedDigest = calculateDigest(
-          expectedHash,
-          await derSerializePublicKey(publicKey),
-        ).toString('base64');
-        expect(digest).toStrictEqual(expectedDigest);
-      },
-    );
-
-    test('Unsupported RSA modulus should be refused', async () => {
-      const algorithm = getAlgorithmParameters('RSA-PSS', 'generateKey');
-      const modulusLength = 1024;
-      const publicKey = await generatePublicKey({
-        ...(algorithm.algorithm as RsaHashedKeyAlgorithm),
-        modulusLength,
-      });
-
-      await expect(async () =>
-        generateTxtRdata(publicKey, TTL_OVERRIDE),
-      ).rejects.toThrowWithMessage(
-        VeraError,
-        `RSA key with modulus ${modulusLength} is unsupported`,
-      );
-    });
+    const algorithm = splitAndGetField(rdata, 0);
+    expect(algorithm).toStrictEqual(ORG_KEY_SPEC.keyAlgorithm.toString());
+    const digest = splitAndGetField(rdata, 1);
+    expect(digest).toStrictEqual(ORG_KEY_SPEC.keyId);
   });
 
   describe('TTL override', () => {
@@ -122,28 +73,22 @@ describe('generateTxtRdata', () => {
 
   describe('Service', () => {
     test('No service should be specified by default', async () => {
-      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE);
+      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE);
 
       const service = splitAndGetField(rdata, 4);
       expect(service).toBeUndefined();
     });
 
     test('Service should be specified if set', async () => {
-      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, TTL_OVERRIDE, SERVICE_OID);
+      const rdata = await generateTxtRdata(
+        ORG_KEY_PAIR.publicKey,
+        VERA_RECORD_TTL_OVERRIDE,
+        SERVICE_OID,
+      );
 
       const service = splitAndGetField(rdata, 3);
       expect(service).toStrictEqual(SERVICE_OID);
     });
-  });
-
-  test('Non-RSA keys should be refused', async () => {
-    const algorithmName = 'ECDSA';
-    const publicKey = await generatePublicKey({ name: algorithmName, namedCurve: 'P-256' });
-
-    await expect(async () => generateTxtRdata(publicKey, TTL_OVERRIDE)).rejects.toThrowWithMessage(
-      VeraError,
-      `Only RSA-PSS keys are supported (got ${algorithmName})`,
-    );
   });
 });
 
@@ -161,7 +106,7 @@ describe('parseTxtRdata', () => {
 
   test('Invalid key algorithm should be refused', () => {
     const invalidAlgorithmId = 4;
-    const rdata = `${invalidAlgorithmId} ${KEY_ID} ${TTL_OVERRIDE}`;
+    const rdata = `${invalidAlgorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
 
     expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
       VeraError,
@@ -174,7 +119,7 @@ describe('parseTxtRdata', () => {
 
     test('Non-integer value should be refused', () => {
       const invalidTtlOverride = 4.5;
-      const rdata = `${algorithmId} ${KEY_ID} ${invalidTtlOverride}`;
+      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${invalidTtlOverride}`;
 
       expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
         VeraError,
@@ -184,7 +129,7 @@ describe('parseTxtRdata', () => {
 
     test('Negative value should be refused', () => {
       const invalidTtlOverride = -4;
-      const rdata = `${algorithmId} ${KEY_ID} ${invalidTtlOverride}`;
+      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${invalidTtlOverride}`;
 
       expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
         VeraError,
@@ -193,7 +138,7 @@ describe('parseTxtRdata', () => {
     });
 
     test('90 days should be allowed', () => {
-      const rdata = `${algorithmId} ${KEY_ID} ${ninetyDaysInSeconds}`;
+      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${ninetyDaysInSeconds}`;
 
       const fields = parseTxtRdata(rdata);
 
@@ -201,7 +146,7 @@ describe('parseTxtRdata', () => {
     });
 
     test('TTL should be capped at 90 days', () => {
-      const rdata = `${algorithmId} ${KEY_ID} ${ninetyDaysInSeconds + 1}`;
+      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${ninetyDaysInSeconds + 1}`;
 
       const fields = parseTxtRdata(rdata);
 
@@ -210,19 +155,19 @@ describe('parseTxtRdata', () => {
   });
 
   test('Fields should be output if value is valid', () => {
-    const rdata = `${algorithmId} ${KEY_ID} ${TTL_OVERRIDE}`;
+    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
 
     const fields = parseTxtRdata(rdata);
 
     expect(fields).toMatchObject<Partial<VeraRdataFields>>({
       keyAlgorithm: algorithmId,
-      keyId: KEY_ID,
-      ttlOverride: TTL_OVERRIDE,
+      keyId: ORG_KEY_SPEC.keyId,
+      ttlOverride: VERA_RECORD_TTL_OVERRIDE,
     });
   });
 
   test('Service OID should be absent if unspecified', () => {
-    const rdata = `${algorithmId} ${KEY_ID} ${TTL_OVERRIDE}`;
+    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
 
     const fields = parseTxtRdata(rdata);
 
@@ -230,7 +175,7 @@ describe('parseTxtRdata', () => {
   });
 
   test('Service OID should be present if specified', () => {
-    const rdata = `${algorithmId} ${KEY_ID} ${TTL_OVERRIDE} ${SERVICE_OID}`;
+    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE} ${SERVICE_OID}`;
 
     const fields = parseTxtRdata(rdata);
 
@@ -238,11 +183,11 @@ describe('parseTxtRdata', () => {
   });
 
   describe('Input type', () => {
-    const rdataString = `${algorithmId} ${KEY_ID} ${TTL_OVERRIDE}`;
+    const rdataString = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
     const expectedFields: Partial<VeraRdataFields> = {
       keyAlgorithm: algorithmId,
-      keyId: KEY_ID,
-      ttlOverride: TTL_OVERRIDE,
+      keyId: ORG_KEY_SPEC.keyId,
+      ttlOverride: VERA_RECORD_TTL_OVERRIDE,
     };
 
     test('Buffer input should be supported', () => {
@@ -252,8 +197,8 @@ describe('parseTxtRdata', () => {
 
       expect(fields).toMatchObject<Partial<VeraRdataFields>>({
         keyAlgorithm: algorithmId,
-        keyId: KEY_ID,
-        ttlOverride: TTL_OVERRIDE,
+        keyId: ORG_KEY_SPEC.keyId,
+        ttlOverride: VERA_RECORD_TTL_OVERRIDE,
       });
     });
 
@@ -287,26 +232,26 @@ describe('parseTxtRdata', () => {
     beforeAll(() => {
       expectedFields = {
         keyAlgorithm: algorithmId,
-        keyId: KEY_ID,
-        ttlOverride: TTL_OVERRIDE,
+        keyId: ORG_KEY_SPEC.keyId,
+        ttlOverride: VERA_RECORD_TTL_OVERRIDE,
         serviceOid: undefined,
       };
     });
 
     test('Leading whitespace should be ignored', () => {
-      const rdata = ` \t ${algorithmId} ${KEY_ID} ${TTL_OVERRIDE}`;
+      const rdata = ` \t ${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
 
       expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
     });
 
     test('Trailing whitespace should be ignored', () => {
-      const rdata = `${algorithmId} ${KEY_ID} ${TTL_OVERRIDE} \t `;
+      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE} \t `;
 
       expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
     });
 
     test('Extra whitespace in separator should be ignored', () => {
-      const rdata = `${algorithmId} \t   ${KEY_ID} ${TTL_OVERRIDE}`;
+      const rdata = `${algorithmId} \t   ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
 
       expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
     });

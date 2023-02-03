@@ -10,11 +10,11 @@ import { bufferToArray } from '../utils/buffers.js';
 import { serialiseMemberIdBundle } from './serialisation.js';
 import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
 
-const { organisationCertificate, memberCertificate, veraDnssecChain } =
+const { organisationCertificate, memberCertificate, dnssecChainFixture } =
   await generateMemberIdFixture();
 
 const dnssecChain = new DnssecChainSchema(
-  veraDnssecChain.responses.map(serialiseMessage).map(bufferToArray),
+  dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
 );
 const dnssecChainSerialised = AsnSerializer.serialize(dnssecChain);
 
