@@ -25,9 +25,9 @@ import {
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 import { MOCK_CHAIN, VERA_RRSET } from '../../testUtils/veraStubs/dnssec.js';
 import { DatePeriod } from '../utils/DatePeriod.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
 import { VeraDnssecChain } from './VeraDnssecChain.js';
-import { DnssecChainSchema } from './DnssecChainSchema.js';
 import { generateTxtRdata } from './rdataSerialisation.js';
 
 const mockResolver = jest.fn<Resolver>();

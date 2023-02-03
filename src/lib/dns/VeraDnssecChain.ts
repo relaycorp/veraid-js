@@ -15,8 +15,8 @@ import { bufferToArray } from '../utils/buffers.js';
 import VeraError from '../VeraError.js';
 import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
 import { DatePeriod } from '../utils/DatePeriod.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
-import { DnssecChainSchema } from './DnssecChainSchema.js';
 import { type OrganisationKeySpec } from './organisationKeys.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
 

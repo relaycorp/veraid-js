@@ -2,7 +2,7 @@ import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser } from '@peculiar/asn1-schema';
 
 import VeraError from '../VeraError.js';
-import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
 

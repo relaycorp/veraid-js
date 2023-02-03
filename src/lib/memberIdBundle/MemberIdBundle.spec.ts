@@ -4,7 +4,7 @@ import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { subSeconds } from 'date-fns';
 
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
-import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import { bufferToArray } from '../utils/buffers.js';
 import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
@@ -16,8 +16,8 @@ import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
 import CertificateError from '../utils/x509/CertificateError.js';
+import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 
-import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
 import { MemberIdBundle } from './MemberIdBundle.js';
 
 const {

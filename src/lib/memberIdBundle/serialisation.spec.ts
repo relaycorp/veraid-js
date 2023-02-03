@@ -1,14 +1,14 @@
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
-import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import VeraError from '../VeraError.js';
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import { bufferToArray } from '../utils/buffers.js';
+import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 
 import { serialiseMemberIdBundle } from './serialisation.js';
-import { MemberIdBundleSchema } from './MemberIdBundleSchema.js';
 
 const { organisationCertificate, memberCertificate, dnssecChainFixture } =
   await generateMemberIdFixture();

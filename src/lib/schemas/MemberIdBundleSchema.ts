@@ -2,7 +2,7 @@
 import { AsnProp } from '@peculiar/asn1-schema';
 import { Certificate } from '@peculiar/asn1-x509';
 
-import { DnssecChainSchema } from '../dns/DnssecChainSchema.js';
+import { DnssecChainSchema } from './DnssecChainSchema.js';
 
 export class MemberIdBundleSchema {
   @AsnProp({ type: DnssecChainSchema })
