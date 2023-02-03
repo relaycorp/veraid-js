@@ -2,9 +2,8 @@ import { jest } from '@jest/globals';
 import { DnsRecord, Message } from '@relaycorp/dnssec';
 import { DNSoverHTTPS } from 'dohdec';
 
-import { arrayBufferFrom } from '../../testUtils/buffers.js';
-import VeraError from '../VeraError.js';
-import { ORG_NAME } from '../../testUtils/veraStubs.js';
+import { serialiseMessage } from '../../testUtils/dns.js';
+import { ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
 
 import { dnssecOnlineResolve, makeDnssecOfflineResolver } from './dnssec.js';
 
@@ -74,32 +73,21 @@ describe('dnssecOnlineResolve', () => {
 });
 
 describe('makeDnssecOfflineResolver', () => {
-  test('Malformed responses should be refused', () => {
-    const malformedResponse = arrayBufferFrom('malformed');
+  test('Existing response should be returned', async () => {
+    const resolver = makeDnssecOfflineResolver([STUB_RESPONSE]);
 
-    expect(() => makeDnssecOfflineResolver([malformedResponse])).toThrowWithMessage(
-      VeraError,
-      'At least one of the response messages is malformed',
-    );
+    const response = (await resolver(STUB_QUESTION)) as Message;
+    expect(serialiseMessage(response)).toStrictEqual(Buffer.from(STUB_DNS_RESPONSE_SERIALISED));
   });
 
-  describe('Resolver', () => {
-    test('Existing response should be returned', async () => {
-      const resolver = makeDnssecOfflineResolver([arrayBufferFrom(STUB_DNS_RESPONSE_SERIALISED)]);
+  test('Missing response should result in NXDOMAIN response', async () => {
+    const resolver = makeDnssecOfflineResolver([]);
 
-      const response = (await resolver(STUB_QUESTION)) as Message;
-      expect(Buffer.from(response.serialise())).toStrictEqual(
-        Buffer.from(STUB_DNS_RESPONSE_SERIALISED),
-      );
-    });
+    const response = (await resolver(STUB_QUESTION)) as Message;
 
-    test('Missing response should result in error', async () => {
-      const resolver = makeDnssecOfflineResolver([]);
-
-      await expect(resolver(STUB_QUESTION)).rejects.toThrowWithMessage(
-        VeraError,
-        `Could not find response for ${STUB_QUESTION.key}`,
-      );
-    });
+    expect(response.header.rcode).toBe(3);
+    expect(response.questions).toHaveLength(1);
+    expect(response.questions[0].equals(STUB_QUESTION)).toBeTrue();
+    expect(response.answers).toBeEmpty();
   });
 });
