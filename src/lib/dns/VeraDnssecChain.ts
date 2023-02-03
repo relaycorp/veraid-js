@@ -7,7 +7,6 @@ import {
   RrSet,
   SecurityStatus,
   type TrustAnchor,
-  type VerificationOptions,
 } from '@relaycorp/dnssec';
 import { AsnSerializer } from '@peculiar/asn1-schema';
 import { subSeconds } from 'date-fns';
@@ -65,6 +64,18 @@ function getTtlOverrideFromRelevantRdata(
   return relevantRdata.ttlOverride;
 }
 
+function getVerificationPeriod(
+  responses: Message[],
+  veraQuestion: Question,
+  keySpec: OrganisationKeySpec,
+  serviceOid: string,
+  datePeriod: DatePeriod,
+) {
+  const ttlOverride = getTtlOverrideFromRelevantRdata(responses, veraQuestion, keySpec, serviceOid);
+  const rdataPeriod = DatePeriod.init(subSeconds(datePeriod.end, ttlOverride), datePeriod.end);
+  return rdataPeriod.intersect(datePeriod)!;
+}
+
 export class VeraDnssecChain {
   public static async retrieve(
     domainName: string,
@@ -104,25 +115,6 @@ export class VeraDnssecChain {
     return AsnSerializer.serialize(chain);
   }
 
-  protected async resolveRrSet(
-    question: Question,
-    resolver: Resolver,
-    datePeriod: DatePeriod,
-    trustAnchors?: readonly TrustAnchor[],
-  ): Promise<void> {
-    const dnssecOptions: Partial<VerificationOptions> = { trustAnchors, dateOrPeriod: datePeriod };
-    let dnssecResult: ChainVerificationResult;
-    try {
-      dnssecResult = await dnssecLookUp(question, resolver, dnssecOptions);
-    } catch (err) {
-      throw new VeraError('Failed to process DNSSEC verification offline', { cause: err });
-    }
-    if (dnssecResult.status !== SecurityStatus.SECURE) {
-      const reasons = dnssecResult.reasonChain.join(', ');
-      throw new VeraError(`Vera DNSSEC chain is ${dnssecResult.status}: ${reasons}`);
-    }
-  }
-
   public async verify(
     keySpec: OrganisationKeySpec,
     serviceOid: string,
@@ -132,16 +124,27 @@ export class VeraDnssecChain {
     const responses = deserialiseResponses(this.responses);
     const resolver = makeDnssecOfflineResolver(responses);
     const veraQuestion = makeQuestion(this.domainName);
-
-    const ttlOverride = getTtlOverrideFromRelevantRdata(
+    const finalPeriod = getVerificationPeriod(
       responses,
       veraQuestion,
       keySpec,
       serviceOid,
+      datePeriod,
     );
-    const rdataPeriod = DatePeriod.init(subSeconds(datePeriod.end, ttlOverride), datePeriod.end);
-    const finalPeriod = rdataPeriod.intersect(datePeriod)!;
 
-    await this.resolveRrSet(veraQuestion, resolver, finalPeriod, trustAnchors);
+    let dnssecResult: ChainVerificationResult;
+    try {
+      dnssecResult = await dnssecLookUp(veraQuestion, resolver, {
+        trustAnchors,
+        dateOrPeriod: finalPeriod,
+      });
+    } catch (err) {
+      throw new VeraError('Failed to process DNSSEC verification offline', { cause: err });
+    }
+
+    if (dnssecResult.status !== SecurityStatus.SECURE) {
+      const reasons = dnssecResult.reasonChain.join(', ');
+      throw new VeraError(`Vera DNSSEC chain is ${dnssecResult.status}: ${reasons}`);
+    }
   }
 }
