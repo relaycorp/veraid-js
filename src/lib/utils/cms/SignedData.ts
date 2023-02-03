@@ -22,7 +22,11 @@ import { type SignatureOptions } from './SignatureOptions.js';
 
 const pkijsCrypto = getPkijsCrypto();
 
-function initSignerInfo(signerCertificate: Certificate, digest: ArrayBuffer): SignerInfo {
+function initSignerInfo(
+  signerCertificate: Certificate,
+  digest: ArrayBuffer,
+  extraAttributes: readonly Attribute[],
+): SignerInfo {
   const signerIdentifier = new IssuerAndSerialNumber({
     issuer: signerCertificate.pkijsCertificate.issuer,
     serialNumber: signerCertificate.pkijsCertificate.serialNumber,
@@ -39,7 +43,7 @@ function initSignerInfo(signerCertificate: Certificate, digest: ArrayBuffer): Si
     sid: signerIdentifier,
 
     signedAttrs: new SignedAndUnsignedAttributes({
-      attributes: [contentTypeAttribute, digestAttribute],
+      attributes: [contentTypeAttribute, digestAttribute, ...extraAttributes],
       type: 0,
     }),
 
@@ -78,7 +82,7 @@ export class SignedData {
 
     const hashingAlgorithmName = options.hashingAlgorithmName ?? 'SHA-256';
     const digest = await pkijsCrypto.digest({ name: hashingAlgorithmName }, plaintext);
-    const signerInfo = initSignerInfo(signerCertificate, digest);
+    const signerInfo = initSignerInfo(signerCertificate, digest, options.extraSignedAttrs ?? []);
     const shouldEncapsulatePlaintext = options.encapsulatePlaintext ?? true;
     const pkijsSignedData = new PkijsSignedData({
       certificates: [signerCertificate, ...caCertificates].map((cert) => cert.pkijsCertificate),

@@ -7,7 +7,7 @@ import {
   Sequence,
 } from 'asn1js';
 import {
-  type Attribute,
+  Attribute,
   type Certificate as PkijsCertificate,
   EncapsulatedContentInfo,
   IssuerAndSerialNumber,
@@ -178,6 +178,40 @@ describe('sign', () => {
         intermediateCaCertificate.pkijsCertificate,
       );
       expectPkijsValuesToBeEqual(attachedCertificates[2], rootCaCertificate.pkijsCertificate);
+    });
+  });
+
+  describe('Extra signed attributes', () => {
+    test('Extra attributes should be optional', async () => {
+      const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+      const { attributes } = signedData.pkijsSignedData.signerInfos[0].signedAttrs!;
+      const attributeOids = attributes.map((attribute) => attribute.type);
+      expect(attributeOids).toHaveLength(2);
+      expect(attributeOids).toContainEqual(CMS_OIDS.ATTR_CONTENT_TYPE);
+      expect(attributeOids).toContainEqual(CMS_OIDS.ATTR_DIGEST);
+    });
+
+    test('Any extra attributes should be honored', async () => {
+      const attribute = new Attribute({
+        type: '1.2.3.4.5',
+        values: [new OctetString({ valueHex: arrayBufferFrom('foo') })],
+      });
+      const signedData = await SignedData.sign(
+        plaintext,
+        MEMBER_KEY_PAIR.privateKey,
+        certificate,
+        [],
+        { extraSignedAttrs: [attribute] },
+      );
+
+      const attachedAttribute = getSignerInfoAttribute(
+        signedData.pkijsSignedData.signerInfos[0],
+        attribute.type,
+      );
+      expect(
+        Buffer.from((attachedAttribute.values[0] as OctetString).valueBlock.valueHexView),
+      ).toStrictEqual(Buffer.from((attribute.values[0] as OctetString).valueBlock.valueHexView));
     });
   });
 
