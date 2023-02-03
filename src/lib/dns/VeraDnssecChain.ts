@@ -10,16 +10,16 @@ import {
   type VerificationOptions,
 } from '@relaycorp/dnssec';
 import { AsnSerializer } from '@peculiar/asn1-schema';
+import { subSeconds } from 'date-fns';
 
 import { bufferToArray } from '../utils/buffers.js';
 import VeraError from '../VeraError.js';
 import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
-import { type DatePeriod } from '../utils/DatePeriod.js';
+import { DatePeriod } from '../utils/DatePeriod.js';
 
 import { DnssecChainSchema } from './DnssecChainSchema.js';
 import { type OrganisationKeySpec } from './organisationKeys.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
-import { type VeraRdataFields } from './VeraRdataFields.js';
 
 function makeQuestion(domainName: string) {
   return new Question(`_vera.${domainName}`, 'TXT');
@@ -37,12 +37,12 @@ function deserialiseResponses(responsesSerialised: readonly ArrayBuffer[]) {
   });
 }
 
-function getRelevantVeraRdata(
+function getTtlOverrideFromRelevantRdata(
   responses: Message[],
   veraQuestion: Question,
   keySpec: OrganisationKeySpec,
   serviceOid: string,
-): VeraRdataFields {
+): number {
   const veraTxtResponse = responses.find((response) => response.answersQuestion(veraQuestion));
   if (!veraTxtResponse) {
     throw new VeraError('Chain is missing Vera TXT response');
@@ -62,7 +62,7 @@ function getRelevantVeraRdata(
     throw new VeraError('Could not find Vera record for specified key and/or service');
   }
 
-  return relevantRdata;
+  return relevantRdata.ttlOverride;
 }
 
 export class VeraDnssecChain {
@@ -133,8 +133,15 @@ export class VeraDnssecChain {
     const resolver = makeDnssecOfflineResolver(responses);
     const veraQuestion = makeQuestion(this.domainName);
 
-    getRelevantVeraRdata(responses, veraQuestion, keySpec, serviceOid);
+    const ttlOverride = getTtlOverrideFromRelevantRdata(
+      responses,
+      veraQuestion,
+      keySpec,
+      serviceOid,
+    );
+    const rdataPeriod = DatePeriod.init(subSeconds(datePeriod.end, ttlOverride), datePeriod.end);
+    const finalPeriod = rdataPeriod.intersect(datePeriod)!;
 
-    await this.resolveRrSet(veraQuestion, resolver, datePeriod, trustAnchors);
+    await this.resolveRrSet(veraQuestion, resolver, finalPeriod, trustAnchors);
   }
 }

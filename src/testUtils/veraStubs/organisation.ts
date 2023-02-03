@@ -9,13 +9,13 @@ import { generateTxtRdata } from '../../lib/dns/rdataSerialisation.js';
 import { generateRsaKeyPair } from '../../lib/utils/keys/generation.js';
 
 const VERA_RECORD_TTL = 42;
+const VERA_RECORD_TTL_OVERRIDE_DAYS = 30;
 
 export const ORG_NAME = 'example.com';
 export const ORG_DOMAIN = `${ORG_NAME}.`;
 export const ORG_VERA_DOMAIN = `_vera.${ORG_DOMAIN}`;
 export const ORG_KEY_PAIR = await generateRsaKeyPair();
-// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-export const VERA_RECORD_TTL_OVERRIDE = 30 * secondsInDay;
+export const VERA_RECORD_TTL_OVERRIDE = VERA_RECORD_TTL_OVERRIDE_DAYS * secondsInDay;
 export const VERA_RECORD = new DnsRecord(
   ORG_VERA_DOMAIN,
   'TXT',

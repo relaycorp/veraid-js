@@ -254,6 +254,28 @@ describe('VeraDnssecChain', () => {
           'Could not find Vera record for specified key and/or service',
         );
       });
+
+      test('TTL override should truncate validity period of chain', async () => {
+        const ttlOverrideSeconds = 1;
+        const record = VERA_RECORD.shallowCopy({
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, ttlOverrideSeconds),
+        });
+        const chainPeriod = DatePeriod.init(
+          datePeriod.start,
+          subSeconds(datePeriod.end, ttlOverrideSeconds + 1),
+        );
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          RrSet.init(record.makeQuestion(), [record]),
+          SecurityStatus.SECURE,
+          chainPeriod,
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+
+        await expect(async () =>
+          chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, /^Vera DNSSEC chain is BOGUS: /u);
+      });
     });
 
     describe('DNSSEC', () => {
