@@ -22,10 +22,6 @@ import { type SignatureOptions } from './SignatureOptions.js';
 
 const pkijsCrypto = getPkijsCrypto();
 
-interface SignedDataOptions extends SignatureOptions {
-  readonly encapsulatePlaintext: boolean;
-}
-
 function initSignerInfo(signerCertificate: Certificate, digest: ArrayBuffer): SignerInfo {
   const signerIdentifier = new IssuerAndSerialNumber({
     issuer: signerCertificate.pkijsCertificate.issuer,
@@ -74,7 +70,7 @@ export class SignedData {
     privateKey: CryptoKey,
     signerCertificate: Certificate,
     caCertificates: readonly Certificate[] = [],
-    options: Partial<SignedDataOptions> = {},
+    options: Partial<SignatureOptions> = {},
   ): Promise<SignedData> {
     if ((options.hashingAlgorithmName as any) === 'SHA-1') {
       throw new CmsError('SHA-1 is unsupported');
