@@ -503,7 +503,7 @@ describe('issue()', () => {
 
       const akiExtension = getAkiExtension(cert);
       expect(akiExtension.keyIdentifier).toBeInstanceOf(OctetString);
-      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHex);
+      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHexView);
       expect(keyIdBuffer.toString('hex')).toStrictEqual(
         await getPublicKeyDigest(subjectKeyPair.publicKey),
       );
@@ -519,7 +519,7 @@ describe('issue()', () => {
 
       const akiExtension = getAkiExtension(subjectCert);
       expect(akiExtension.keyIdentifier).toBeInstanceOf(OctetString);
-      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHex);
+      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHexView);
       expect(keyIdBuffer.toString('hex')).toStrictEqual(
         await getPublicKeyDigest(issuerKeyPair.publicKey),
       );
@@ -536,10 +536,10 @@ describe('issue()', () => {
 
     const skiExtension = getExtension(subjectCert.pkijsCertificate, SUBJECT_KEY);
     expect(skiExtension!.critical).toBe(false);
-    const skiExtensionAsn1 = derDeserialize(skiExtension!.extnValue.valueBlock.valueHex);
+    const skiExtensionAsn1 = derDeserialize(skiExtension!.extnValue.valueBlock.valueHexView);
     expect(skiExtensionAsn1).toBeInstanceOf(OctetString);
 
-    const keyIdBuffer = Buffer.from((skiExtensionAsn1 as OctetString).valueBlock.valueHex);
+    const keyIdBuffer = Buffer.from((skiExtensionAsn1 as OctetString).valueBlock.valueHexView);
     expect(keyIdBuffer.toString('hex')).toStrictEqual(
       await getPublicKeyDigest(subjectKeyPair.publicKey),
     );
