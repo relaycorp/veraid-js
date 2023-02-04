@@ -13,5 +13,6 @@ export type { CertificateIssuanceOptions } from './lib/pki/CertificateIssuanceOp
 export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export { retrieveDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
 export { serialiseMemberIdBundle } from './lib/memberIdBundle/serialisation.js';
-export { sign } from './lib/signature.js';
+export { sign, verify } from './lib/signature.js';
+export type { VeraMember } from './lib/VeraMember.js';
 export type { IDatePeriod } from './lib/dates.js';

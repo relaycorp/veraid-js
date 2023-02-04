@@ -1,3 +1,4 @@
+import { type TrustAnchor } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { ContentInfo } from '@peculiar/asn1-cms';
 import { type Certificate as CertificateSchema } from '@peculiar/asn1-x509';
@@ -13,6 +14,8 @@ import { VERA_OIDS } from './oids.js';
 import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
 import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
 import { derDeserialize } from './utils/asn1.js';
+import { type IDatePeriod } from './dates.js';
+import { type VeraMember } from './VeraMember.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {
@@ -84,4 +87,14 @@ export async function sign(
   signatureSchema.organisationCertificate = memberIdBundleSchema.organisationCertificate;
   signatureSchema.signature = signedDataSchema;
   return AsnSerializer.serialize(signatureSchema);
+}
+
+export async function verify(
+  _plaintext: ArrayBuffer,
+  _signatureBundle: ArrayBuffer,
+  _serviceOid: string,
+  _dateOrPeriod: Date | IDatePeriod = new Date(),
+  _trustAnchors?: readonly TrustAnchor[],
+): Promise<VeraMember> {
+  throw new VeraError('Signature bundle is malformed');
 }
