@@ -11,7 +11,7 @@ import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
 import { ORG_KEY_SPEC, ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 import VeraError from '../VeraError.js';
-import { DatePeriod } from '../utils/DatePeriod.js';
+import { DatePeriod } from '../dates.js';
 import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';

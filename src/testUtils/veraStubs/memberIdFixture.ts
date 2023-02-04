@@ -3,7 +3,7 @@ import { addMinutes, setMilliseconds } from 'date-fns';
 
 import { selfIssueOrganisationCertificate } from '../../lib/pki/organisation.js';
 import { issueMemberCertificate } from '../../lib/pki/member.js';
-import { DatePeriod } from '../../lib/utils/DatePeriod.js';
+import { DatePeriod } from '../../lib/dates.js';
 
 import { MOCK_CHAIN, VERA_RRSET } from './dnssec.js';
 import { ORG_KEY_PAIR, ORG_NAME } from './organisation.js';

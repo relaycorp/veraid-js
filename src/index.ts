@@ -14,3 +14,4 @@ export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export { retrieveDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
 export { serialiseMemberIdBundle } from './lib/memberIdBundle/serialisation.js';
 export { sign } from './lib/signature/generation.js';
+export type { IDatePeriod } from './lib/dates.js';

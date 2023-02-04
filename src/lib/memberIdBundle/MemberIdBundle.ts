@@ -3,7 +3,7 @@ import { type Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnSerializer } from '@peculiar/asn1-schema';
 
 import { type DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import { type DatePeriod } from '../utils/DatePeriod.js';
+import { type DatePeriod } from '../dates.js';
 import Certificate from '../utils/x509/Certificate.js';
 import VeraError from '../VeraError.js';
 import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
