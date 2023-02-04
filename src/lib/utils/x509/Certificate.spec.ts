@@ -479,7 +479,7 @@ describe('issue()', () => {
   describe('Authority Key Identifier extension', () => {
     function getAkiExtension(subjectCert: Certificate): AuthorityKeyIdentifier {
       const akiExtension = getExtension(subjectCert.pkijsCertificate, AUTHORITY_KEY);
-      const akiExtensionAsn1 = derDeserialize(akiExtension!.extnValue.valueBlock.valueHex);
+      const akiExtensionAsn1 = derDeserialize(akiExtension!.extnValue.valueBlock.valueHexView);
       return new AuthorityKeyIdentifier({ schema: akiExtensionAsn1 });
     }
 
