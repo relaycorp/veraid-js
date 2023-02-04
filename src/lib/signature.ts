@@ -4,15 +4,15 @@ import { type Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { type Sequence } from 'asn1js';
 import { Attribute } from 'pkijs';
 
-import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
-import VeraError from '../VeraError.js';
-import { SignedData } from '../utils/cms/SignedData.js';
-import Certificate from '../utils/x509/Certificate.js';
-import { SignatureBundleSchema } from '../schemas/SignatureBundleSchema.js';
-import { VERA_OIDS } from '../oids.js';
-import { SignatureMetadataSchema } from '../schemas/SignatureMetadataSchema.js';
-import { DatePeriodSchema } from '../schemas/DatePeriodSchema.js';
-import { derDeserialize } from '../utils/asn1.js';
+import { MemberIdBundleSchema } from './schemas/MemberIdBundleSchema.js';
+import VeraError from './VeraError.js';
+import { SignedData } from './utils/cms/SignedData.js';
+import Certificate from './utils/x509/Certificate.js';
+import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
+import { VERA_OIDS } from './oids.js';
+import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
+import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
+import { derDeserialize } from './utils/asn1.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {

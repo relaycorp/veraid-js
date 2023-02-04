@@ -7,22 +7,22 @@ import {
 } from '@peculiar/asn1-cms';
 import { setMilliseconds, subSeconds } from 'date-fns';
 
-import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
-import { serialiseMessage } from '../../testUtils/dns.js';
-import { bufferToArray } from '../utils/buffers.js';
-import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
-import { serialiseMemberIdBundle } from '../memberIdBundle/serialisation.js';
-import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import { MEMBER_KEY_PAIR } from '../../testUtils/veraStubs/member.js';
-import { SignatureBundleSchema } from '../schemas/SignatureBundleSchema.js';
-import { SignedData } from '../utils/cms/SignedData.js';
-import Certificate from '../utils/x509/Certificate.js';
-import { CMS_OIDS, VERA_OIDS } from '../oids.js';
-import { SignatureMetadataSchema } from '../schemas/SignatureMetadataSchema.js';
-import VeraError from '../VeraError.js';
-import { arrayBufferFrom } from '../../testUtils/buffers.js';
+import { generateMemberIdFixture } from '../testUtils/veraStubs/memberIdFixture.js';
+import { serialiseMessage } from '../testUtils/dns.js';
+import { SERVICE_OID } from '../testUtils/veraStubs/service.js';
+import { MEMBER_KEY_PAIR } from '../testUtils/veraStubs/member.js';
+import { arrayBufferFrom } from '../testUtils/buffers.js';
 
-import { sign } from './generation.js';
+import { bufferToArray } from './utils/buffers.js';
+import { serialiseMemberIdBundle } from './memberIdBundle/serialisation.js';
+import { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
+import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
+import { SignedData } from './utils/cms/SignedData.js';
+import Certificate from './utils/x509/Certificate.js';
+import { CMS_OIDS, VERA_OIDS } from './oids.js';
+import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
+import VeraError from './VeraError.js';
+import { sign } from './signature.js';
 
 const PLAINTEXT = Buffer.from('the plaintext');
 
