@@ -3,11 +3,17 @@
  * ASN.1 Object Ids.
  */
 
+const RELAYCORP = '1.3.6.1.4.1.58708'; // Alias: iso.org.dod.internet.private.enterprise.relaycorp
+const VERA = `${RELAYCORP}.1`;
+
+export const VERA_OIDS = {
+  SIGNATURE_METADATA_ATTR: `${VERA}.0`,
+};
+
 export const CMS_OIDS = {
   ATTR_CONTENT_TYPE: '1.2.840.113549.1.9.3',
   ATTR_DIGEST: '1.2.840.113549.1.9.4',
   DATA: '1.2.840.113549.1.7.1',
-  ENVELOPED_DATA: '1.2.840.113549.1.7.3',
   SIGNED_DATA: '1.2.840.113549.1.7.2',
 };
 

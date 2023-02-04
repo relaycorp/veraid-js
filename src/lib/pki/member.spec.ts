@@ -13,7 +13,7 @@ const NOW = setMilliseconds(new Date(), 0);
 const START_DATE = subMinutes(NOW, 5);
 const EXPIRY_DATE = addMinutes(NOW, 5);
 
-const { organisationCertificate } = await generateMemberIdFixture();
+const { orgCertificateSerialised } = await generateMemberIdFixture();
 
 describe('issueMemberCertificate', () => {
   describe('Common Name', () => {
@@ -21,7 +21,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         undefined,
         MEMBER_KEY_PAIR.publicKey,
-        organisationCertificate,
+        orgCertificateSerialised,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -34,7 +34,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        organisationCertificate,
+        orgCertificateSerialised,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -48,7 +48,7 @@ describe('issueMemberCertificate', () => {
     const serialisation = await issueMemberCertificate(
       MEMBER_NAME,
       MEMBER_KEY_PAIR.publicKey,
-      organisationCertificate,
+      orgCertificateSerialised,
       ORG_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
@@ -63,13 +63,13 @@ describe('issueMemberCertificate', () => {
     const serialisation = await issueMemberCertificate(
       MEMBER_NAME,
       MEMBER_KEY_PAIR.publicKey,
-      organisationCertificate,
+      orgCertificateSerialised,
       ORG_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
 
     const memberCertificate = Certificate.deserialize(serialisation);
-    const orgCertificateDeserialised = Certificate.deserialize(organisationCertificate);
+    const orgCertificateDeserialised = Certificate.deserialize(orgCertificateSerialised);
     await expect(
       memberCertificate.getCertificationPath([], [orgCertificateDeserialised]),
     ).resolves.toHaveLength(2);
@@ -79,7 +79,7 @@ describe('issueMemberCertificate', () => {
     const serialisation = await issueMemberCertificate(
       MEMBER_NAME,
       MEMBER_KEY_PAIR.publicKey,
-      organisationCertificate,
+      orgCertificateSerialised,
       ORG_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
@@ -95,7 +95,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        organisationCertificate,
+        orgCertificateSerialised,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -111,7 +111,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        organisationCertificate,
+        orgCertificateSerialised,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
         { startDate: START_DATE },
@@ -127,7 +127,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        organisationCertificate,
+        orgCertificateSerialised,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );
@@ -141,7 +141,7 @@ describe('issueMemberCertificate', () => {
       const serialisation = await issueMemberCertificate(
         MEMBER_NAME,
         MEMBER_KEY_PAIR.publicKey,
-        organisationCertificate,
+        orgCertificateSerialised,
         ORG_KEY_PAIR.privateKey,
         EXPIRY_DATE,
       );

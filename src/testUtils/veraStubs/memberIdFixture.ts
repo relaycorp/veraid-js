@@ -13,8 +13,8 @@ const FIXTURE_TTL_MINUTES = 5;
 
 interface MemberIdFixture {
   readonly dnssecChainFixture: MockChainFixture;
-  readonly organisationCertificate: ArrayBuffer;
-  readonly memberCertificate: ArrayBuffer;
+  readonly orgCertificateSerialised: ArrayBuffer;
+  readonly memberCertificateSerialised: ArrayBuffer;
   readonly datePeriod: DatePeriod;
 }
 
@@ -27,17 +27,17 @@ export async function generateMemberIdFixture(): Promise<MemberIdFixture> {
     end: expiryDate,
   });
 
-  const organisationCertificate = await selfIssueOrganisationCertificate(
+  const orgCertificateSerialised = await selfIssueOrganisationCertificate(
     ORG_NAME,
     ORG_KEY_PAIR,
     expiryDate,
     { startDate },
   );
 
-  const memberCertificate = await issueMemberCertificate(
+  const memberCertificateSerialised = await issueMemberCertificate(
     MEMBER_NAME,
     MEMBER_KEY_PAIR.publicKey,
-    organisationCertificate,
+    orgCertificateSerialised,
     ORG_KEY_PAIR.privateKey,
     expiryDate,
     { startDate },
@@ -45,8 +45,8 @@ export async function generateMemberIdFixture(): Promise<MemberIdFixture> {
 
   return {
     dnssecChainFixture,
-    memberCertificate,
-    organisationCertificate,
+    memberCertificateSerialised,
+    orgCertificateSerialised,
     datePeriod: DatePeriod.init(startDate, expiryDate),
   };
 }

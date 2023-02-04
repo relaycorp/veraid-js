@@ -4,9 +4,9 @@ import { type Resolver, SecurityStatus } from '@relaycorp/dnssec';
 
 import { MOCK_CHAIN, VERA_RRSET } from '../../testUtils/veraStubs/dnssec.js';
 import { ORG_DOMAIN } from '../../testUtils/veraStubs/organisation.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
 import { retrieveDnssecChain } from './dnssecChainRetrieval.js';
-import { DnssecChainSchema } from './DnssecChainSchema.js';
 import { VeraDnssecChain } from './VeraDnssecChain.js';
 
 describe('retrieveDnssecChain', () => {
