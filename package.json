@@ -40,7 +40,7 @@
     "@relaycorp/eslint-config": "^1.1.59",
     "@relaycorp/shared-config": "^1.9.3",
     "@types/jest": "^29.4.0",
-    "@typescript-eslint/parser": "^5.48.2",
+    "@typescript-eslint/parser": "^5.50.0",
     "del-cli": "^5.0.0",
     "eslint": "^8.33.0",
     "jest": "^29.4.1",
