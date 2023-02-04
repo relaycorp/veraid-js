@@ -1,7 +1,6 @@
-/* eslint-disable max-lines */
 import { jest } from '@jest/globals';
 import { OctetString } from 'asn1js';
-import { addDays, addSeconds, setMilliseconds, subSeconds } from 'date-fns';
+import { addDays, addSeconds, setMilliseconds } from 'date-fns';
 import { advanceTo, clear as dateMockClear } from 'jest-date-mock';
 import {
   AuthorityKeyIdentifier,
@@ -11,7 +10,7 @@ import {
 } from 'pkijs';
 
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
-import { derSerializePublicKey, generateRsaKeyPair } from '../keys.js';
+import { derSerializePublicKey } from '../keys/serialisation.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { getBasicConstraintsExtension, getExtension } from '../../../testUtils/pkijs.js';
@@ -20,6 +19,7 @@ import { generateStubCert } from '../../../testUtils/pki.js';
 import { derDeserialize } from '../asn1.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 import { arrayBufferFrom } from '../../../testUtils/buffers.js';
+import { generateRsaKeyPair } from '../keys/generation.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
@@ -53,6 +53,39 @@ async function getPublicKeyDigest(publicKey: CryptoKey): Promise<string> {
   const publicKeyDer = await derSerializePublicKey(publicKey);
   return calculateDigest('sha256', publicKeyDer).toString('hex');
 }
+
+describe('constructor', () => {
+  describe('validityPeriod', () => {
+    test('Start date after expiry date should be refused', async () => {
+      const { pkijsCertificate } = await generateStubCert();
+      pkijsCertificate.notBefore.value = addSeconds(pkijsCertificate.notAfter.value, 1);
+
+      expect(() => new Certificate(pkijsCertificate)).toThrowWithMessage(
+        Error,
+        /^End date should not be before start date/u,
+      );
+    });
+
+    test('Start date equal to expiry date should be allowed', async () => {
+      const { pkijsCertificate } = await generateStubCert();
+      pkijsCertificate.notBefore.value = pkijsCertificate.notAfter.value;
+
+      const certificate = new Certificate(pkijsCertificate);
+
+      expect(certificate.validityPeriod.start).toStrictEqual(pkijsCertificate.notBefore.value);
+      expect(certificate.validityPeriod.end).toStrictEqual(pkijsCertificate.notBefore.value);
+    });
+
+    test('Start date before expiry date should be allowed', async () => {
+      const { pkijsCertificate } = await generateStubCert();
+      expect(pkijsCertificate.notBefore.value).toBeBefore(pkijsCertificate.notAfter.value);
+
+      const certificate = new Certificate(pkijsCertificate);
+      expect(certificate.validityPeriod.start).toStrictEqual(pkijsCertificate.notBefore.value);
+      expect(certificate.validityPeriod.end).toStrictEqual(pkijsCertificate.notAfter.value);
+    });
+  });
+});
 
 describe('deserialize()', () => {
   test('should deserialize valid DER-encoded certificates', async () => {
@@ -155,8 +188,8 @@ describe('issue()', () => {
   });
 
   test('should create a certificate valid from now by default', async () => {
-    const now = new Date();
-    now.setMilliseconds(1); // We need to check it's rounded down to the nearest second
+    // We need to check it's rounded down to the nearest second
+    const now = setMilliseconds(new Date(), 1);
     advanceTo(now);
 
     const cert = await Certificate.issue({
@@ -165,9 +198,7 @@ describe('issue()', () => {
       subjectPublicKey: subjectKeyPair.publicKey,
     });
 
-    const expectedDate = new Date(now.getTime());
-    expectedDate.setMilliseconds(0);
-    expect(cert.startDate).toStrictEqual(expectedDate);
+    expect(cert.validityPeriod.start).toStrictEqual(setMilliseconds(now, 0));
   });
 
   test('should honor a custom start validity date', async () => {
@@ -180,25 +211,7 @@ describe('issue()', () => {
       validityStartDate: startDate,
     });
 
-    const expectedDate = new Date(startDate.getTime());
-    expectedDate.setMilliseconds(0);
-    expect(cert.startDate).toStrictEqual(expectedDate);
-  });
-
-  test('should refuse start date if after expiry date of issuer', async () => {
-    const startDate = addSeconds(issuerCertificate.expiryDate, 1);
-    const expiryDate = addSeconds(startDate, 1);
-
-    await expect(
-      Certificate.issue({
-        ...baseCertificateOptions,
-        issuerCertificate,
-        issuerPrivateKey: subjectKeyPair.privateKey,
-        subjectPublicKey: subjectKeyPair.publicKey,
-        validityEndDate: expiryDate,
-        validityStartDate: startDate,
-      }),
-    ).rejects.toThrow('The end date must be later than the start date');
+    expect(cert.validityPeriod.start).toStrictEqual(setMilliseconds(startDate, 0));
   });
 
   describe('Validity end date', () => {
@@ -212,11 +225,11 @@ describe('issue()', () => {
         validityEndDate: endDate,
       });
 
-      expect(cert.expiryDate).toStrictEqual(endDate);
+      expect(cert.validityPeriod.end).toStrictEqual(endDate);
     });
 
     test('should be capped at that of issuer', async () => {
-      const endDate = addSeconds(issuerCertificate.expiryDate, 1);
+      const endDate = addSeconds(issuerCertificate.validityPeriod.end, 1);
 
       const cert = await Certificate.issue({
         ...baseCertificateOptions,
@@ -226,11 +239,11 @@ describe('issue()', () => {
         validityEndDate: endDate,
       });
 
-      expect(cert.expiryDate).toStrictEqual(issuerCertificate.expiryDate);
+      expect(cert.validityPeriod.end).toStrictEqual(issuerCertificate.validityPeriod.end);
     });
 
     test('should be rounded down to nearest second', async () => {
-      const endDate = addDays(issuerCertificate.expiryDate, 1);
+      const endDate = addDays(issuerCertificate.validityPeriod.end, 1);
 
       const cert = await Certificate.issue({
         ...baseCertificateOptions,
@@ -239,22 +252,7 @@ describe('issue()', () => {
         validityEndDate: endDate,
       });
 
-      expect(cert.expiryDate).toStrictEqual(setMilliseconds(endDate, 0));
-    });
-
-    test('should be refused if before the start date', async () => {
-      const startDate = new Date(2019, 1, 1);
-      const invalidEndDate = subSeconds(new Date(startDate), 1);
-
-      await expect(
-        Certificate.issue({
-          ...baseCertificateOptions,
-          issuerPrivateKey: subjectKeyPair.privateKey,
-          subjectPublicKey: subjectKeyPair.publicKey,
-          validityEndDate: invalidEndDate,
-          validityStartDate: startDate,
-        }),
-      ).rejects.toThrow('The end date must be later than the start date');
+      expect(cert.validityPeriod.end).toStrictEqual(setMilliseconds(endDate, 0));
     });
   });
 
@@ -505,7 +503,7 @@ describe('issue()', () => {
 
       const akiExtension = getAkiExtension(cert);
       expect(akiExtension.keyIdentifier).toBeInstanceOf(OctetString);
-      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHex);
+      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHexView);
       expect(keyIdBuffer.toString('hex')).toStrictEqual(
         await getPublicKeyDigest(subjectKeyPair.publicKey),
       );
@@ -521,7 +519,7 @@ describe('issue()', () => {
 
       const akiExtension = getAkiExtension(subjectCert);
       expect(akiExtension.keyIdentifier).toBeInstanceOf(OctetString);
-      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHex);
+      const keyIdBuffer = Buffer.from(akiExtension.keyIdentifier!.valueBlock.valueHexView);
       expect(keyIdBuffer.toString('hex')).toStrictEqual(
         await getPublicKeyDigest(issuerKeyPair.publicKey),
       );
@@ -538,10 +536,10 @@ describe('issue()', () => {
 
     const skiExtension = getExtension(subjectCert.pkijsCertificate, SUBJECT_KEY);
     expect(skiExtension!.critical).toBe(false);
-    const skiExtensionAsn1 = derDeserialize(skiExtension!.extnValue.valueBlock.valueHex);
+    const skiExtensionAsn1 = derDeserialize(skiExtension!.extnValue.valueBlock.valueHexView);
     expect(skiExtensionAsn1).toBeInstanceOf(OctetString);
 
-    const keyIdBuffer = Buffer.from((skiExtensionAsn1 as OctetString).valueBlock.valueHex);
+    const keyIdBuffer = Buffer.from((skiExtensionAsn1 as OctetString).valueBlock.valueHexView);
     expect(keyIdBuffer.toString('hex')).toStrictEqual(
       await getPublicKeyDigest(subjectKeyPair.publicKey),
     );
@@ -565,39 +563,6 @@ test('serialize() should return a DER-encoded buffer', async () => {
   expect(issuerDnAttributes).toHaveLength(1);
   expect(issuerDnAttributes[0].type).toBe(COMMON_NAME);
   expect(issuerDnAttributes[0].value.valueBlock.value).toBe(cert.commonName);
-});
-
-test('startDate should return the start date', async () => {
-  const cert = await generateStubCert();
-
-  const expectedStartDate = cert.pkijsCertificate.notBefore.value;
-  expect(cert.startDate).toStrictEqual(expectedStartDate);
-});
-
-describe('expiryDate', () => {
-  test('should return the expiry date', async () => {
-    const expiryDate = setMilliseconds(new Date(), 0);
-    const cert = await Certificate.issue({
-      ...baseCertificateOptions,
-      issuerPrivateKey: subjectKeyPair.privateKey,
-      subjectPublicKey: subjectKeyPair.publicKey,
-      validityEndDate: expiryDate,
-    });
-
-    expect(cert.expiryDate).toStrictEqual(expiryDate);
-  });
-
-  test('should round down to the nearest second', async () => {
-    const expiryDate = setMilliseconds(addSeconds(new Date(), 10), 50);
-    const cert = await Certificate.issue({
-      ...baseCertificateOptions,
-      issuerPrivateKey: subjectKeyPair.privateKey,
-      subjectPublicKey: subjectKeyPair.publicKey,
-      validityEndDate: expiryDate,
-    });
-
-    expect(cert.expiryDate).toStrictEqual(setMilliseconds(expiryDate, 0));
-  });
 });
 
 test('getSerialNumber() should return the serial number as a buffer', async () => {
@@ -642,50 +607,6 @@ describe('isEqual', () => {
     const cert2 = await generateStubCert();
 
     expect(cert1.isEqual(cert2)).toBeFalse();
-  });
-});
-
-describe('validate()', () => {
-  test('Valid certificates should be accepted', async () => {
-    const cert = await generateStubCert();
-
-    expect(() => {
-      cert.validate();
-    }).not.toThrow();
-  });
-
-  test('Certificate version other than 3 should be refused', async () => {
-    const cert = await generateStubCert();
-
-    cert.pkijsCertificate.version = 1;
-
-    expect(() => {
-      cert.validate();
-    }).toThrowWithMessage(CertificateError, 'Only X.509 v3 certificates are supported (got v2)');
-  });
-
-  test('Certificate not yet valid should not be accepted', async () => {
-    const validityStartDate = new Date();
-    validityStartDate.setMinutes(validityStartDate.getMinutes() + 5);
-    const validityEndDate = new Date(validityStartDate);
-    validityEndDate.setMinutes(validityEndDate.getMinutes() + 1);
-    const cert = await generateStubCert({ attributes: { validityEndDate, validityStartDate } });
-
-    expect(() => {
-      cert.validate();
-    }).toThrowWithMessage(CertificateError, 'Certificate is not yet valid');
-  });
-
-  test('Expired certificate should not be accepted', async () => {
-    const validityEndDate = new Date();
-    validityEndDate.setMinutes(validityEndDate.getMinutes() - 1);
-    const validityStartDate = new Date(validityEndDate);
-    validityStartDate.setMinutes(validityStartDate.getMinutes() - 1);
-    const cert = await generateStubCert({ attributes: { validityEndDate, validityStartDate } });
-
-    expect(() => {
-      cert.validate();
-    }).toThrowWithMessage(CertificateError, 'Certificate already expired');
   });
 });
 

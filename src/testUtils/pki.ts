@@ -1,10 +1,10 @@
 import { addDays, setMilliseconds } from 'date-fns';
 
 import Certificate from '../lib/utils/x509/Certificate.js';
-import { derSerializePublicKey, generateRsaKeyPair } from '../lib/utils/keys.js';
+import { derSerializePublicKey } from '../lib/utils/keys/serialisation.js';
 import type FullIssuanceOptions from '../lib/utils/x509/FullIssuanceOptions.js';
+import { generateRsaKeyPair } from '../lib/utils/keys/generation.js';
 
-import { reSerializeCertificate } from './pkijs.js';
 import { calculateDigest } from './crypto.js';
 
 interface StubCertConfig {
@@ -25,7 +25,7 @@ export async function generateStubCert(config: Partial<StubCertConfig> = {}): Pr
     'sha256',
     await derSerializePublicKey(subjectPublicKey),
   ).toString('hex');
-  const certificate = await Certificate.issue({
+  return Certificate.issue({
     commonName,
     issuerCertificate: config.issuerCertificate,
     issuerPrivateKey: config.issuerPrivateKey ?? keyPair.privateKey,
@@ -33,5 +33,4 @@ export async function generateStubCert(config: Partial<StubCertConfig> = {}): Pr
     validityEndDate,
     ...config.attributes,
   });
-  return reSerializeCertificate(certificate);
 }

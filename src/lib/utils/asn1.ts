@@ -1,6 +1,6 @@
 import { type AsnType, fromBER } from 'asn1js';
 
-export function derDeserialize(derValue: ArrayBuffer): AsnType {
+export function derDeserialize(derValue: ArrayBuffer | Uint8Array): AsnType {
   const asn1Value = fromBER(derValue);
   // eslint-disable-next-line @typescript-eslint/no-magic-numbers
   if (asn1Value.offset === -1) {
