@@ -10,7 +10,7 @@ import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 
 import { serialiseMemberIdBundle } from './serialisation.js';
 
-const { organisationCertificate, memberCertificate, dnssecChainFixture } =
+const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture } =
   await generateMemberIdFixture();
 
 const dnssecChain = new DnssecChainSchema(
@@ -23,7 +23,7 @@ describe('serialiseMemberIdBundle', () => {
     expect(() =>
       serialiseMemberIdBundle(
         arrayBufferFrom('malformed'),
-        organisationCertificate,
+        orgCertificateSerialised,
         dnssecChainSerialised,
       ),
     ).toThrowWithMessage(VeraError, 'Member certificate is malformed');
@@ -32,7 +32,7 @@ describe('serialiseMemberIdBundle', () => {
   test('Malformed organisation certificate should be refused', () => {
     expect(() =>
       serialiseMemberIdBundle(
-        memberCertificate,
+        memberCertificateSerialised,
         arrayBufferFrom('malformed'),
         dnssecChainSerialised,
       ),
@@ -42,8 +42,8 @@ describe('serialiseMemberIdBundle', () => {
   test('Malformed DNSSEC chain should be refused', () => {
     expect(() =>
       serialiseMemberIdBundle(
-        memberCertificate,
-        organisationCertificate,
+        memberCertificateSerialised,
+        orgCertificateSerialised,
         arrayBufferFrom('malformed'),
       ),
     ).toThrowWithMessage(VeraError, 'DNSSEC chain is malformed');
@@ -51,8 +51,8 @@ describe('serialiseMemberIdBundle', () => {
 
   test('Well-formed bundle should be output', () => {
     const bundleSerialised = serialiseMemberIdBundle(
-      memberCertificate,
-      organisationCertificate,
+      memberCertificateSerialised,
+      orgCertificateSerialised,
       dnssecChainSerialised,
     );
 
@@ -61,10 +61,10 @@ describe('serialiseMemberIdBundle', () => {
       Buffer.from(dnssecChainSerialised),
     );
     expect(Buffer.from(AsnSerializer.serialize(bundle.organisationCertificate))).toStrictEqual(
-      Buffer.from(organisationCertificate),
+      Buffer.from(orgCertificateSerialised),
     );
     expect(Buffer.from(AsnSerializer.serialize(bundle.memberCertificate))).toStrictEqual(
-      Buffer.from(memberCertificate),
+      Buffer.from(memberCertificateSerialised),
     );
   });
 });

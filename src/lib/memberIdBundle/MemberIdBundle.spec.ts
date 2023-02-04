@@ -20,12 +20,8 @@ import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
 
-const {
-  organisationCertificate: orgCertificateSerialised,
-  memberCertificate: memberCertificateSerialised,
-  dnssecChainFixture,
-  datePeriod,
-} = await generateMemberIdFixture();
+const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
+  await generateMemberIdFixture();
 const dnssecChain = new DnssecChainSchema(
   dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
 );
