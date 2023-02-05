@@ -11,6 +11,11 @@ import { MEMBER_KEY_PAIR, MEMBER_NAME } from './member.js';
 
 const FIXTURE_TTL_MINUTES = 5;
 
+interface MemberIdFixtureOptions {
+  readonly orgCertificateSerialised: ArrayBuffer;
+  readonly datePeriod: DatePeriod;
+}
+
 interface MemberIdFixture {
   readonly dnssecChainFixture: MockChainFixture;
   readonly orgCertificateSerialised: ArrayBuffer;
@@ -19,18 +24,16 @@ interface MemberIdFixture {
 }
 
 export async function generateMemberIdFixture(
-  options: Partial<MemberIdFixture> = {},
+  options: Partial<MemberIdFixtureOptions> = {},
 ): Promise<MemberIdFixture> {
   const now = setMilliseconds(new Date(), 0);
   const datePeriod =
     options.datePeriod ?? DatePeriod.init(now, addMinutes(now, FIXTURE_TTL_MINUTES));
 
-  const dnssecChainFixture =
-    options.dnssecChainFixture ??
-    MOCK_CHAIN.generateFixture(VERA_RRSET, SecurityStatus.SECURE, {
-      start: datePeriod.start,
-      end: datePeriod.end,
-    });
+  const dnssecChainFixture = MOCK_CHAIN.generateFixture(VERA_RRSET, SecurityStatus.SECURE, {
+    start: datePeriod.start,
+    end: datePeriod.end,
+  });
 
   const orgCertificateSerialised =
     options.orgCertificateSerialised ??
@@ -38,16 +41,14 @@ export async function generateMemberIdFixture(
       startDate: datePeriod.start,
     }));
 
-  const memberCertificateSerialised =
-    options.memberCertificateSerialised ??
-    (await issueMemberCertificate(
-      MEMBER_NAME,
-      MEMBER_KEY_PAIR.publicKey,
-      orgCertificateSerialised,
-      ORG_KEY_PAIR.privateKey,
-      datePeriod.end,
-      { startDate: datePeriod.start },
-    ));
+  const memberCertificateSerialised = await issueMemberCertificate(
+    MEMBER_NAME,
+    MEMBER_KEY_PAIR.publicKey,
+    orgCertificateSerialised,
+    ORG_KEY_PAIR.privateKey,
+    datePeriod.end,
+    { startDate: datePeriod.start },
+  );
 
   return {
     dnssecChainFixture,

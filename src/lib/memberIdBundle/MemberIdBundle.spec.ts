@@ -197,25 +197,21 @@ describe('MemberIdBundle', () => {
           datePeriod.end,
           { startDate: datePeriod.start },
         );
-        const otherMemberCertificateSerialised = await issueMemberCertificate(
-          MEMBER_NAME,
-          MEMBER_KEY_PAIR.publicKey,
-          otherOrgCertificateSerialised,
-          ORG_KEY_PAIR.privateKey,
-          datePeriod.end,
-          { startDate: datePeriod.start },
-        );
+        const fixture = await generateMemberIdFixture({
+          datePeriod,
+          orgCertificateSerialised: otherOrgCertificateSerialised,
+        });
         expect(Certificate.deserialize(otherOrgCertificateSerialised).commonName).toEndWith('.');
         const bundle = new MemberIdBundle(
           dnssecChain,
           AsnParser.parse(otherOrgCertificateSerialised, CertificateSchema),
-          AsnParser.parse(otherMemberCertificateSerialised, CertificateSchema),
+          AsnParser.parse(fixture.memberCertificateSerialised, CertificateSchema),
         );
 
         const { organisation } = await bundle.verify(
           SERVICE_OID,
           datePeriod,
-          dnssecChainFixture.trustAnchors,
+          fixture.dnssecChainFixture.trustAnchors,
         );
 
         expect(organisation).toStrictEqual(ORG_NAME);

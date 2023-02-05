@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { RrSet, SecurityStatus } from '@relaycorp/dnssec';
+import { type Message, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Null } from 'asn1js';
 import {
@@ -256,6 +256,31 @@ describe('sign', () => {
 });
 
 describe('verify', () => {
+  interface SignatureBundleAttributeSet {
+    readonly dnssecResponses: readonly Message[];
+    readonly signedData: SignedData;
+  }
+
+  function replaceSignatureAttribute(
+    signatureBundleSerialised: ArrayBuffer,
+    attributes: Partial<SignatureBundleAttributeSet>,
+  ): ArrayBuffer {
+    const signatureBundle = AsnParser.parse(signatureBundleSerialised, SignatureBundleSchema);
+
+    if (attributes.dnssecResponses) {
+      const responsesSerialised = attributes.dnssecResponses
+        .map(serialiseMessage)
+        .map(arrayBufferFrom);
+      signatureBundle.dnssecChain = new DnssecChainSchema(responsesSerialised);
+    }
+
+    if (attributes.signedData) {
+      signatureBundle.signature = AsnParser.parse(attributes.signedData.serialize(), ContentInfo);
+    }
+
+    return AsnSerializer.serialize(signatureBundle);
+  }
+
   test('Signature bundle should be well-formed', async () => {
     const malformedSignatureBundle = arrayBufferFrom('malformed');
 
@@ -289,7 +314,6 @@ describe('verify', () => {
   });
 
   test('Metadata attribute should be well-formed', async () => {
-    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
     const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
     const attribute = new PkijsAttribute({
       type: VERA_OIDS.SIGNATURE_METADATA_ATTR,
@@ -305,8 +329,9 @@ describe('verify', () => {
         extraSignedAttrs: [attribute],
       },
     );
-    signatureBundle.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
-    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+    const signatureBundleSerialised = replaceSignatureAttribute(SIGNATURE_BUNDLE_SERIALISED, {
+      signedData,
+    });
 
     await expect(async () =>
       verify(
@@ -320,7 +345,6 @@ describe('verify', () => {
   });
 
   test('Metadata should contain valid validity period', async () => {
-    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
     const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
     const metadata = new SignatureMetadataSchema();
     metadata.serviceOid = SERVICE_OID;
@@ -341,8 +365,9 @@ describe('verify', () => {
         extraSignedAttrs: [attribute],
       },
     );
-    signatureBundle.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
-    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+    const signatureBundleSerialised = replaceSignatureAttribute(SIGNATURE_BUNDLE_SERIALISED, {
+      signedData,
+    });
 
     await expect(async () =>
       verify(
@@ -437,16 +462,14 @@ describe('verify', () => {
           differentServiceOid,
         ),
       });
-      const rrset = RrSet.init(record.makeQuestion(), [record]);
-      const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
-        rrset,
+      const { responses: dnssecResponses, trustAnchors } = MOCK_CHAIN.generateFixture(
+        RrSet.init(record.makeQuestion(), [record]),
         SecurityStatus.SECURE,
         datePeriod,
       );
-      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
-      const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
-      signatureBundle.dnssecChain = new DnssecChainSchema(responsesSerialised);
-      const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+      const signatureBundleSerialised = replaceSignatureAttribute(SIGNATURE_BUNDLE_SERIALISED, {
+        dnssecResponses,
+      });
 
       await expect(async () =>
         verify(PLAINTEXT, signatureBundleSerialised, SERVICE_OID, datePeriod, trustAnchors),
