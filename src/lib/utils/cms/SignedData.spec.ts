@@ -561,3 +561,38 @@ describe('certificates', () => {
     expect(certificates.filter((cert) => cert.isEqual(signerCertificate))).toHaveLength(1);
   });
 });
+
+describe('getSignedAttribute', () => {
+  test('Error should be thrown if there are no signers', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+    signedData.pkijsSignedData.signerInfos.pop();
+
+    expect(() => signedData.getSignedAttribute(CMS_OIDS.ATTR_DIGEST)).toThrowWithMessage(
+      CmsError,
+      'SignedData value does not have any signers',
+    );
+  });
+
+  test('Null should be returned if there are no signed attributes', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+    signedData.pkijsSignedData.signerInfos[0].signedAttrs = undefined;
+
+    expect(signedData.getSignedAttribute(CMS_OIDS.ATTR_DIGEST)).toBeNull();
+  });
+
+  test('Null should be returned if the attribute is missing', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+    const invalidAttributeOid = `${CMS_OIDS.ATTR_DIGEST}.1`;
+
+    expect(signedData.getSignedAttribute(invalidAttributeOid)).toBeNull();
+  });
+
+  test('Attribute content should be returned if attribute is presented', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+    const contentTypeValues = signedData.getSignedAttribute(CMS_OIDS.ATTR_CONTENT_TYPE)!;
+    expect((contentTypeValues[0] as ObjectIdentifier).valueBlock.toString()).toStrictEqual(
+      CMS_OIDS.DATA,
+    );
+  });
+});

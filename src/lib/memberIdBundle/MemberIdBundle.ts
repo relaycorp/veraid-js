@@ -9,6 +9,7 @@ import VeraError from '../VeraError.js';
 import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
 import { getKeySpec } from '../dns/organisationKeys.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
+import { type VeraMember } from '../VeraMember.js';
 
 async function verifyCertificateChain(
   orgCertificate: Certificate,
@@ -53,7 +54,7 @@ export class MemberIdBundle {
     serviceOid: string,
     datePeriod: DatePeriod,
     dnssecTrustAnchors?: readonly TrustAnchor[],
-  ): Promise<void> {
+  ): Promise<VeraMember> {
     const orgCertificate = Certificate.deserialize(
       AsnSerializer.serialize(this.orgCertificateSchema),
     );
@@ -69,5 +70,9 @@ export class MemberIdBundle {
     const dnssecChain = new VeraDnssecChain(orgCertificate.commonName, this.veraChainSchema);
     const keySpec = await getKeySpec(await orgCertificate.getPublicKey());
     await dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
+
+    const organisation = orgCertificate.commonName.replace(/\.$/u, '');
+    const user = memberCertificate.commonName === '@' ? undefined : memberCertificate.commonName;
+    return { organisation, user };
   }
 }

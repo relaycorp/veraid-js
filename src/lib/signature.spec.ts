@@ -1,5 +1,7 @@
+import { jest } from '@jest/globals';
 import { RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
+import { Null } from 'asn1js';
 import {
   Attribute,
   ContentInfo,
@@ -7,6 +9,7 @@ import {
   type SignerInfo,
 } from '@peculiar/asn1-cms';
 import { setMilliseconds, subSeconds } from 'date-fns';
+import { Attribute as PkijsAttribute } from 'pkijs';
 
 import { generateMemberIdFixture } from '../testUtils/veraStubs/memberIdFixture.js';
 import { serialiseMessage } from '../testUtils/dns.js';
@@ -14,8 +17,8 @@ import { SERVICE_OID } from '../testUtils/veraStubs/service.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { arrayBufferFrom } from '../testUtils/buffers.js';
 import {
-  ORG_DOMAIN,
   ORG_KEY_PAIR,
+  ORG_NAME,
   VERA_RECORD,
   VERA_RECORD_TTL_OVERRIDE,
 } from '../testUtils/veraStubs/organisation.js';
@@ -35,9 +38,12 @@ import { sign, verify } from './signature.js';
 import CmsError from './utils/cms/CmsError.js';
 import { generateTxtRdata } from './dns/rdataSerialisation.js';
 import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
-import { type IDatePeriod } from './dates.js';
+import { DatePeriod, type IDatePeriod } from './dates.js';
+import { issueMemberCertificate } from './pki/member.js';
+import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
+import { derDeserialize } from './utils/asn1.js';
 
-const PLAINTEXT = Buffer.from('the plaintext');
+const PLAINTEXT = arrayBufferFrom('the plaintext');
 
 const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();
@@ -258,6 +264,118 @@ describe('verify', () => {
     ).rejects.toThrowWithMessage(VeraError, 'Signature bundle is malformed');
   });
 
+  test('Metadata attribute should be present in signature', async () => {
+    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
+    const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
+    const signedData = await SignedData.sign(
+      PLAINTEXT,
+      MEMBER_KEY_PAIR.privateKey,
+      memberCertificate,
+      [],
+      { encapsulatePlaintext: false },
+    );
+    signatureBundle.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
+    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+
+    await expect(async () =>
+      verify(
+        PLAINTEXT,
+        signatureBundleSerialised,
+        SERVICE_OID,
+        datePeriod,
+        dnssecChainFixture.trustAnchors,
+      ),
+    ).rejects.toThrowWithMessage(VeraError, 'Signature metadata is missing');
+  });
+
+  test('Metadata attribute should be well-formed', async () => {
+    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
+    const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
+    const attribute = new PkijsAttribute({
+      type: VERA_OIDS.SIGNATURE_METADATA_ATTR,
+      values: [new Null()],
+    });
+    const signedData = await SignedData.sign(
+      PLAINTEXT,
+      MEMBER_KEY_PAIR.privateKey,
+      memberCertificate,
+      [],
+      {
+        encapsulatePlaintext: false,
+        extraSignedAttrs: [attribute],
+      },
+    );
+    signatureBundle.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
+    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+
+    await expect(async () =>
+      verify(
+        PLAINTEXT,
+        signatureBundleSerialised,
+        SERVICE_OID,
+        datePeriod,
+        dnssecChainFixture.trustAnchors,
+      ),
+    ).rejects.toThrowWithMessage(VeraError, 'Signature metadata is malformed');
+  });
+
+  test('Metadata should contain valid validity period', async () => {
+    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
+    const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
+    const metadata = new SignatureMetadataSchema();
+    metadata.serviceOid = SERVICE_OID;
+    metadata.validityPeriod = new DatePeriodSchema();
+    metadata.validityPeriod.start = datePeriod.start;
+    metadata.validityPeriod.end = subSeconds(datePeriod.start, 1); // Invalid
+    const attribute = new PkijsAttribute({
+      type: VERA_OIDS.SIGNATURE_METADATA_ATTR,
+      values: [derDeserialize(AsnSerializer.serialize(metadata))],
+    });
+    const signedData = await SignedData.sign(
+      PLAINTEXT,
+      MEMBER_KEY_PAIR.privateKey,
+      memberCertificate,
+      [],
+      {
+        encapsulatePlaintext: false,
+        extraSignedAttrs: [attribute],
+      },
+    );
+    signatureBundle.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
+    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+
+    await expect(async () =>
+      verify(
+        PLAINTEXT,
+        signatureBundleSerialised,
+        SERVICE_OID,
+        datePeriod,
+        dnssecChainFixture.trustAnchors,
+      ),
+    ).rejects.toThrowWithMessage(VeraError, 'Signature validity period ends before it starts');
+  });
+
+  test('Signature should correspond to specified plaintext', async () => {
+    const differentPlaintext = bufferToArray(Buffer.from(PLAINTEXT, 1));
+
+    const error = await getPromiseRejection(
+      async () =>
+        verify(
+          differentPlaintext,
+          SIGNATURE_BUNDLE_SERIALISED,
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        ),
+      VeraError,
+    );
+
+    expectErrorToEqual(
+      error,
+      new VeraError('Signature is invalid', { cause: expect.any(CmsError) }),
+    );
+  });
+
   test('Member id bundle should be valid', async () => {
     const invalidMemberIdBundle = serialiseMemberIdBundle(
       memberCertificateSerialised,
@@ -291,50 +409,6 @@ describe('verify', () => {
     );
   });
 
-  test('Metadata attribute should be present in signature', async () => {
-    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
-    const signedData = AsnParser.parse(signatureBundle.signature.content, SignedDataSchema);
-    signedData.signerInfos[0].signedAttrs = signedData.signerInfos[0].signedAttrs!.filter(
-      (attribute) => attribute.attrType !== VERA_OIDS.SIGNATURE_METADATA_ATTR,
-    );
-    signatureBundle.signature = new ContentInfo({
-      contentType: signatureBundle.signature.contentType,
-      content: AsnSerializer.serialize(signedData),
-    });
-    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
-
-    await expect(async () =>
-      verify(
-        PLAINTEXT,
-        signatureBundleSerialised,
-        SERVICE_OID,
-        datePeriod,
-        dnssecChainFixture.trustAnchors,
-      ),
-    ).rejects.toThrowWithMessage(VeraError, 'Signature metadata is missing');
-  });
-
-  test('Signature should correspond to specified plaintext', async () => {
-    const differentPlaintext = bufferToArray(Buffer.from(PLAINTEXT, 1));
-
-    const error = await getPromiseRejection(
-      async () =>
-        verify(
-          differentPlaintext,
-          SIGNATURE_BUNDLE_SERIALISED,
-          SERVICE_OID,
-          datePeriod,
-          dnssecChainFixture.trustAnchors,
-        ),
-      VeraError,
-    );
-
-    expectErrorToEqual(
-      error,
-      new VeraError('Signature is invalid', { cause: expect.any(CmsError) }),
-    );
-  });
-
   describe('Service OID', () => {
     test('Service OID should match that of the signature metadata', async () => {
       const differentServiceOid = `${SERVICE_OID}.1`;
@@ -353,7 +427,8 @@ describe('verify', () => {
       );
     });
 
-    test('Service OID in signature should match that of TXT record', async () => {
+    test('Service OID in signature should match that of member id bundle', async () => {
+      const bundleVerifySpy = jest.spyOn(MemberIdBundle.prototype, 'verify');
       const differentServiceOid = `${SERVICE_OID}.1`;
       const record = VERA_RECORD.shallowCopy({
         data: await generateTxtRdata(
@@ -370,12 +445,17 @@ describe('verify', () => {
       );
       const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
       const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
-      signatureBundle.dnssecChain = responsesSerialised;
+      signatureBundle.dnssecChain = new DnssecChainSchema(responsesSerialised);
       const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
 
       await expect(async () =>
         verify(PLAINTEXT, signatureBundleSerialised, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(VeraError, /^Could not find Vera record for specified /u);
+      ).rejects.toThrowWithMessage(VeraError, 'Member id bundle is invalid');
+      expect(bundleVerifySpy).toHaveBeenCalledWith(
+        SERVICE_OID,
+        expect.anything(),
+        expect.anything(),
+      );
     });
   });
 
@@ -388,19 +468,24 @@ describe('verify', () => {
         PLAINTEXT,
         SIGNATURE_BUNDLE_SERIALISED,
         SERVICE_OID,
-        datePeriod,
+        undefined,
         dnssecChainFixture.trustAnchors,
       );
 
       const dateAfterVerification = new Date();
       expect(bundleVerifySpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.toSatisfy((date) => date <= dateAfterVerification && dateBeforeVerification <= date),
+        expect.toSatisfy<DatePeriod>(
+          (period) =>
+            period.start === period.end &&
+            period.start <= dateAfterVerification &&
+            dateBeforeVerification <= period.end,
+        ),
         expect.anything(),
       );
     });
 
-    test('Period specified as a single date should be supported', async () => {
+    test('Period as a single date should be supported', async () => {
       const bundleVerifySpy = jest.spyOn(MemberIdBundle.prototype, 'verify');
       const date = new Date();
 
@@ -412,7 +497,11 @@ describe('verify', () => {
         dnssecChainFixture.trustAnchors,
       );
 
-      expect(bundleVerifySpy).toHaveBeenCalledWith(expect.anything(), date, expect.anything());
+      expect(bundleVerifySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.toSatisfy<DatePeriod>((period) => period.start === date && period.end === date),
+        expect.anything(),
+      );
     });
 
     test('Period should have start date before end date', async () => {
@@ -433,15 +522,74 @@ describe('verify', () => {
       );
     });
 
-    // TODO: Period overlaps with member id bundle but not signature
-    test.todo('Period should overlap with signature');
+    test('Period should overlap with that of signature', async () => {
+      const signatureBundleSerialised = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        MEMBER_ID_BUNDLE,
+        MEMBER_KEY_PAIR.privateKey,
+        subSeconds(datePeriod.start, 1),
+        subSeconds(datePeriod.start, 2),
+      );
 
-    // TODO: Period overlaps with signature but not member id bundle
-    test.todo('Period should overlap with member id bundle');
+      await expect(async () =>
+        verify(
+          PLAINTEXT,
+          signatureBundleSerialised,
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        ),
+      ).rejects.toThrowWithMessage(
+        VeraError,
+        'Signature period does not overlap with required period',
+      );
+    });
+
+    test('Period should overlap with that of member certificate', async () => {
+      const bundleVerifySpy = jest.spyOn(MemberIdBundle.prototype, 'verify');
+      const verificationPeriod = DatePeriod.init(subSeconds(datePeriod.end, 1), datePeriod.end);
+      const otherMemberCertificate = await issueMemberCertificate(
+        MEMBER_NAME,
+        MEMBER_KEY_PAIR.publicKey,
+        orgCertificateSerialised,
+        ORG_KEY_PAIR.privateKey,
+        subSeconds(verificationPeriod.start, 1),
+        { startDate: datePeriod.start },
+      );
+      const memberIdBundle = serialiseMemberIdBundle(
+        otherMemberCertificate,
+        orgCertificateSerialised,
+        DNSSEC_CHAIN_SERIALISED,
+      );
+      const signatureBundleSerialised = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+        datePeriod.start,
+      );
+
+      await expect(async () =>
+        verify(
+          PLAINTEXT,
+          signatureBundleSerialised,
+          SERVICE_OID,
+          verificationPeriod,
+          dnssecChainFixture.trustAnchors,
+        ),
+      ).rejects.toThrowWithMessage(VeraError, 'Member id bundle is invalid');
+      expect(bundleVerifySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        datePeriod.intersect(verificationPeriod),
+        expect.anything(),
+      );
+    });
   });
 
   describe('Valid result', () => {
-    test('Organisation domain should be output', async () => {
+    test('Organisation name should be output', async () => {
       const { organisation } = await verify(
         PLAINTEXT,
         SIGNATURE_BUNDLE_SERIALISED,
@@ -450,7 +598,7 @@ describe('verify', () => {
         dnssecChainFixture.trustAnchors,
       );
 
-      expect(organisation).toStrictEqual(ORG_DOMAIN);
+      expect(organisation).toStrictEqual(ORG_NAME);
     });
 
     test('User name should be output if member is a user', async () => {
@@ -465,7 +613,38 @@ describe('verify', () => {
       expect(user).toStrictEqual(MEMBER_NAME);
     });
 
-    // TODO: test bot
-    test.todo('User name should not be output if member is a bot');
+    test('User name should not be output if member is a bot', async () => {
+      const botCertificate = await issueMemberCertificate(
+        undefined,
+        MEMBER_KEY_PAIR.publicKey,
+        orgCertificateSerialised,
+        ORG_KEY_PAIR.privateKey,
+        datePeriod.end,
+        { startDate: datePeriod.start },
+      );
+      const memberIdBundle = serialiseMemberIdBundle(
+        botCertificate,
+        orgCertificateSerialised,
+        DNSSEC_CHAIN_SERIALISED,
+      );
+      const signatureBundleSerialised = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+        datePeriod.start,
+      );
+
+      const { user } = await verify(
+        PLAINTEXT,
+        signatureBundleSerialised,
+        SERVICE_OID,
+        datePeriod,
+        dnssecChainFixture.trustAnchors,
+      );
+
+      expect(user).toBeUndefined();
+    });
   });
 });

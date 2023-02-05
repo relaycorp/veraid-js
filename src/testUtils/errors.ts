@@ -2,10 +2,10 @@ export function expectErrorToEqual<ErrorType extends Error>(
   error: ErrorType,
   expectedError: ErrorType,
 ) {
-  expect(typeof expectedError).toEqual(typeof error);
-  expect(expectedError.name).toEqual(error.name);
-  expect(expectedError.message).toEqual(error.message);
-  expect(expectedError.cause).toEqual(error.cause);
+  expect(typeof error).toEqual(typeof expectedError);
+  expect(error.name).toEqual(expectedError.name);
+  expect(error.message).toEqual(expectedError.message);
+  expect(error.cause).toEqual(expectedError.cause);
 }
 
 export function expectFunctionToThrowError(

@@ -8,7 +8,12 @@ import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import { bufferToArray } from '../utils/buffers.js';
 import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
-import { ORG_KEY_SPEC, ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
+import {
+  ORG_DOMAIN,
+  ORG_KEY_PAIR,
+  ORG_KEY_SPEC,
+  ORG_NAME,
+} from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 import VeraError from '../VeraError.js';
 import { DatePeriod } from '../dates.js';
@@ -17,6 +22,9 @@ import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
 import CertificateError from '../utils/x509/CertificateError.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
+import Certificate from '../utils/x509/Certificate.js';
+import { issueMemberCertificate } from '../pki/member.js';
+import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
 
@@ -25,20 +33,20 @@ const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixtur
 const dnssecChain = new DnssecChainSchema(
   dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
 );
-const organisationCertificate = AsnParser.parse(orgCertificateSerialised, CertificateSchema);
-const memberCertificate = AsnParser.parse(memberCertificateSerialised, CertificateSchema);
+const orgCertificateSchema = AsnParser.parse(orgCertificateSerialised, CertificateSchema);
+const memberCertificateSchema = AsnParser.parse(memberCertificateSerialised, CertificateSchema);
 
 describe('MemberIdBundle', () => {
   describe('serialise', () => {
     test('Bundle should be output', () => {
-      const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
 
       const bundleSerialised = bundle.serialise();
 
       const expectedSchema = new MemberIdBundleSchema();
       expectedSchema.dnssecChain = dnssecChain;
-      expectedSchema.organisationCertificate = organisationCertificate;
-      expectedSchema.memberCertificate = memberCertificate;
+      expectedSchema.organisationCertificate = orgCertificateSchema;
+      expectedSchema.memberCertificate = memberCertificateSchema;
       const expectedSerialisation = AsnSerializer.serialize(expectedSchema);
       expect(Buffer.from(bundleSerialised)).toStrictEqual(Buffer.from(expectedSerialisation));
     });
@@ -56,7 +64,7 @@ describe('MemberIdBundle', () => {
         const bundle = new MemberIdBundle(
           dnssecChain,
           AsnParser.parse(otherOrgCertSerialised, CertificateSchema),
-          memberCertificate,
+          memberCertificateSchema,
         );
 
         const error = await getPromiseRejection(
@@ -73,7 +81,11 @@ describe('MemberIdBundle', () => {
       });
 
       test('Certificates should overlap with specified period', async () => {
-        const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
         const pastPeriod = DatePeriod.init(
           subSeconds(datePeriod.start, 2),
           subSeconds(datePeriod.start, 1),
@@ -88,7 +100,11 @@ describe('MemberIdBundle', () => {
 
     describe('DNSSEC chain', () => {
       test('Service OID should be verified', async () => {
-        const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
         const chainVerificationSpy = jest.spyOn(VeraDnssecChain.prototype, 'verify');
 
         await bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
@@ -102,7 +118,11 @@ describe('MemberIdBundle', () => {
       });
 
       test('Key spec should match that set in TXT rdata', async () => {
-        const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
         const chainVerificationSpy = jest.spyOn(VeraDnssecChain.prototype, 'verify');
 
         await bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
@@ -116,7 +136,11 @@ describe('MemberIdBundle', () => {
       });
 
       test('Date period should be intersection of specified one and the certificates', async () => {
-        const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
         const chainVerificationSpy = jest.spyOn(VeraDnssecChain.prototype, 'verify');
         const narrowPeriod = DatePeriod.init(
           subSeconds(datePeriod.start, 1),
@@ -135,7 +159,11 @@ describe('MemberIdBundle', () => {
       });
 
       test('Verification errors should be propagated', async () => {
-        const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
 
         // Do not pass trusted anchors
         await expect(async () => bundle.verify(SERVICE_OID, datePeriod)).rejects.toThrowWithMessage(
@@ -145,12 +173,94 @@ describe('MemberIdBundle', () => {
       });
     });
 
-    test('Valid bundle should be reported as such', async () => {
-      const bundle = new MemberIdBundle(dnssecChain, organisationCertificate, memberCertificate);
+    describe('Valid result', () => {
+      test('Organisation name should be output', async () => {
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
 
-      await expect(
-        bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-      ).toResolve();
+        const { organisation } = await bundle.verify(
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        );
+
+        expect(organisation).toStrictEqual(ORG_NAME);
+      });
+
+      test('Trailing dot should be removed from domain if present', async () => {
+        const otherOrgCertificateSerialised = await selfIssueOrganisationCertificate(
+          ORG_DOMAIN,
+          ORG_KEY_PAIR,
+          datePeriod.end,
+          { startDate: datePeriod.start },
+        );
+        const otherMemberCertificateSerialised = await issueMemberCertificate(
+          MEMBER_NAME,
+          MEMBER_KEY_PAIR.publicKey,
+          otherOrgCertificateSerialised,
+          ORG_KEY_PAIR.privateKey,
+          datePeriod.end,
+          { startDate: datePeriod.start },
+        );
+        expect(Certificate.deserialize(otherOrgCertificateSerialised).commonName).toEndWith('.');
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          AsnParser.parse(otherOrgCertificateSerialised, CertificateSchema),
+          AsnParser.parse(otherMemberCertificateSerialised, CertificateSchema),
+        );
+
+        const { organisation } = await bundle.verify(
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        );
+
+        expect(organisation).toStrictEqual(ORG_NAME);
+        expect(organisation).not.toEndWith('.');
+      });
+
+      test('User name should be output if member is a user', async () => {
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
+
+        const { user } = await bundle.verify(
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        );
+
+        expect(user).toStrictEqual(MEMBER_NAME);
+      });
+
+      test('User name should not be output if member is a bot', async () => {
+        const botCertificateSerialised = await issueMemberCertificate(
+          undefined,
+          MEMBER_KEY_PAIR.publicKey,
+          orgCertificateSerialised,
+          ORG_KEY_PAIR.privateKey,
+          datePeriod.end,
+          { startDate: datePeriod.start },
+        );
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          AsnParser.parse(botCertificateSerialised, CertificateSchema),
+        );
+
+        const { user } = await bundle.verify(
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        );
+
+        expect(user).toBeUndefined();
+      });
     });
   });
 });

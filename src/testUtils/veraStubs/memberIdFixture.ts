@@ -18,35 +18,41 @@ interface MemberIdFixture {
   readonly datePeriod: DatePeriod;
 }
 
-export async function generateMemberIdFixture(): Promise<MemberIdFixture> {
-  const startDate = setMilliseconds(new Date(), 0);
-  const expiryDate = addMinutes(startDate, FIXTURE_TTL_MINUTES);
+export async function generateMemberIdFixture(
+  options: Partial<MemberIdFixture> = {},
+): Promise<MemberIdFixture> {
+  const now = setMilliseconds(new Date(), 0);
+  const datePeriod =
+    options.datePeriod ?? DatePeriod.init(now, addMinutes(now, FIXTURE_TTL_MINUTES));
 
-  const dnssecChainFixture = MOCK_CHAIN.generateFixture(VERA_RRSET, SecurityStatus.SECURE, {
-    start: startDate,
-    end: expiryDate,
-  });
+  const dnssecChainFixture =
+    options.dnssecChainFixture ??
+    MOCK_CHAIN.generateFixture(VERA_RRSET, SecurityStatus.SECURE, {
+      start: datePeriod.start,
+      end: datePeriod.end,
+    });
 
-  const orgCertificateSerialised = await selfIssueOrganisationCertificate(
-    ORG_NAME,
-    ORG_KEY_PAIR,
-    expiryDate,
-    { startDate },
-  );
+  const orgCertificateSerialised =
+    options.orgCertificateSerialised ??
+    (await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, datePeriod.end, {
+      startDate: datePeriod.start,
+    }));
 
-  const memberCertificateSerialised = await issueMemberCertificate(
-    MEMBER_NAME,
-    MEMBER_KEY_PAIR.publicKey,
-    orgCertificateSerialised,
-    ORG_KEY_PAIR.privateKey,
-    expiryDate,
-    { startDate },
-  );
+  const memberCertificateSerialised =
+    options.memberCertificateSerialised ??
+    (await issueMemberCertificate(
+      MEMBER_NAME,
+      MEMBER_KEY_PAIR.publicKey,
+      orgCertificateSerialised,
+      ORG_KEY_PAIR.privateKey,
+      datePeriod.end,
+      { startDate: datePeriod.start },
+    ));
 
   return {
     dnssecChainFixture,
     memberCertificateSerialised,
     orgCertificateSerialised,
-    datePeriod: DatePeriod.init(startDate, expiryDate),
+    datePeriod,
   };
 }
