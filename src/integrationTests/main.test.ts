@@ -33,14 +33,15 @@ const MEMBER_CERTIFICATE = await issueMemberCertificate(
 
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 
+const DNSSEC_CHAIN = await retrieveVeraDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
+const MEMBER_ID_BUNDLE = serialiseMemberIdBundle(MEMBER_CERTIFICATE, ORG_CERTIFICATE, DNSSEC_CHAIN);
+
 describe('main', () => {
   test('Valid signature bundle', async () => {
-    const chain = await retrieveVeraDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
-    const memberIdBundle = serialiseMemberIdBundle(MEMBER_CERTIFICATE, ORG_CERTIFICATE, chain);
     const signatureBundle = await sign(
       PLAINTEXT,
       VERA_OIDS.TEST_SERVICE,
-      memberIdBundle,
+      MEMBER_ID_BUNDLE,
       MEMBER_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
@@ -52,13 +53,11 @@ describe('main', () => {
   });
 
   test('Invalid signature', async () => {
-    const chain = await retrieveVeraDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
-    const memberIdBundle = serialiseMemberIdBundle(MEMBER_CERTIFICATE, ORG_CERTIFICATE, chain);
     const otherMemberKeyPair = await generateRsaKeyPair();
     const signatureBundle = await sign(
       PLAINTEXT,
       VERA_OIDS.TEST_SERVICE,
-      memberIdBundle,
+      MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
@@ -66,5 +65,21 @@ describe('main', () => {
     await expect(async () =>
       verify(PLAINTEXT, signatureBundle, VERA_OIDS.TEST_SERVICE),
     ).rejects.toThrow(VeraError);
+  });
+
+  test('Different service', async () => {
+    const otherMemberKeyPair = await generateRsaKeyPair();
+    const signatureBundle = await sign(
+      PLAINTEXT,
+      VERA_OIDS.TEST_SERVICE,
+      MEMBER_ID_BUNDLE,
+      otherMemberKeyPair.privateKey,
+      EXPIRY_DATE,
+    );
+    const differentService = `${VERA_OIDS.TEST_SERVICE}.42`;
+
+    await expect(async () => verify(PLAINTEXT, signatureBundle, differentService)).rejects.toThrow(
+      VeraError,
+    );
   });
 });
