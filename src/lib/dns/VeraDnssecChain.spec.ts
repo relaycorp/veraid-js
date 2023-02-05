@@ -24,7 +24,7 @@ import {
 } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 import { MOCK_CHAIN, VERA_RRSET } from '../../testUtils/veraStubs/dnssec.js';
-import { DatePeriod } from '../utils/DatePeriod.js';
+import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
 import { VeraDnssecChain } from './VeraDnssecChain.js';

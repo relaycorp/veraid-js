@@ -14,7 +14,7 @@ import { subSeconds } from 'date-fns';
 import { bufferToArray } from '../utils/buffers.js';
 import VeraError from '../VeraError.js';
 import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
-import { DatePeriod } from '../utils/DatePeriod.js';
+import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
 import { type OrganisationKeySpec } from './organisationKeys.js';

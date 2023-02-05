@@ -3,13 +3,18 @@ import { addMinutes, setMilliseconds } from 'date-fns';
 
 import { selfIssueOrganisationCertificate } from '../../lib/pki/organisation.js';
 import { issueMemberCertificate } from '../../lib/pki/member.js';
-import { DatePeriod } from '../../lib/utils/DatePeriod.js';
+import { DatePeriod } from '../../lib/dates.js';
 
 import { MOCK_CHAIN, VERA_RRSET } from './dnssec.js';
 import { ORG_KEY_PAIR, ORG_NAME } from './organisation.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from './member.js';
 
 const FIXTURE_TTL_MINUTES = 5;
+
+interface MemberIdFixtureOptions {
+  readonly orgCertificateSerialised: ArrayBuffer;
+  readonly datePeriod: DatePeriod;
+}
 
 interface MemberIdFixture {
   readonly dnssecChainFixture: MockChainFixture;
@@ -18,35 +23,37 @@ interface MemberIdFixture {
   readonly datePeriod: DatePeriod;
 }
 
-export async function generateMemberIdFixture(): Promise<MemberIdFixture> {
-  const startDate = setMilliseconds(new Date(), 0);
-  const expiryDate = addMinutes(startDate, FIXTURE_TTL_MINUTES);
+export async function generateMemberIdFixture(
+  options: Partial<MemberIdFixtureOptions> = {},
+): Promise<MemberIdFixture> {
+  const now = setMilliseconds(new Date(), 0);
+  const datePeriod =
+    options.datePeriod ?? DatePeriod.init(now, addMinutes(now, FIXTURE_TTL_MINUTES));
 
   const dnssecChainFixture = MOCK_CHAIN.generateFixture(VERA_RRSET, SecurityStatus.SECURE, {
-    start: startDate,
-    end: expiryDate,
+    start: datePeriod.start,
+    end: datePeriod.end,
   });
 
-  const orgCertificateSerialised = await selfIssueOrganisationCertificate(
-    ORG_NAME,
-    ORG_KEY_PAIR,
-    expiryDate,
-    { startDate },
-  );
+  const orgCertificateSerialised =
+    options.orgCertificateSerialised ??
+    (await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, datePeriod.end, {
+      startDate: datePeriod.start,
+    }));
 
   const memberCertificateSerialised = await issueMemberCertificate(
     MEMBER_NAME,
     MEMBER_KEY_PAIR.publicKey,
     orgCertificateSerialised,
     ORG_KEY_PAIR.privateKey,
-    expiryDate,
-    { startDate },
+    datePeriod.end,
+    { startDate: datePeriod.start },
   );
 
   return {
     dnssecChainFixture,
     memberCertificateSerialised,
     orgCertificateSerialised,
-    datePeriod: DatePeriod.init(startDate, expiryDate),
+    datePeriod,
   };
 }

@@ -144,6 +144,17 @@ export class SignedData {
     return new Set(certificates);
   }
 
+  public getSignedAttribute(type: string): any[] | null {
+    if (this.pkijsSignedData.signerInfos.length === 0) {
+      throw new CmsError('SignedData value does not have any signers');
+    }
+    const [{ signedAttrs: signedAttributes }] = this.pkijsSignedData.signerInfos;
+    const signedAttribute = signedAttributes?.attributes.find(
+      (attribute) => attribute.type === type,
+    );
+    return signedAttribute?.values ?? null;
+  }
+
   public serialize(): ArrayBuffer {
     const contentInfo = new ContentInfo({
       content: this.pkijsSignedData.toSchema(true),

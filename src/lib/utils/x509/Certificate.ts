@@ -14,7 +14,7 @@ import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../.
 import { derDeserialize } from '../asn1.js';
 import { generateRandom64BitValue } from '../crypto.js';
 import { getPublicKeyDigest } from '../keys/digest.js';
-import { DatePeriod } from '../DatePeriod.js';
+import { DatePeriod } from '../../dates.js';
 
 import CertificateError from './CertificateError.js';
 import type FullIssuanceOptions from './FullIssuanceOptions.js';
