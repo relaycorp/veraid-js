@@ -8,6 +8,7 @@ const VERA = `${RELAYCORP}.1`;
 
 export const VERA_OIDS = {
   SIGNATURE_METADATA_ATTR: `${VERA}.0`,
+  TEST_SERVICE: `${VERA}.1`,
 };
 
 export const CMS_OIDS = {
