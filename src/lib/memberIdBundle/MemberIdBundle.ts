@@ -10,6 +10,7 @@ import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
 import { getKeySpec } from '../dns/organisationKeys.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import { type VeraMember } from '../VeraMember.js';
+import { BOT_NAME } from '../pki/member.js';
 
 async function verifyCertificateChain(
   orgCertificate: Certificate,
@@ -72,7 +73,8 @@ export class MemberIdBundle {
     await dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
 
     const organisation = orgCertificate.commonName.replace(/\.$/u, '');
-    const user = memberCertificate.commonName === '@' ? undefined : memberCertificate.commonName;
+    const user =
+      memberCertificate.commonName === BOT_NAME ? undefined : memberCertificate.commonName;
     return { organisation, user };
   }
 }

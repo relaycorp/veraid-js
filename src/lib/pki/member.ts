@@ -2,7 +2,7 @@ import Certificate from '../utils/x509/Certificate.js';
 
 import { type CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';
 
-const BOT_NAME = '@';
+export const BOT_NAME = '@';
 
 export async function issueMemberCertificate(
   memberName: string | undefined,
