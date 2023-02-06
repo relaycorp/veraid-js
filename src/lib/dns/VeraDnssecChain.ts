@@ -51,17 +51,20 @@ function getTtlOverrideFromRelevantRdata(
   const veraRdataFields = veraRrset.records.map((record) =>
     parseTxtRdata(record.dataFields as string),
   );
-  const relevantRdata = veraRdataFields.find(
+  const relevantRdataSet = veraRdataFields.filter(
     (fields) =>
       fields.keyAlgorithm === keySpec.keyAlgorithm &&
       fields.keyId === keySpec.keyId &&
       (fields.serviceOid === undefined || fields.serviceOid === serviceOid),
   );
-  if (!relevantRdata) {
+  if (relevantRdataSet.length === 0) {
     throw new VeraError('Could not find Vera record for specified key and/or service');
   }
 
-  return relevantRdata.ttlOverride;
+  const concreteRdata = relevantRdataSet.find((fields) => fields.serviceOid === serviceOid);
+  const genericRdata = relevantRdataSet.find((fields) => fields.serviceOid === undefined);
+  const rdata = concreteRdata ?? genericRdata;
+  return rdata!.ttlOverride;
 }
 
 function getVerificationPeriod(

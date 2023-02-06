@@ -255,6 +255,26 @@ describe('VeraDnssecChain', () => {
         );
       });
 
+      test('Explicit service OID should take precedence over wildcard', async () => {
+        const genericRecord = VERA_RECORD.shallowCopy({
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE),
+        });
+        const concreteRecordTtl = 1;
+        const concreteRecord = VERA_RECORD.shallowCopy({
+          data: await generateTxtRdata(ORG_KEY_PAIR.publicKey, concreteRecordTtl, SERVICE_OID),
+        });
+        const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
+          RrSet.init(concreteRecord.makeQuestion(), [genericRecord, concreteRecord]),
+          SecurityStatus.SECURE,
+          DatePeriod.init(datePeriod.start, subSeconds(datePeriod.end, concreteRecordTtl + 1)),
+        );
+        const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+        const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+
+        // It should fail because the concrete record should've already expired.
+        await expect(chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod, trustAnchors)).toReject();
+      });
+
       test('TTL override should truncate validity period of chain', async () => {
         const ttlOverrideSeconds = 1;
         const record = VERA_RECORD.shallowCopy({
