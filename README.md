@@ -79,7 +79,7 @@ async function verifySignature(
 
 `verify()` will throw an error if the signature is invalid for whatever reason.
 
-`verifySignature()` will return the _Vera Member Id_, which looks like `user@example.com` if the signer is a user or simply `example.com` if the signer is a bot (acting on behalf of the organisation `example.com`).
+`verifySignature()` will return the id of the Vera member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 
 ## Node.js version support
 
