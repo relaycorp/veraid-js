@@ -1,13 +1,31 @@
-import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { getRsaPublicKeyFromPrivate } from '../lib/utils/keys/generation.js';
 import { derDeserializeRsaPrivateKey } from '../lib/utils/keys/serialisation.js';
 
-const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
-
-const ORG_PRIVATE_KEY_SERIALISED = await readFile(join(CURRENT_DIR, 'org-private-key.der'));
+const ORG_PRIVATE_KEY_SERIALISED = Buffer.from(
+  `MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDDnpY+5uDnj87qQz2Odd3Ji2uL
+8lQ3iHr0Nvc/DozD2/JFqYl5qfghIdMdQaj9kmurBBdSI6KttnThV7g2CLyLwFTA85rSCg7x+4Xw
+KBefNmTNarUUksA+C14JMZzvjKh9qLfNe2MB0zCNdfFSHHVwC6U18CK9Uw2EKu058hbzEPI4gdh4
+74zo3hLpPt8JWYb57+OfY7FTHKkWvbtfZUsVfhgTl668I/vruGNBZruYlh6UuV45EGSGjMvqTj30
+BCNEuG4JKXnksYx908Be/sPP9AKexrQkie88pgOXow2vGjzjP22LlP20+cF1K1eYzHc5P/z6hWzI
+7TwhPT/EqhQlAgMBAAECggEAeE7mdJUmKQQm66ijCSSwXK3kXNOSu/yyMdRER4G5TRPOcs2MAUlp
+k2bsIggp2JneofUIKrpD6LZYN+btIj5JR2HoPisUQq1w954Lh+IAdSjM4hEIgTioBwCSuvDKZgGJ
+9o53TGbgQ1URfU7WNfvOtjRTTVL86pdTrr9/2q1rM91YvzSZJkt23uTSnqrOaMgHPCP8e6IUDvam
+/nHAqfxBX8vM8OggIWmm7v78PjKAGjL4c56TmQEJeJ5z1qXxfrqcACD6L5OkvxVgYVH6tzlAAsGb
+Ghswtbbf8h2bLj1NDgPJ+TtzKBcglFJfwtUdS8B8L2qiNAo/GDERqLu0Zl4XGQKBgQD+FZJgpMiz
+SybP3Kw/ziUHzZznKf927YvhhYpLAeDLiSjeg9dA5NiTTRf7Phqh282CvFq0zWpHFNVeDn+ztpr2
+gy+m/hZp6HKP6qMKvu+zMU/c8kDyDGR3DlceXnU8/kYdQIz3L0kEziV5DvXEyNSlu7MXyKBg2UZJ
+0/hIVdYB4wKBgQDFGCrm/4crDTXjAZ0lUywp4qPZL2u5iF3kbwnOAx5SH1+SrheJ10iCnkI7fqMP
+6ejyLrrQJDEEcn3rqQ92lZfaYt3b6RUxyG4xl5VKSptvnIJyjaCbVQ8dWXMnWvCklANkDyUQk2MZ
+kGsnWf8NWdvL2dtJbbjfJ+lyXDmDm63QVwKBgQDW4GdqU/Fnr6ajI3yIeU3Xy4tl856YdUxW7RiH
+Vo9Fkjl99QGVX/PInuopD9x2Be1HIwOS5CV896F6aciVs1haIZerIjbSWkKIc2ZvMAqHAK0JrdY+
+3TwZc4c5p6h+bIvfMTgF03dtGOmX947hXPZ5MsPC2WjIfvdyeFEA25ahAQKBgELcJ/GkzV21ZYpU
+idKXnGu5DowmogyWTgOoB1Nzi12gdvNzS1jfRyHIPf+gvgAwAW3mnEjvfhFcJYtEFpLLvG/BCjIH
+p8DzlS4Nlf9Vv9Tk6vuhP9Jx0GbMaVv4ZZnu/Bd9a71rwjpx22fGB9ennABTLyiBqC1LhM3eq0QS
+E6yRAoGBAJHBmAM6oUF1AoSMOHyCmvOZQVbD8gB4oMJM30QIt4KznwK+9QDRoP5ljRvUkpjvpfke
+TGZT0wqk920enf6gJQdX63+lhK87FMtJLskRlyO9TsE12VKC1P5HR+AezSOnvyhw99F7GVx/w1NH
+8c/4p8ICuv7ujuunhKrvUR51vJbY`.replaceAll('\n', ''),
+  'base64',
+);
 const ORG_PRIVATE_KEY = await derDeserializeRsaPrivateKey(ORG_PRIVATE_KEY_SERIALISED);
 export const TEST_ORG_KEY_PAIR: CryptoKeyPair = {
   privateKey: ORG_PRIVATE_KEY,
