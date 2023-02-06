@@ -41,7 +41,7 @@ async function produceSignature(
 }
 ```
 
-The output of the `sign` function is the _Vera Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
+The output of the `sign()` function is the _Vera Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
 
 Note that for signatures to actually be valid for up to 30 days, the TTL override in the Vera TXT record should allow 30 days or more.
 
