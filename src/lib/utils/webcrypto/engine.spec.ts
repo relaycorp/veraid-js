@@ -1,4 +1,4 @@
-import { type SubtleCrypto } from 'webcrypto-core';
+import type { SubtleCrypto } from 'webcrypto-core';
 
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';

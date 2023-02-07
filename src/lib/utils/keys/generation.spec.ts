@@ -1,5 +1,5 @@
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
-import { type HashingAlgorithm, type RsaModulus } from '../algorithms.js';
+import type { HashingAlgorithm, RsaModulus } from '../algorithms.js';
 
 import {
   generateRsaKeyPair,

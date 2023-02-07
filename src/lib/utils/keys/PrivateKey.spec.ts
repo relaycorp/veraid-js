@@ -1,4 +1,4 @@
-import { type KeyAlgorithm as WebCryptoKeyAlgorithm, type ProviderCrypto } from 'webcrypto-core';
+import type { KeyAlgorithm as WebCryptoKeyAlgorithm, ProviderCrypto } from 'webcrypto-core';
 
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 

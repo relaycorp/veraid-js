@@ -17,7 +17,7 @@ import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
 import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
-import { type OrganisationKeySpec } from './organisationKeys.js';
+import type { OrganisationKeySpec } from './organisationKeys.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
 
 function makeQuestion(domainName: string) {

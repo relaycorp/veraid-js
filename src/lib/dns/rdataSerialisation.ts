@@ -2,7 +2,7 @@ import { secondsInDay } from 'date-fns';
 
 import VeraError from '../VeraError.js';
 
-import { type VeraRdataFields } from './VeraRdataFields.js';
+import type { VeraRdataFields } from './VeraRdataFields.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 import { getKeySpec } from './organisationKeys.js';
 
@@ -41,7 +41,7 @@ function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
 
 function getAlgorithmId(algorithmString: string): KeyAlgorithmType {
   const id = ALGORITHM_ID_BY_STRING[algorithmString] as KeyAlgorithmType | undefined;
-  if (!id) {
+  if (id === undefined) {
     throw new VeraError(`Unknown algorithm id ("${algorithmString}")`);
   }
   return id;

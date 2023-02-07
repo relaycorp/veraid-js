@@ -1,6 +1,6 @@
-import { type KeyUsages, type ProviderCrypto } from 'webcrypto-core';
+import type { KeyUsages, ProviderCrypto } from 'webcrypto-core';
 
-import { type HashingAlgorithm } from '../algorithms.js';
+import type { HashingAlgorithm } from '../algorithms.js';
 
 import { PrivateKey } from './PrivateKey.js';
 

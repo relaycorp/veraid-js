@@ -1,5 +1,5 @@
 import { Crypto as BaseCrypto } from '@peculiar/webcrypto';
-import { type ProviderCrypto, type SubtleCrypto } from 'webcrypto-core';
+import type { ProviderCrypto, SubtleCrypto } from 'webcrypto-core';
 
 export class VeraCrypto extends BaseCrypto {
   public constructor(additionalProviders: readonly ProviderCrypto[] = []) {

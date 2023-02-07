@@ -1,5 +1,5 @@
 import { CryptoEngine } from 'pkijs';
-import { type ProviderCrypto } from 'webcrypto-core';
+import type { ProviderCrypto } from 'webcrypto-core';
 
 import { PrivateKey } from '../keys/PrivateKey.js';
 

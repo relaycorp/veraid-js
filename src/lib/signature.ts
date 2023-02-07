@@ -1,8 +1,8 @@
-import { type TrustAnchor } from '@relaycorp/dnssec';
+import type { TrustAnchor } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { ContentInfo } from '@peculiar/asn1-cms';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
-import { type BaseBlock, type Sequence } from 'asn1js';
+import type { BaseBlock, Sequence } from 'asn1js';
 import { Attribute } from 'pkijs';
 
 import { MemberIdBundleSchema } from './schemas/MemberIdBundleSchema.js';
@@ -15,7 +15,7 @@ import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
 import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
 import { derDeserialize } from './utils/asn1.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
-import { type VeraMember } from './VeraMember.js';
+import type { VeraMember } from './VeraMember.js';
 import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
