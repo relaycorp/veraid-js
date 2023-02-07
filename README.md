@@ -47,7 +47,7 @@ Note that for signatures to actually be valid for up to 30 days, the TTL overrid
 
 ### Signature verification
 
-To verify a Vera signature, you simply need the Signature Bundle and the plaintext to be verified. For extra security, this library also requires you to confirm the service where you intend to use the signature.
+To verify a Vera signature, you simply need the Signature Bundle and the plaintext to be verified. For extra security, this library also requires you to confirm the service where you intend to use the plaintext.
 
 If Vera's maximum TTL of 90 days or the TTL specified by the signature producer may be too large for your application, you may also want to restrict the validity period of signatures.
 
