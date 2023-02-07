@@ -27,14 +27,14 @@ const SERVICE_OID = '1.2.3.4.5';
 
 async function produceSignature(
   plaintext: ArrayBuffer,
-  memberIdBundleSerialised: ArrayBuffer,
+  memberIdBundle: ArrayBuffer,
   memberSigningKey: CryptoKey,
 ): Promise<ArrayBuffer> {
   const expiryDate = addDays(new Date(), TTL_DAYS);
   return await sign(
     plaintext,
     SERVICE_OID,
-    memberIdBundleSerialised,
+    memberIdBundle,
     memberSigningKey,
     expiryDate,
   );
@@ -62,13 +62,13 @@ const SERVICE_OID = '1.2.3.4.5';
 
 async function verifySignature(
   plaintext: ArrayBuffer,
-  signatureBundleSerialised: ArrayBuffer,
+  signatureBundle: ArrayBuffer,
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
   const { organisation, user } = await verify(
     plaintext,
-    signatureBundleSerialised,
+    signatureBundle,
     SERVICE_OID,
     datePeriod,
   );
