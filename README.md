@@ -63,7 +63,6 @@ const SERVICE_OID = '1.2.3.4.5';
 async function verifySignature(
   plaintext: ArrayBuffer,
   signatureBundleSerialised: ArrayBuffer,
-  trustAnchors?: readonly TrustAnchor[],
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
