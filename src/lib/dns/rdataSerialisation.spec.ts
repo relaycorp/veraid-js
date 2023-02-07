@@ -10,7 +10,7 @@ import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 
 import { generateTxtRdata, parseTxtRdata } from './rdataSerialisation.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
-import { type VeraRdataFields } from './VeraRdataFields.js';
+import type { VeraRdataFields } from './VeraRdataFields.js';
 
 describe('generateTxtRdata', () => {
   function splitAndGetField(rdata: string, index: number): string | undefined {

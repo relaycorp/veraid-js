@@ -1,7 +1,7 @@
 import { getAlgorithmParameters } from 'pkijs';
 
 import { bufferToArray } from '../buffers.js';
-import { type HashingAlgorithm, type RsaModulus } from '../algorithms.js';
+import type { HashingAlgorithm, RsaModulus } from '../algorithms.js';
 import { getPkijsCrypto } from '../pkijs.js';
 
 import { derSerializePublicKey } from './serialisation.js';

@@ -1,15 +1,15 @@
-import { type TrustAnchor } from '@relaycorp/dnssec';
-import { type Certificate as CertificateSchema } from '@peculiar/asn1-x509';
+import type { TrustAnchor } from '@relaycorp/dnssec';
+import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnSerializer } from '@peculiar/asn1-schema';
 
-import { type DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import { type DatePeriod } from '../dates.js';
+import type { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
+import type { DatePeriod } from '../dates.js';
 import Certificate from '../utils/x509/Certificate.js';
 import VeraError from '../VeraError.js';
 import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
 import { getKeySpec } from '../dns/organisationKeys.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
-import { type VeraMember } from '../VeraMember.js';
+import type { VeraMember } from '../VeraMember.js';
 import { BOT_NAME } from '../pki/member.js';
 
 async function verifyCertificateChain(

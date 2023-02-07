@@ -1,4 +1,4 @@
-import { type BaseBlock, type IBerConvertible } from 'asn1js';
+import type { BaseBlock, IBerConvertible } from 'asn1js';
 import { ContentInfo, type PkiObject } from 'pkijs';
 
 import { asn1Serialise } from './asn1.js';

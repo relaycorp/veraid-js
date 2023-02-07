@@ -1,4 +1,4 @@
-import { type Question } from '@relaycorp/dnssec';
+import type { Question } from '@relaycorp/dnssec';
 
 import { dnssecOnlineResolve } from '../lib/utils/dnssec.js';
 

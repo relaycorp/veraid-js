@@ -1,4 +1,4 @@
-import { type Resolver, type TrustAnchor } from '@relaycorp/dnssec';
+import type { Resolver, TrustAnchor } from '@relaycorp/dnssec';
 
 import { dnssecOnlineResolve } from '../utils/dnssec.js';
 

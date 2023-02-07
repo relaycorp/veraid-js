@@ -18,7 +18,7 @@ import { CMS_OIDS } from '../../oids.js';
 
 import { deserializeContentInfo } from './utils.js';
 import CmsError from './CmsError.js';
-import { type SignatureOptions } from './SignatureOptions.js';
+import type { SignatureOptions } from './SignatureOptions.js';
 
 const pkijsCrypto = getPkijsCrypto();
 

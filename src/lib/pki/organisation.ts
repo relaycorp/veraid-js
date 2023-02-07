@@ -1,6 +1,6 @@
 import Certificate from '../utils/x509/Certificate.js';
 
-import { type CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';
+import type { CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';
 
 export async function selfIssueOrganisationCertificate(
   name: string,

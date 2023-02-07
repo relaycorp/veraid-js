@@ -1,4 +1,4 @@
-import { type HashingAlgorithm } from '../algorithms.js';
+import type { HashingAlgorithm } from '../algorithms.js';
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 
 import { RsaPssPrivateKey } from './RsaPssPrivateKey.js';

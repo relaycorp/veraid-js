@@ -1,6 +1,6 @@
 import { getAlgorithmParameters } from 'pkijs';
 
-import { type RsaModulus } from '../utils/algorithms.js';
+import type { RsaModulus } from '../utils/algorithms.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';

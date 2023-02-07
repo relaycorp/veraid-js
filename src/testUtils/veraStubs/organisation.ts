@@ -2,7 +2,7 @@ import { secondsInDay } from 'date-fns';
 import { DnsClass, DnsRecord } from '@relaycorp/dnssec';
 
 import { derSerializePublicKey } from '../../lib/utils/keys/serialisation.js';
-import { type OrganisationKeySpec } from '../../lib/dns/organisationKeys.js';
+import type { OrganisationKeySpec } from '../../lib/dns/organisationKeys.js';
 import { KeyAlgorithmType } from '../../lib/dns/KeyAlgorithmType.js';
 import { calculateDigest } from '../crypto.js';
 import { generateTxtRdata } from '../../lib/dns/rdataSerialisation.js';
