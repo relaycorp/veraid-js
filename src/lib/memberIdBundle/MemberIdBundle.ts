@@ -45,6 +45,7 @@ export class MemberIdBundle {
 
   public serialise(): ArrayBuffer {
     const bundle = new MemberIdBundleSchema();
+    bundle.version = 0;
     bundle.memberCertificate = this.memberCertificateSchema;
     bundle.organisationCertificate = this.orgCertificateSchema;
     bundle.dnssecChain = this.veraChainSchema;

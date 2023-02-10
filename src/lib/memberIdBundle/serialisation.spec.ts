@@ -57,6 +57,7 @@ describe('serialiseMemberIdBundle', () => {
     );
 
     const bundle = AsnParser.parse(bundleSerialised, MemberIdBundleSchema);
+    expect(bundle.version).toBe(0);
     expect(Buffer.from(AsnSerializer.serialize(bundle.dnssecChain))).toStrictEqual(
       Buffer.from(dnssecChainSerialised),
     );
