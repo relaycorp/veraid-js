@@ -131,6 +131,7 @@ export async function sign(
   );
 
   const signatureSchema = new SignatureBundleSchema();
+  signatureSchema.version = 0;
   signatureSchema.dnssecChain = memberIdBundleSchema.dnssecChain;
   signatureSchema.organisationCertificate = memberIdBundleSchema.organisationCertificate;
   signatureSchema.signature = signedDataSchema;

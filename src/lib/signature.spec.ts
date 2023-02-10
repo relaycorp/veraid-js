@@ -75,6 +75,19 @@ describe('sign', () => {
     ).rejects.toThrowWithMessage(VeraError, 'Member id bundle is malformed');
   });
 
+  test('Version should be 0', async () => {
+    const signatureSerialised = await sign(
+      PLAINTEXT,
+      SERVICE_OID,
+      MEMBER_ID_BUNDLE,
+      MEMBER_KEY_PAIR.privateKey,
+      datePeriod.end,
+    );
+
+    const { version } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
+    expect(version).toBe(0);
+  });
+
   test('DNSSEC chain should be attached', async () => {
     const signatureSerialised = await sign(
       PLAINTEXT,

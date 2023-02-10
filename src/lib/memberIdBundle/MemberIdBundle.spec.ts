@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
+import { AsnParser } from '@peculiar/asn1-schema';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { subSeconds } from 'date-fns';
 
@@ -38,17 +38,42 @@ const memberCertificateSchema = AsnParser.parse(memberCertificateSerialised, Cer
 
 describe('MemberIdBundle', () => {
   describe('serialise', () => {
-    test('Bundle should be output', () => {
+    test('Version should be 0', () => {
       const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
 
-      const bundleSerialised = bundle.serialise();
+      const serialisation = bundle.serialise();
 
-      const expectedSchema = new MemberIdBundleSchema();
-      expectedSchema.dnssecChain = dnssecChain;
-      expectedSchema.organisationCertificate = orgCertificateSchema;
-      expectedSchema.memberCertificate = memberCertificateSchema;
-      const expectedSerialisation = AsnSerializer.serialize(expectedSchema);
-      expect(Buffer.from(bundleSerialised)).toStrictEqual(Buffer.from(expectedSerialisation));
+      const bundleDeserialised = AsnParser.parse(serialisation, MemberIdBundleSchema);
+      expect(bundleDeserialised.version).toBe(0);
+    });
+
+    test('DNSSEC chain should be included', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
+
+      const serialisation = bundle.serialise();
+
+      const bundleDeserialised = AsnParser.parse(serialisation, MemberIdBundleSchema);
+      expect(bundleDeserialised.dnssecChain.map((message) => Buffer.from(message))).toStrictEqual(
+        dnssecChain.map((message) => Buffer.from(message)),
+      );
+    });
+
+    test('Organisation certificate should be included', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
+
+      const serialisation = bundle.serialise();
+
+      const bundleDeserialised = AsnParser.parse(serialisation, MemberIdBundleSchema);
+      expect(bundleDeserialised.organisationCertificate).toStrictEqual(orgCertificateSchema);
+    });
+
+    test('Member certificate should be included', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
+
+      const serialisation = bundle.serialise();
+
+      const bundleDeserialised = AsnParser.parse(serialisation, MemberIdBundleSchema);
+      expect(bundleDeserialised.memberCertificate).toStrictEqual(memberCertificateSchema);
     });
   });
 
