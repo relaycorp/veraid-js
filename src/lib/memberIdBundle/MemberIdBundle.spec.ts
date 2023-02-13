@@ -123,6 +123,77 @@ describe('MemberIdBundle', () => {
       });
     });
 
+    describe('User name validation', () => {
+      const errorMessage =
+        'User name should not contain at signs or whitespace other than simple spaces';
+      const orgCertificate = Certificate.deserialize(orgCertificateSerialised);
+
+      async function issueInvalidMemberCertificate(userName: string): Promise<CertificateSchema> {
+        const certificate = await Certificate.issue({
+          commonName: userName,
+          subjectPublicKey: MEMBER_KEY_PAIR.publicKey,
+          issuerCertificate: orgCertificate,
+          issuerPrivateKey: ORG_KEY_PAIR.privateKey,
+          validityEndDate: datePeriod.end,
+          validityStartDate: datePeriod.start,
+        });
+        const serialisation = certificate.serialize();
+        return AsnParser.parse(serialisation, CertificateSchema);
+      }
+
+      test('should not contain at signs', async () => {
+        const invalidMemberCertificate = await issueInvalidMemberCertificate(`${MEMBER_NAME}@`);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          invalidMemberCertificate,
+        );
+
+        await expect(async () =>
+          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+      });
+
+      test('should not contain tabs', async () => {
+        const invalidMemberCertificate = await issueInvalidMemberCertificate(`\t${MEMBER_NAME}`);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          invalidMemberCertificate,
+        );
+
+        await expect(async () =>
+          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+      });
+
+      test('should not contain carriage returns', async () => {
+        const invalidMemberCertificate = await issueInvalidMemberCertificate(`\r${MEMBER_NAME}`);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          invalidMemberCertificate,
+        );
+
+        await expect(async () =>
+          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+      });
+
+      test('should not contain line feeds', async () => {
+        const invalidMemberCertificate = await issueInvalidMemberCertificate(`\n${MEMBER_NAME}`);
+        const bundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          invalidMemberCertificate,
+        );
+
+        await expect(async () =>
+          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
+        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+      });
+    });
+
     describe('DNSSEC chain', () => {
       test('Service OID should be verified', async () => {
         const bundle = new MemberIdBundle(

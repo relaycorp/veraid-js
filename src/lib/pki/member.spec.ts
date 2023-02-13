@@ -6,6 +6,7 @@ import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
 import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
+import VeraError from '../VeraError.js';
 
 import { issueMemberCertificate } from './member.js';
 
@@ -16,6 +17,59 @@ const EXPIRY_DATE = addMinutes(NOW, 5);
 const { orgCertificateSerialised } = await generateMemberIdFixture();
 
 describe('issueMemberCertificate', () => {
+  describe('User name validation', () => {
+    const errorMessage =
+      'User name should not contain at signs or whitespace other than simple spaces';
+
+    test('should not contain at signs', async () => {
+      await expect(async () =>
+        issueMemberCertificate(
+          '@',
+          MEMBER_KEY_PAIR.publicKey,
+          orgCertificateSerialised,
+          ORG_KEY_PAIR.privateKey,
+          EXPIRY_DATE,
+        ),
+      ).rejects.toThrowWithMessage(VeraError, errorMessage);
+    });
+
+    test('should not contain tabs', async () => {
+      await expect(async () =>
+        issueMemberCertificate(
+          `\t${MEMBER_NAME}`,
+          MEMBER_KEY_PAIR.publicKey,
+          orgCertificateSerialised,
+          ORG_KEY_PAIR.privateKey,
+          EXPIRY_DATE,
+        ),
+      ).rejects.toThrowWithMessage(VeraError, errorMessage);
+    });
+
+    test('should not contain carriage returns', async () => {
+      await expect(async () =>
+        issueMemberCertificate(
+          `\r${MEMBER_NAME}`,
+          MEMBER_KEY_PAIR.publicKey,
+          orgCertificateSerialised,
+          ORG_KEY_PAIR.privateKey,
+          EXPIRY_DATE,
+        ),
+      ).rejects.toThrowWithMessage(VeraError, errorMessage);
+    });
+
+    test('should not contain line feeds', async () => {
+      await expect(async () =>
+        issueMemberCertificate(
+          `\n${MEMBER_NAME}`,
+          MEMBER_KEY_PAIR.publicKey,
+          orgCertificateSerialised,
+          ORG_KEY_PAIR.privateKey,
+          EXPIRY_DATE,
+        ),
+      ).rejects.toThrowWithMessage(VeraError, errorMessage);
+    });
+  });
+
   describe('Common Name', () => {
     test('should be the at sign if member is a bot', async () => {
       const serialisation = await issueMemberCertificate(
