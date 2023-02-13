@@ -142,7 +142,7 @@ describe('MemberIdBundle', () => {
       }
 
       test('should not contain at signs', async () => {
-        const invalidMemberCertificate = await issueInvalidMemberCertificate(`${MEMBER_NAME}@`);
+        const invalidMemberCertificate = await issueInvalidMemberCertificate(`@${MEMBER_NAME}`);
         const bundle = new MemberIdBundle(
           dnssecChain,
           orgCertificateSchema,
