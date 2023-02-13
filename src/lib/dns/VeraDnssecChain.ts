@@ -42,12 +42,18 @@ function getTtlOverrideFromRelevantRdata(
   keySpec: OrganisationKeySpec,
   serviceOid: string,
 ): number {
-  const veraTxtResponse = responses.find((response) => response.answersQuestion(veraQuestion));
-  if (!veraTxtResponse) {
+  const veraTxtResponses = responses.filter((response) => response.answersQuestion(veraQuestion));
+  if (veraTxtResponses.length === 0) {
     throw new VeraError('Chain is missing Vera TXT response');
   }
+  if (1 < veraTxtResponses.length) {
+    // If DNSSEC verification were to succeed, we wouldn't know which message was used, so we have
+    // to require exactly one response for the Vera TXT RRset. Without this check, we could be
+    // reading the TTL override from a bogus response.
+    throw new VeraError('Chain contains multiple Vera TXT responses');
+  }
 
-  const veraRrset = RrSet.init(veraQuestion, veraTxtResponse.answers);
+  const veraRrset = RrSet.init(veraQuestion, veraTxtResponses[0].answers);
   const veraRdataFields = veraRrset.records.map((record) =>
     parseTxtRdata(record.dataFields as string),
   );

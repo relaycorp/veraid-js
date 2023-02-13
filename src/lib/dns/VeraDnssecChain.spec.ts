@@ -160,6 +160,25 @@ describe('VeraDnssecChain', () => {
       ).rejects.toThrowWithMessage(VeraError, 'Chain is missing Vera TXT response');
     });
 
+    test('Chain with multiple Vera TXT responses should be refused', async () => {
+      const { responses } = MOCK_CHAIN.generateFixture(
+        VERA_RRSET,
+        SecurityStatus.SECURE,
+        datePeriod,
+      );
+      const veraTxtResponse = responses.find((response) =>
+        response.answersQuestion(VERA_RECORD.makeQuestion()),
+      )!;
+      const responsesSerialised = [...responses, veraTxtResponse]
+        .map(serialiseMessage)
+        .map(arrayBufferFrom);
+      const chain = new VeraDnssecChain(ORG_DOMAIN, responsesSerialised);
+
+      await expect(async () =>
+        chain.verify(ORG_KEY_SPEC, SERVICE_OID, datePeriod),
+      ).rejects.toThrowWithMessage(VeraError, 'Chain contains multiple Vera TXT responses');
+    });
+
     describe('Rdata', () => {
       test('Algorithm id should match that of specified key spec', async () => {
         const { responses, trustAnchors } = MOCK_CHAIN.generateFixture(
