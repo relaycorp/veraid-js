@@ -1,6 +1,17 @@
 import Certificate from '../utils/x509/Certificate.js';
+import VeraError from '../VeraError.js';
 
 import type { CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';
+
+const FORBIDDEN_USER_NAME_CHARS_REGEX = /[@\t\r\n]/u;
+
+export function validateUserName(memberName: string) {
+  if (FORBIDDEN_USER_NAME_CHARS_REGEX.test(memberName)) {
+    throw new VeraError(
+      'User name should not contain at signs or whitespace other than simple spaces',
+    );
+  }
+}
 
 export const BOT_NAME = '@';
 
@@ -12,6 +23,10 @@ export async function issueMemberCertificate(
   expiryDate: Date,
   options: Partial<CertificateIssuanceOptions> = {},
 ): Promise<ArrayBuffer> {
+  if (memberName !== undefined) {
+    validateUserName(memberName);
+  }
+
   const issuerCertificate = Certificate.deserialize(organisationCertificate);
   const certificate = await Certificate.issue({
     commonName: memberName ?? BOT_NAME,
