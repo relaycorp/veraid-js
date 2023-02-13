@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/@relaycorp%2Fveraid.svg)](https://www.npmjs.com/package/@relaycorp/veraid)
 
-This is the Node.js implementation of [Vera](https://vera.domains), an offline authentication protocol powered by DNSSEC. It implements all the building blocks that signature producers and consumers need.
+This is the Node.js implementation of [Vera](https://vera.domains), an offline authentication protocol powered by DNSSEC. This library implements all the building blocks that signature producers and consumers need.
 
 The latest version can be installed from NPM:
 
