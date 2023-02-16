@@ -10,8 +10,8 @@
   "type": "module",
   "typings": "build/lib/index.d.ts",
   "main": "build/lib/index.js",
-  "repository": "https://github.com/relaycorp/vera-js",
-  "homepage": "https://docs.relaycorp.tech/vera-js/",
+  "repository": "https://github.com/relaycorp/veraid-js",
+  "homepage": "https://docs.relaycorp.tech/veraid-js/",
   "license": "MIT",
   "keywords": [
     "VeraId",
