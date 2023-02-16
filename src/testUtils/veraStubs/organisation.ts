@@ -13,7 +13,7 @@ const VERA_RECORD_TTL_OVERRIDE_DAYS = 30;
 
 export const ORG_NAME = 'example.com';
 export const ORG_DOMAIN = `${ORG_NAME}.`;
-export const ORG_VERA_DOMAIN = `_vera.${ORG_DOMAIN}`;
+export const ORG_VERA_DOMAIN = `_veraid.${ORG_DOMAIN}`;
 export const ORG_KEY_PAIR = await generateRsaKeyPair();
 export const VERA_RECORD_TTL_OVERRIDE = VERA_RECORD_TTL_OVERRIDE_DAYS * secondsInDay;
 export const VERA_RECORD = new DnsRecord(

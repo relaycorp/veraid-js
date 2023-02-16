@@ -12,7 +12,7 @@ import { retrieveVeraDnssecChain } from './dnssecChainRetrieval.js';
 import { VeraDnssecChain } from './VeraDnssecChain.js';
 
 describe('retrieveVeraDnssecChain', () => {
-  test('TXT subdomain _vera of specified domain should be queried', async () => {
+  test('TXT subdomain _veraid of specified domain should be queried', async () => {
     const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(
       VERA_RRSET,
       SecurityStatus.SECURE,
