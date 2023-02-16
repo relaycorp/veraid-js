@@ -21,7 +21,7 @@ import type { OrganisationKeySpec } from './organisationKeys.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
 
 function makeQuestion(domainName: string) {
-  return new Question(`_vera.${domainName}`, 'TXT');
+  return new Question(`_veraid.${domainName}`, 'TXT');
 }
 
 function deserialiseResponses(responsesSerialised: readonly ArrayBuffer[]) {

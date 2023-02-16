@@ -32,4 +32,4 @@ export const TEST_ORG_KEY_PAIR: CryptoKeyPair = {
   publicKey: await getRsaPublicKeyFromPrivate(ORG_PRIVATE_KEY),
 };
 
-export const TEST_ORG_NAME = 'lib-testing.vera.domains';
+export const TEST_ORG_NAME = 'lib-testing.veraid.net';

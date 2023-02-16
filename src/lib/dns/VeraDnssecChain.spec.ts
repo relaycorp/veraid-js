@@ -43,7 +43,7 @@ describe('VeraDnssecChain', () => {
       return trustAnchors;
     }
 
-    test('TXT subdomain _vera of specified domain should be queried', async () => {
+    test('TXT subdomain _veraid of specified domain should be queried', async () => {
       const trustAnchors = generateFixture(SecurityStatus.SECURE);
 
       await VeraDnssecChain.retrieve(ORG_DOMAIN, mockResolver, trustAnchors);
