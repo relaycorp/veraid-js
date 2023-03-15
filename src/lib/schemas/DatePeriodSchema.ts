@@ -2,9 +2,9 @@
 import { AsnProp, AsnPropTypes } from '@peculiar/asn1-schema';
 
 export class DatePeriodSchema {
-  @AsnProp({ type: AsnPropTypes.UTCTime })
+  @AsnProp({ type: AsnPropTypes.GeneralizedTime })
   public start!: Date;
 
-  @AsnProp({ type: AsnPropTypes.UTCTime })
+  @AsnProp({ type: AsnPropTypes.GeneralizedTime })
   public end!: Date;
 }
