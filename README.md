@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/@relaycorp%2Fveraid.svg)](https://www.npmjs.com/package/@relaycorp/veraid)
 
-This is the Node.js implementation of [Vera](https://veraid.net), an offline authentication protocol powered by DNSSEC. This library implements all the building blocks that signature producers and consumers need.
+This is the Node.js implementation of [VeraId](https://veraid.net), an offline authentication protocol powered by DNSSEC. This library implements all the building blocks that signature producers and consumers need.
 
 The latest version can be installed from NPM:
 
@@ -14,7 +14,7 @@ npm install @relaycorp/veraid
 
 ### Signature production
 
-To produce a signature for a given plaintext, you need a _Vera Member Id Bundle_ (produced by a Vera CA Server; not yet implemented as of this writing) and the Vera Member's private key.
+To produce a signature for a given plaintext, you need a _Member Id Bundle_ (produced by a VeraId organisation; e.g., via [VeraId Authority](https://github.com/relaycorp/veraid-authority)) and the Member's private key.
 
 For example, if you wanted to produce signatures valid for up to 30 days for a service identified by the [OID](https://en.wikipedia.org/wiki/Object_identifier) `1.2.3.4.5`, you could implement the following function and call it in your code:
 
@@ -43,13 +43,13 @@ async function produceSignature(
 
 The output of the `sign()` function is the _Vera Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
 
-Note that for signatures to actually be valid for up to 30 days, the TTL override in the Vera TXT record should allow 30 days or more.
+Note that for signatures to actually be valid for up to 30 days, the TTL override in the VeraId TXT record should allow 30 days or more.
 
 ### Signature verification
 
-To verify a Vera signature, you simply need the Signature Bundle and the plaintext to be verified. For extra security, this library also requires you to confirm the service where you intend to use the plaintext.
+To verify a VeraId signature, you simply need the Signature Bundle and the plaintext to be verified. For extra security, this library also requires you to confirm the service where you intend to use the plaintext.
 
-If Vera's maximum TTL of 90 days or the TTL specified by the signature producer may be too large for your application, you may also want to restrict the validity period of signatures.
+If VeraId's maximum TTL of 90 days or the TTL specified by the signature producer may be too large for your application, you may also want to restrict the validity period of signatures.
 
 For example, if you only want to accept signatures valid for the past 30 days in a service identified by `1.2.3.4.5`, you could use the following function:
 
@@ -78,7 +78,7 @@ async function verifySignature(
 
 `verify()` will throw an error if the signature is invalid for whatever reason.
 
-`verifySignature()` will return the id of the Vera member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
+`verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 
 ## Node.js version support
 
