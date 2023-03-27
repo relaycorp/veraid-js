@@ -5,8 +5,14 @@ import type { CertificateIssuanceOptions } from './CertificateIssuanceOptions.js
 
 const FORBIDDEN_USER_NAME_CHARS_REGEX = /[@\t\r\n]/u;
 
-export function validateUserName(memberName: string) {
-  if (FORBIDDEN_USER_NAME_CHARS_REGEX.test(memberName)) {
+/**
+ * Check whether the `userName` contains illegal characters.
+ *
+ * @param userName The username to check.
+ * @throws {VeraError} if `userName` contains illegal characters.
+ */
+export function validateUserName(userName: string) {
+  if (FORBIDDEN_USER_NAME_CHARS_REGEX.test(userName)) {
     throw new VeraError(
       'User name should not contain at signs or whitespace other than simple spaces',
     );
