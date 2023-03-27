@@ -7,7 +7,7 @@ const crypto = new VeraCrypto();
 const cryptoEngine = new CryptoEngine({ crypto, name: 'nodeEngine' });
 setEngine('nodeEngine', cryptoEngine);
 
-export { issueMemberCertificate } from './lib/pki/member.js';
+export { issueMemberCertificate, validateUserName } from './lib/pki/member.js';
 export { selfIssueOrganisationCertificate } from './lib/pki/organisation.js';
 export type { CertificateIssuanceOptions } from './lib/pki/CertificateIssuanceOptions.js';
 export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
