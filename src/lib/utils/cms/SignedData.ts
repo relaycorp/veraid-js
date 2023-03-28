@@ -11,7 +11,7 @@ import {
   SignerInfo,
 } from 'pkijs';
 
-import { getPkijsCrypto } from '../pkijs.js';
+import { CRYPTO_ENGINE } from '../pkijs.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import Certificate from '../x509/Certificate.js';
 import { CMS_OIDS } from '../../oids.js';
@@ -19,8 +19,6 @@ import { CMS_OIDS } from '../../oids.js';
 import { deserializeContentInfo } from './utils.js';
 import CmsError from './CmsError.js';
 import type { SignatureOptions } from './SignatureOptions.js';
-
-const pkijsCrypto = getPkijsCrypto();
 
 function initSignerInfo(
   signerCertificate: Certificate,
@@ -81,7 +79,7 @@ export class SignedData {
     }
 
     const hashingAlgorithmName = options.hashingAlgorithmName ?? 'SHA-256';
-    const digest = await pkijsCrypto.digest({ name: hashingAlgorithmName }, plaintext);
+    const digest = await CRYPTO_ENGINE.digest({ name: hashingAlgorithmName }, plaintext);
     const signerInfo = initSignerInfo(signerCertificate, digest, options.extraSignedAttrs ?? []);
     const shouldEncapsulatePlaintext = options.encapsulatePlaintext ?? true;
     const pkijsSignedData = new PkijsSignedData({

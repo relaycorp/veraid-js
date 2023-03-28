@@ -2,11 +2,9 @@ import { getAlgorithmParameters } from 'pkijs';
 
 import { bufferToArray } from '../buffers.js';
 import type { HashingAlgorithm, RsaModulus } from '../algorithms.js';
-import { getPkijsCrypto } from '../pkijs.js';
+import { CRYPTO_ENGINE } from '../pkijs.js';
 
 import { derSerializePublicKey } from './serialisation.js';
-
-const cryptoEngine = getPkijsCrypto();
 
 const MIN_RSA_MODULUS = 2048;
 
@@ -42,10 +40,10 @@ export async function generateRsaKeyPair(
 
   rsaAlgorithm.modulusLength = modulus;
 
-  return cryptoEngine.generateKey(rsaAlgorithm, true, algorithm.usages);
+  return CRYPTO_ENGINE.generateKey(rsaAlgorithm, true, algorithm.usages);
 }
 
 export async function getRsaPublicKeyFromPrivate(privateKey: CryptoKey): Promise<CryptoKey> {
   const publicKeyDer = bufferToArray(await derSerializePublicKey(privateKey));
-  return cryptoEngine.importKey('spki', publicKeyDer, privateKey.algorithm, true, ['verify']);
+  return CRYPTO_ENGINE.importKey('spki', publicKeyDer, privateKey.algorithm, true, ['verify']);
 }
