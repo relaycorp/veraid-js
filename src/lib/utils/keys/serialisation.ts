@@ -1,9 +1,7 @@
-import { getPkijsCrypto } from '../pkijs.js';
+import { CRYPTO_ENGINE } from '../pkijs.js';
 import { bufferToArray } from '../buffers.js';
 
 import { PrivateKey } from './PrivateKey.js';
-
-const cryptoEngine = getPkijsCrypto();
 
 const DEFAULT_RSA_KEY_PARAMS: RsaHashedImportParams = {
   hash: { name: 'SHA-256' },
@@ -17,7 +15,7 @@ export async function derSerializePublicKey(publicKey: CryptoKey): Promise<Buffe
   const publicKeyDer =
     publicKey instanceof PrivateKey
       ? ((await publicKey.provider.exportKey('spki', publicKey)) as ArrayBuffer)
-      : await cryptoEngine.exportKey('spki', publicKey);
+      : await CRYPTO_ENGINE.exportKey('spki', publicKey);
   return Buffer.from(publicKeyDer);
 }
 
@@ -25,7 +23,7 @@ export async function derSerializePublicKey(publicKey: CryptoKey): Promise<Buffe
  * Return DER serialization of private key.
  */
 export async function derSerializePrivateKey(privateKey: CryptoKey): Promise<Buffer> {
-  const keyDer = await cryptoEngine.exportKey('pkcs8', privateKey);
+  const keyDer = await CRYPTO_ENGINE.exportKey('pkcs8', privateKey);
   return Buffer.from(keyDer);
 }
 
@@ -37,7 +35,7 @@ export async function derDeserializeRsaPublicKey(
   algorithmOptions: RsaHashedImportParams = DEFAULT_RSA_KEY_PARAMS,
 ): Promise<CryptoKey> {
   const keyData = publicKeyDer instanceof Buffer ? bufferToArray(publicKeyDer) : publicKeyDer;
-  return cryptoEngine.importKey('spki', keyData, algorithmOptions, true, ['verify']);
+  return CRYPTO_ENGINE.importKey('spki', keyData, algorithmOptions, true, ['verify']);
 }
 
 /**
@@ -47,7 +45,7 @@ export async function derDeserializeRsaPrivateKey(
   privateKeyDer: Buffer,
   algorithmOptions: RsaHashedImportParams = DEFAULT_RSA_KEY_PARAMS,
 ): Promise<CryptoKey> {
-  return cryptoEngine.importKey('pkcs8', bufferToArray(privateKeyDer), algorithmOptions, true, [
+  return CRYPTO_ENGINE.importKey('pkcs8', bufferToArray(privateKeyDer), algorithmOptions, true, [
     'sign',
   ]);
 }

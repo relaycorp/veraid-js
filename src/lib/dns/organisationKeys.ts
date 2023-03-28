@@ -1,10 +1,8 @@
-import { getPkijsCrypto } from '../utils/pkijs.js';
+import { CRYPTO_ENGINE } from '../utils/pkijs.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import VeraError from '../VeraError.js';
 
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
-
-const CRYPTO_ENGINE = getPkijsCrypto();
 
 const ALGORITHM_ID_BY_RSA_MODULUS: { readonly [modulus: number]: KeyAlgorithmType } = {
   // eslint-disable-next-line @typescript-eslint/naming-convention

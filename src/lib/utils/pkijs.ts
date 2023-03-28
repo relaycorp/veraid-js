@@ -1,9 +1,6 @@
-import { getCrypto, type ICryptoEngine } from 'pkijs';
+import { CryptoEngine } from 'pkijs';
 
-export function getPkijsCrypto(): ICryptoEngine {
-  const cryptoEngine = getCrypto();
-  if (!cryptoEngine) {
-    throw new Error('PKI.js crypto engine is undefined');
-  }
-  return cryptoEngine;
-}
+import { VeraCrypto } from './webcrypto/VeraCrypto.js';
+
+const crypto = new VeraCrypto();
+export const CRYPTO_ENGINE = new CryptoEngine({ crypto, name: 'nodeEngine' });
