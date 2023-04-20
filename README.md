@@ -80,6 +80,10 @@ async function verifySignature(
 
 `verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 
+## API docs
+
+The API documentation can be found on [docs.relaycorp.tech](https://docs.relaycorp.tech/veraid-js/).
+
 ## Node.js version support
 
 This library requires Node.js v16.9 or newer, but going forward we will follow the Node.js release schedule.
