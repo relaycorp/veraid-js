@@ -88,6 +88,8 @@ The API documentation can be found on [docs.relaycorp.tech](https://docs.relayco
 
 Private keys passed to this library may optionally define a `provider` property, which would be used as the `SubtleCrypto` instance when producing digital signatures (e.g., when issuing certificates). If not provided, the default `SubtleCrypto` instance will be used.
 
+As of this writing, only [`@relaycorp/webcrypto-kms`](https://www.npmjs.com/package/@relaycorp/webcrypto-kms) supports this functionality.
+
 ## Node.js version support
 
 This library requires Node.js v16.9 or newer, but going forward we will follow the Node.js release schedule.
