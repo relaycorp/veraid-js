@@ -20,6 +20,7 @@ import { derDeserialize } from '../asn1.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
 import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 import { generateRsaKeyPair } from '../keys/generation.js';
+import { NODE_ENGINE } from '../pkijs.js';
 
 import Certificate from './Certificate.js';
 import CertificateError from './CertificateError.js';
@@ -133,7 +134,7 @@ describe('issue()', () => {
     });
 
     expect(importKeySpy).toHaveBeenCalledTimes(1);
-    expect(importKeySpy).toHaveBeenCalledWith(subjectKeyPair.publicKey);
+    expect(importKeySpy).toHaveBeenCalledWith(subjectKeyPair.publicKey, NODE_ENGINE);
   });
 
   test('should be signed with the specified private key', async () => {
@@ -148,7 +149,7 @@ describe('issue()', () => {
     expect(signSpy).toHaveBeenCalledWith(
       subjectKeyPair.privateKey,
       ((subjectKeyPair.privateKey.algorithm as RsaHashedKeyGenParams).hash as Algorithm).name,
-      undefined,
+      NODE_ENGINE,
     );
   });
 
