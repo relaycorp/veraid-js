@@ -4,7 +4,9 @@ import {
   type ProviderCrypto,
 } from 'webcrypto-core';
 
-export abstract class PrivateKey extends WebCryptoKey {
+import type { CryptoKeyWithProvider } from './CryptoKeyWithProvider.js';
+
+export abstract class PrivateKey extends WebCryptoKey implements CryptoKeyWithProvider {
   public override readonly extractable = true; // The **public** key is extractable as SPKI
 
   public override readonly type = 'private' as KeyType;
