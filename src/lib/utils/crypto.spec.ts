@@ -1,9 +1,9 @@
 import { jest } from '@jest/globals';
 
 import { generateRandom64BitValue } from './crypto.js';
-import { CRYPTO_ENGINE } from './pkijs.js';
+import { NODE_ENGINE } from './pkijs.js';
 
-const mockGetRandomValues = jest.spyOn(CRYPTO_ENGINE, 'getRandomValues');
+const mockGetRandomValues = jest.spyOn(NODE_ENGINE, 'getRandomValues');
 
 test('generateRandom64BitValue() should generate a cryptographically secure value', () => {
   const expectedBytes: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];

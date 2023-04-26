@@ -2,6 +2,7 @@ import { CryptoEngine } from 'pkijs';
 import type { ProviderCrypto } from 'webcrypto-core';
 
 import type { CryptoKeyWithProvider } from '../keys/CryptoKeyWithProvider.js';
+import { NODE_ENGINE } from '../pkijs.js';
 
 import { VeraCrypto } from './VeraCrypto.js';
 
@@ -12,10 +13,10 @@ const ENGINE_BY_PROVIDER = new WeakMap<ProviderCrypto, CryptoEngine>();
  */
 export function getEngineForPrivateKey(
   privateKey: CryptoKey | CryptoKeyWithProvider,
-): CryptoEngine | undefined {
+): CryptoEngine {
   const provider = (privateKey as CryptoKeyWithProvider).provider as ProviderCrypto | undefined;
   if (!provider) {
-    return undefined;
+    return NODE_ENGINE;
   }
 
   const cachedEngine = ENGINE_BY_PROVIDER.get(provider);

@@ -1,11 +1,9 @@
-import { getAlgorithmParameters } from 'pkijs';
-
 import type { RsaModulus } from '../utils/algorithms.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import VeraError from '../VeraError.js';
-import { CRYPTO_ENGINE } from '../utils/pkijs.js';
+import { NODE_ENGINE } from '../utils/pkijs.js';
 
 import { getKeySpec } from './organisationKeys.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
@@ -13,7 +11,7 @@ import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 async function generatePublicKey(
   algorithm: EcKeyGenParams | RsaHashedKeyGenParams,
 ): Promise<CryptoKey> {
-  const keyPair = await CRYPTO_ENGINE.generateKey(algorithm, true, ['sign', 'verify']);
+  const keyPair = await NODE_ENGINE.generateKey(algorithm, true, ['sign', 'verify']);
   return keyPair.publicKey;
 }
 
@@ -36,7 +34,7 @@ describe('getKeySpec', () => {
   });
 
   test('Unsupported RSA modulus should be refused', async () => {
-    const algorithm = getAlgorithmParameters('RSA-PSS', 'generateKey');
+    const algorithm = NODE_ENGINE.getAlgorithmParameters('RSA-PSS', 'generateKey');
     const modulusLength = 1024;
     const publicKey = await generatePublicKey({
       ...(algorithm.algorithm as RsaHashedKeyAlgorithm),

@@ -11,7 +11,7 @@ import {
   SignerInfo,
 } from 'pkijs';
 
-import { CRYPTO_ENGINE } from '../pkijs.js';
+import { NODE_ENGINE } from '../pkijs.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import Certificate from '../x509/Certificate.js';
 import { CMS_OIDS } from '../../oids.js';
@@ -79,7 +79,7 @@ export class SignedData {
     }
 
     const hashingAlgorithmName = options.hashingAlgorithmName ?? 'SHA-256';
-    const digest = await CRYPTO_ENGINE.digest({ name: hashingAlgorithmName }, plaintext);
+    const digest = await NODE_ENGINE.digest({ name: hashingAlgorithmName }, plaintext);
     const signerInfo = initSignerInfo(signerCertificate, digest, options.extraSignedAttrs ?? []);
     const shouldEncapsulatePlaintext = options.encapsulatePlaintext ?? true;
     const pkijsSignedData = new PkijsSignedData({
@@ -175,11 +175,14 @@ export class SignedData {
 
     let verificationResult: SignedDataVerifyResult;
     try {
-      verificationResult = await this.pkijsSignedData.verify({
-        data: isPlaintextEncapsulated ? undefined : expectedPlaintext,
-        extendedMode: true,
-        signer: 0,
-      });
+      verificationResult = await this.pkijsSignedData.verify(
+        {
+          data: isPlaintextEncapsulated ? undefined : expectedPlaintext,
+          extendedMode: true,
+          signer: 0,
+        },
+        NODE_ENGINE,
+      );
     } catch (err) {
       throw new CmsError('Invalid signature', { cause: err });
     }

@@ -13,6 +13,7 @@ import { getEngineForPrivateKey } from '../webcrypto/engine.js';
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derDeserialize } from '../asn1.js';
 import { generateRandom64BitValue } from '../crypto.js';
+import { NODE_ENGINE } from '../pkijs.js';
 import { getPublicKeyDigest } from '../keys/digest.js';
 import { DatePeriod } from '../../dates.js';
 
@@ -124,7 +125,7 @@ export default class Certificate {
     }
 
     const issuerPublicKey = options.issuerCertificate
-      ? await options.issuerCertificate.pkijsCertificate.getPublicKey()
+      ? await options.issuerCertificate.pkijsCertificate.getPublicKey(undefined, NODE_ENGINE)
       : options.subjectPublicKey;
     const pkijsCert = new PkijsCertificate({
       extensions: [
@@ -159,7 +160,7 @@ export default class Certificate {
         }),
     );
 
-    await pkijsCert.subjectPublicKeyInfo.importKey(options.subjectPublicKey);
+    await pkijsCert.subjectPublicKeyInfo.importKey(options.subjectPublicKey, NODE_ENGINE);
 
     const signatureHashAlgo = (options.issuerPrivateKey.algorithm as RsaHashedKeyGenParams)
       .hash as Algorithm;
@@ -220,7 +221,7 @@ export default class Certificate {
   }
 
   public async getPublicKey(): Promise<CryptoKey> {
-    return this.pkijsCertificate.getPublicKey();
+    return this.pkijsCertificate.getPublicKey(undefined, NODE_ENGINE);
   }
 
   /**
@@ -257,7 +258,10 @@ export default class Certificate {
 
       trustedCerts: trustedCertificates.map((certificate) => certificate.pkijsCertificate),
     });
-    const verification = await chainValidator.verify({ passedWhenNotRevValues: false });
+    const verification = await chainValidator.verify(
+      { passedWhenNotRevValues: false },
+      NODE_ENGINE,
+    );
 
     if (!verification.result) {
       throw new CertificateError(verification.resultMessage);
