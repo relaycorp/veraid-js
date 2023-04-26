@@ -29,7 +29,7 @@ describe('getEngineForPrivateKey', () => {
 
     const engine = getEngineForPrivateKey(key);
 
-    expect((engine?.crypto.subtle as SubtleCrypto).providers.get(PROVIDER.name)).toBe(PROVIDER);
+    expect((engine.crypto.subtle as SubtleCrypto).providers.get(PROVIDER.name)).toBe(PROVIDER);
   });
 
   test('Engine crypto should use provider from PrivateKey', () => {
