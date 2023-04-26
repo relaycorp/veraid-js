@@ -2,14 +2,15 @@ import type { SubtleCrypto } from 'webcrypto-core';
 
 import { MockRsaPssProvider } from '../../../testUtils/webcrypto/MockRsaPssProvider.js';
 import { RsaPssPrivateKey } from '../keys/RsaPssPrivateKey.js';
+import type { CryptoKeyWithProvider } from '../keys/CryptoKeyWithProvider.js';
 
 import { getEngineForPrivateKey } from './engine.js';
 
 const PROVIDER = new MockRsaPssProvider();
 
-describe('getEngine', () => {
+describe('getEngineForPrivateKey', () => {
   test('undefined should be returned if CryptoKey is used', () => {
-    const engine = getEngineForPrivateKey(null as unknown as CryptoKey);
+    const engine = getEngineForPrivateKey({} as unknown as CryptoKey);
 
     expect(engine).toBeUndefined();
   });
@@ -22,7 +23,15 @@ describe('getEngine', () => {
     expect(engine?.name).toBeEmpty();
   });
 
-  test('Engine crypto should use provider from private key', () => {
+  test('Engine crypto should use provider from compliant non-PrivateKey', () => {
+    const key: CryptoKeyWithProvider = { provider: PROVIDER };
+
+    const engine = getEngineForPrivateKey(key);
+
+    expect((engine?.crypto.subtle as SubtleCrypto).providers.get(PROVIDER.name)).toBe(PROVIDER);
+  });
+
+  test('Engine crypto should use provider from PrivateKey', () => {
     const key = new RsaPssPrivateKey('SHA-256', PROVIDER);
 
     const engine = getEngineForPrivateKey(key);
