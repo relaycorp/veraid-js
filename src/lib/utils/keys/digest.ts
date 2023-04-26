@@ -1,4 +1,4 @@
-import { CRYPTO_ENGINE } from '../pkijs.js';
+import { NODE_ENGINE } from '../pkijs.js';
 
 import { derSerializePublicKey } from './serialisation.js';
 
@@ -7,5 +7,5 @@ import { derSerializePublicKey } from './serialisation.js';
  */
 export async function getPublicKeyDigest(publicKey: CryptoKey): Promise<ArrayBuffer> {
   const publicKeyDer = await derSerializePublicKey(publicKey);
-  return CRYPTO_ENGINE.digest({ name: 'SHA-256' }, publicKeyDer);
+  return NODE_ENGINE.digest({ name: 'SHA-256' }, publicKeyDer);
 }

@@ -1,4 +1,4 @@
-import { CRYPTO_ENGINE } from '../utils/pkijs.js';
+import { NODE_ENGINE } from '../utils/pkijs.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import VeraError from '../VeraError.js';
 
@@ -37,7 +37,7 @@ async function getKeyId(key: CryptoKey): Promise<string> {
   const hashName = HASH_BY_RSA_MODULUS[modulusLength];
   const keySerialised = await derSerializePublicKey(key);
 
-  const digest = await CRYPTO_ENGINE.digest({ name: hashName }, keySerialised);
+  const digest = await NODE_ENGINE.digest({ name: hashName }, keySerialised);
   return Buffer.from(digest).toString('base64');
 }
 

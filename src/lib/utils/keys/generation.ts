@@ -1,8 +1,6 @@
-import { getAlgorithmParameters } from 'pkijs';
-
 import { bufferToArray } from '../buffers.js';
 import type { HashingAlgorithm, RsaModulus } from '../algorithms.js';
-import { CRYPTO_ENGINE } from '../pkijs.js';
+import { NODE_ENGINE } from '../pkijs.js';
 
 import { derSerializePublicKey } from './serialisation.js';
 
@@ -33,17 +31,17 @@ export async function generateRsaKeyPair(
     throw new Error('SHA-1 is unsupported');
   }
 
-  const algorithm = getAlgorithmParameters('RSA-PSS', 'generateKey');
+  const algorithm = NODE_ENGINE.getAlgorithmParameters('RSA-PSS', 'generateKey');
   const rsaAlgorithm = algorithm.algorithm as RsaHashedKeyAlgorithm;
 
   rsaAlgorithm.hash.name = hashingAlgorithm;
 
   rsaAlgorithm.modulusLength = modulus;
 
-  return CRYPTO_ENGINE.generateKey(rsaAlgorithm, true, algorithm.usages);
+  return NODE_ENGINE.generateKey(rsaAlgorithm, true, algorithm.usages);
 }
 
 export async function getRsaPublicKeyFromPrivate(privateKey: CryptoKey): Promise<CryptoKey> {
   const publicKeyDer = bufferToArray(await derSerializePublicKey(privateKey));
-  return CRYPTO_ENGINE.importKey('spki', publicKeyDer, privateKey.algorithm, true, ['verify']);
+  return NODE_ENGINE.importKey('spki', publicKeyDer, privateKey.algorithm, true, ['verify']);
 }
