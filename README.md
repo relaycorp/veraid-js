@@ -90,10 +90,6 @@ Private keys passed to this library may optionally define a `provider` property,
 
 As of this writing, only [`@relaycorp/webcrypto-kms`](https://www.npmjs.com/package/@relaycorp/webcrypto-kms) supports this functionality.
 
-## Node.js version support
-
-This library requires Node.js v16.9 or newer, but going forward we will follow the Node.js release schedule.
-
 ## Contributions
 
 We love contributions! If you haven't contributed to a Relaycorp project before, please take a minute to [read our guidelines](https://github.com/relaycorp/.github/blob/master/CONTRIBUTING.md) first.
