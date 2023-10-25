@@ -15,8 +15,8 @@ import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
 import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
 import { derDeserialize } from './utils/asn1.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
-import type { VeraMember } from './VeraMember.js';
 import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
+import type { SignatureBundleVerification } from './SignatureBundleVerification.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {
@@ -88,6 +88,7 @@ async function generateSignedData(
   memberCertificateSchema: CertificateSchema,
   signingKey: CryptoKey,
   serviceOid: string,
+  shouldEncapsulatePlaintext: boolean,
   expiryDate: Date,
   startDate?: Date,
 ) {
@@ -101,9 +102,14 @@ async function generateSignedData(
   });
   const signedData = await SignedData.sign(plaintext, signingKey, memberCertificate, [], {
     extraSignedAttrs: [metadataAttribute],
-    encapsulatePlaintext: false,
+    encapsulatePlaintext: shouldEncapsulatePlaintext,
   });
   return AsnParser.parse(signedData.serialize(), ContentInfo);
+}
+
+export interface SignatureOptions {
+  readonly startDate: Date;
+  readonly shouldEncapsulatePlaintext: boolean;
 }
 
 export async function sign(
@@ -112,7 +118,7 @@ export async function sign(
   memberIdBundleSerialised: ArrayBuffer,
   signingKey: CryptoKey,
   expiryDate: Date,
-  startDate?: Date,
+  { startDate, shouldEncapsulatePlaintext }: Partial<SignatureOptions> = {},
 ): Promise<ArrayBuffer> {
   let memberIdBundleSchema: MemberIdBundleSchema;
   try {
@@ -126,6 +132,7 @@ export async function sign(
     memberIdBundleSchema.memberCertificate,
     signingKey,
     serviceOid,
+    shouldEncapsulatePlaintext ?? false,
     expiryDate,
     startDate,
   );
@@ -139,12 +146,12 @@ export async function sign(
 }
 
 export async function verify(
-  plaintext: ArrayBuffer,
+  plaintext: ArrayBuffer | undefined,
   signatureBundleSerialised: ArrayBuffer,
   serviceOid: string,
   dateOrPeriod: Date | IDatePeriod = new Date(),
   trustAnchors?: readonly TrustAnchor[],
-): Promise<VeraMember> {
+): Promise<SignatureBundleVerification> {
   let signatureBundle: SignatureBundleSchema;
   try {
     signatureBundle = AsnParser.parse(signatureBundleSerialised, SignatureBundleSchema);
@@ -170,9 +177,11 @@ export async function verify(
     signatureBundle.organisationCertificate,
     AsnParser.parse(signedData.signerCertificate!.serialize(), CertificateSchema),
   );
+  let member;
   try {
-    return await memberIdBundle.verify(serviceOid, signaturePeriodIntersection, trustAnchors);
+    member = await memberIdBundle.verify(serviceOid, signaturePeriodIntersection, trustAnchors);
   } catch (err) {
     throw new VeraError('Member id bundle is invalid', { cause: err });
   }
+  return { plaintext: plaintext ?? signedData.plaintext!, member };
 }
