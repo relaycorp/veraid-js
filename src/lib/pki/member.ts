@@ -7,7 +7,6 @@ const FORBIDDEN_USER_NAME_CHARS_REGEX = /[@\t\r\n]/u;
 
 /**
  * Check whether the `userName` contains illegal characters.
- *
  * @param userName The username to check.
  * @throws {VeraError} if `userName` contains illegal characters.
  */

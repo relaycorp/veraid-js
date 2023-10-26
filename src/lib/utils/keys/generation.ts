@@ -13,7 +13,6 @@ export interface RsaKeyGenOptions {
 
 /**
  * Generate an RSA-PSS key pair.
- *
  * @param options The RSA key generation options
  * @throws Error If the modulus or the hashing algorithm is disallowed.
  */

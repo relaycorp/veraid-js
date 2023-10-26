@@ -1,11 +1,12 @@
 import { jest } from '@jest/globals';
 import { type Message, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
-import { Null } from 'asn1js';
+import { Null, type OctetString } from 'asn1js';
 import {
   Attribute,
   ContentInfo,
   SignedData as SignedDataSchema,
+  EncapsulatedContent,
   type SignerInfo,
 } from '@peculiar/asn1-cms';
 import { setMilliseconds, subSeconds } from 'date-fns';
@@ -63,7 +64,7 @@ const SIGNATURE_BUNDLE_SERIALISED = await sign(
   MEMBER_ID_BUNDLE,
   MEMBER_KEY_PAIR.privateKey,
   datePeriod.end,
-  datePeriod.start,
+  { startDate: datePeriod.start },
 );
 
 describe('sign', () => {
@@ -157,7 +158,7 @@ describe('sign', () => {
       expect(attachedCertsSerialised).toContainEqual(Buffer.from(memberCertificateSerialised));
     });
 
-    test('Plaintext should be detached', async () => {
+    test('Plaintext should be detached by default', async () => {
       const signatureSerialised = await sign(
         PLAINTEXT,
         SERVICE_OID,
@@ -169,6 +170,26 @@ describe('sign', () => {
       const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
       const { encapContentInfo } = getSignedData(signature);
       expect(encapContentInfo.eContent).toBeUndefined();
+    });
+
+    test('Plaintext should be attached if requested', async () => {
+      const signatureSerialised = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        MEMBER_ID_BUNDLE,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+        { shouldEncapsulatePlaintext: true },
+      );
+
+      const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
+      const { encapContentInfo } = getSignedData(signature);
+      expect(encapContentInfo.eContent).toBeInstanceOf(EncapsulatedContent);
+      const encapsulatedContentSerialised = encapContentInfo.eContent!.any!;
+      const encapsulatedContentAsn1 = derDeserialize(encapsulatedContentSerialised) as OctetString;
+      expect(new Uint8Array(encapsulatedContentAsn1.getValue())).toStrictEqual(
+        new Uint8Array(PLAINTEXT),
+      );
     });
 
     describe('Metadata', () => {
@@ -242,7 +263,7 @@ describe('sign', () => {
           MEMBER_ID_BUNDLE,
           MEMBER_KEY_PAIR.privateKey,
           datePeriod.end,
-          startDate,
+          { startDate },
         );
 
         const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
@@ -260,7 +281,7 @@ describe('sign', () => {
             MEMBER_ID_BUNDLE,
             MEMBER_KEY_PAIR.privateKey,
             invalidExpiryDate,
-            datePeriod.start,
+            { startDate: datePeriod.start },
           ),
         ).rejects.toThrowWithMessage(VeraError, 'Signature start date cannot be after expiry date');
       });
@@ -426,7 +447,7 @@ describe('verify', () => {
       invalidMemberIdBundle,
       MEMBER_KEY_PAIR.privateKey,
       datePeriod.end,
-      datePeriod.start,
+      { startDate: datePeriod.start },
     );
 
     const error = await getPromiseRejection(
@@ -565,7 +586,7 @@ describe('verify', () => {
         MEMBER_ID_BUNDLE,
         MEMBER_KEY_PAIR.privateKey,
         subSeconds(datePeriod.start, 1),
-        subSeconds(datePeriod.start, 2),
+        { startDate: subSeconds(datePeriod.start, 2) },
       );
 
       await expect(async () =>
@@ -604,7 +625,7 @@ describe('verify', () => {
         memberIdBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
-        datePeriod.start,
+        { startDate: datePeriod.start },
       );
 
       await expect(async () =>
@@ -624,9 +645,84 @@ describe('verify', () => {
     });
   });
 
+  describe('Plaintext', () => {
+    test('Verification should fail if plaintext is attached and passed', async () => {
+      const bundle = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        MEMBER_ID_BUNDLE,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+        { shouldEncapsulatePlaintext: true },
+      );
+
+      const error = await getPromiseRejection(
+        async () =>
+          verify(PLAINTEXT, bundle, SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
+        VeraError,
+      );
+
+      expect(error.cause).toBeInstanceOf(CmsError);
+    });
+
+    test('Verification should fail if plaintext is detached and not passed', async () => {
+      const bundle = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        MEMBER_ID_BUNDLE,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+        { shouldEncapsulatePlaintext: false },
+      );
+
+      const error = await getPromiseRejection(
+        async () =>
+          verify(undefined, bundle, SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
+        VeraError,
+      );
+
+      expect(error.cause).toBeInstanceOf(CmsError);
+    });
+  });
+
   describe('Valid result', () => {
+    test('Plaintext should be taken from bundle if attached', async () => {
+      const bundle = await sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        MEMBER_ID_BUNDLE,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+        { shouldEncapsulatePlaintext: true },
+      );
+
+      const { plaintext } = await verify(
+        undefined,
+        bundle,
+        SERVICE_OID,
+        datePeriod,
+        dnssecChainFixture.trustAnchors,
+      );
+
+      expect(Buffer.from(plaintext)).toMatchObject(Buffer.from(PLAINTEXT));
+    });
+
+    test('Plaintext should be taken from parameter if detached', async () => {
+      const { plaintext } = await verify(
+        PLAINTEXT,
+        SIGNATURE_BUNDLE_SERIALISED,
+        SERVICE_OID,
+        datePeriod,
+        dnssecChainFixture.trustAnchors,
+      );
+
+      expect(Buffer.from(plaintext)).toMatchObject(Buffer.from(PLAINTEXT));
+    });
+
     test('Organisation name should be output', async () => {
-      const { organisation } = await verify(
+      const {
+        member: { organisation },
+      } = await verify(
         PLAINTEXT,
         SIGNATURE_BUNDLE_SERIALISED,
         SERVICE_OID,
@@ -638,7 +734,9 @@ describe('verify', () => {
     });
 
     test('User name should be output if member is a user', async () => {
-      const { user } = await verify(
+      const {
+        member: { user },
+      } = await verify(
         PLAINTEXT,
         SIGNATURE_BUNDLE_SERIALISED,
         SERVICE_OID,
@@ -669,10 +767,12 @@ describe('verify', () => {
         memberIdBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
-        datePeriod.start,
+        { startDate: datePeriod.start },
       );
 
-      const { user } = await verify(
+      const {
+        member: { user },
+      } = await verify(
         PLAINTEXT,
         signatureBundleSerialised,
         SERVICE_OID,

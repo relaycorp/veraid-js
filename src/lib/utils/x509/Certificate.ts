@@ -97,7 +97,6 @@ export default class Certificate {
 
   /**
    * Deserialize certificate from DER-encoded value.
-   *
    * @param certDer DER-encoded X.509 certificate
    */
   public static deserialize(certDer: ArrayBuffer): Certificate {
@@ -226,7 +225,6 @@ export default class Certificate {
 
   /**
    * Return the certification path (aka "certificate chain") if this certificate can be trusted.
-   *
    * @param intermediateCaCertificates The alleged chain for the certificate
    * @param trustedCertificates The collection of certificates that are actually trusted
    * @throws CertificateError when this certificate is not on a certificate path from a CA in

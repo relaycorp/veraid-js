@@ -66,12 +66,9 @@ async function verifySignature(
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
-  const { organisation, user } = await verify(
-    plaintext,
-    signatureBundle,
-    SERVICE_OID,
-    datePeriod,
-  );
+  const {
+    member: { user, organisation },
+  } = await verify(plaintext, signatureBundle, SERVICE_OID, datePeriod);
   return user === undefined ? organisation : `${user}@${organisation}`;
 }
 ```
