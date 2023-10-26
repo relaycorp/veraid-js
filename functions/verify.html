@@ -17,13 +17,13 @@
 <h1>Function verify</h1></div>
 <section class="tsd-panel">
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="verify"><span class="tsd-kind-call-signature">verify</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">plaintext</span>, <span class="tsd-kind-parameter">signatureBundleSerialised</span>, <span class="tsd-kind-parameter">serviceOid</span>, <span class="tsd-kind-parameter">dateOrPeriod</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">trustAnchors</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/VeraMember.html" class="tsd-signature-type tsd-kind-interface">VeraMember</a><span class="tsd-signature-symbol">&gt;</span><a href="#verify" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="verify"><span class="tsd-kind-call-signature">verify</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">plaintext</span>, <span class="tsd-kind-parameter">signatureBundleSerialised</span>, <span class="tsd-kind-parameter">serviceOid</span>, <span class="tsd-kind-parameter">dateOrPeriod</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">trustAnchors</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/SignatureBundleVerification.html" class="tsd-signature-type tsd-kind-interface">SignatureBundleVerification</a><span class="tsd-signature-symbol">&gt;</span><a href="#verify" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">plaintext</span>: <span class="tsd-signature-type ">ArrayBuffer</span></h5></li>
+<h5><span class="tsd-kind-parameter">plaintext</span>: <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">ArrayBuffer</span></h5></li>
 <li>
 <h5><span class="tsd-kind-parameter">signatureBundleSerialised</span>: <span class="tsd-signature-type ">ArrayBuffer</span></h5></li>
 <li>
@@ -32,9 +32,9 @@
 <h5><span class="tsd-kind-parameter">dateOrPeriod</span>: <a href="../interfaces/IDatePeriod.html" class="tsd-signature-type tsd-kind-interface">IDatePeriod</a><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Date</span><span class="tsd-signature-symbol"> = ...</span></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">trustAnchors</span>: <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-type ">TrustAnchor</span><span class="tsd-signature-symbol">[]</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/VeraMember.html" class="tsd-signature-type tsd-kind-interface">VeraMember</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/SignatureBundleVerification.html" class="tsd-signature-type tsd-kind-interface">SignatureBundleVerification</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/relaycorp/veraid-js/blob/c3acbc1/src/lib/signature.ts#L141">lib/signature.ts:141</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/relaycorp/veraid-js/blob/a8ce2cc/src/lib/signature.ts#L148">lib/signature.ts:148</a></li></ul></aside></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -53,6 +53,8 @@
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container" data-base="..">
 <li><a href="../interfaces/CertificateIssuanceOptions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>CertificateIssuanceOptions</a></li>
 <li><a href="../interfaces/IDatePeriod.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>IDatePeriod</a></li>
+<li><a href="../interfaces/SignatureBundleVerification.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>SignatureBundleVerification</a></li>
+<li><a href="../interfaces/SignatureOptions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>SignatureOptions</a></li>
 <li><a href="../interfaces/VeraMember.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>VeraMember</a></li>
 <li><a href="generateTxtRdata.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg>generateTxtRdata</a></li>
 <li><a href="issueMemberCertificate.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg>issueMemberCertificate</a></li>

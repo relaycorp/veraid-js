@@ -17,7 +17,7 @@
 <h1>Function sign</h1></div>
 <section class="tsd-panel">
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="sign"><span class="tsd-kind-call-signature">sign</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">plaintext</span>, <span class="tsd-kind-parameter">serviceOid</span>, <span class="tsd-kind-parameter">memberIdBundleSerialised</span>, <span class="tsd-kind-parameter">signingKey</span>, <span class="tsd-kind-parameter">expiryDate</span>, <span class="tsd-kind-parameter">startDate</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ArrayBuffer</span><span class="tsd-signature-symbol">&gt;</span><a href="#sign" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="sign"><span class="tsd-kind-call-signature">sign</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">plaintext</span>, <span class="tsd-kind-parameter">serviceOid</span>, <span class="tsd-kind-parameter">memberIdBundleSerialised</span>, <span class="tsd-kind-parameter">signingKey</span>, <span class="tsd-kind-parameter">expiryDate</span>, <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ArrayBuffer</span><span class="tsd-signature-symbol">&gt;</span><a href="#sign" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -33,10 +33,10 @@
 <li>
 <h5><span class="tsd-kind-parameter">expiryDate</span>: <span class="tsd-signature-type ">Date</span></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">startDate</span>: <span class="tsd-signature-type ">Date</span></h5></li></ul></div>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/SignatureOptions.html" class="tsd-signature-type tsd-kind-interface">SignatureOptions</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = {}</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ArrayBuffer</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/relaycorp/veraid-js/blob/c3acbc1/src/lib/signature.ts#L109">lib/signature.ts:109</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/relaycorp/veraid-js/blob/a8ce2cc/src/lib/signature.ts#L115">lib/signature.ts:115</a></li></ul></aside></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -55,6 +55,8 @@
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container" data-base="..">
 <li><a href="../interfaces/CertificateIssuanceOptions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>CertificateIssuanceOptions</a></li>
 <li><a href="../interfaces/IDatePeriod.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>IDatePeriod</a></li>
+<li><a href="../interfaces/SignatureBundleVerification.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>SignatureBundleVerification</a></li>
+<li><a href="../interfaces/SignatureOptions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>SignatureOptions</a></li>
 <li><a href="../interfaces/VeraMember.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg>VeraMember</a></li>
 <li><a href="generateTxtRdata.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg>generateTxtRdata</a></li>
 <li><a href="issueMemberCertificate.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg>issueMemberCertificate</a></li>
