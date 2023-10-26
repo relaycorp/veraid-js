@@ -46,10 +46,11 @@ describe('main', () => {
       EXPIRY_DATE,
     );
 
-    const { organisation, user } = await verify(PLAINTEXT, signatureBundle, VERA_OIDS.TEST_SERVICE);
+    const { plaintext, member } = await verify(PLAINTEXT, signatureBundle, VERA_OIDS.TEST_SERVICE);
 
-    expect(organisation).toStrictEqual(TEST_ORG_NAME);
-    expect(user).toStrictEqual(MEMBER_NAME);
+    expect(new Uint8Array(plaintext)).toStrictEqual(new Uint8Array(PLAINTEXT));
+    expect(member.organisation).toStrictEqual(TEST_ORG_NAME);
+    expect(member.user).toStrictEqual(MEMBER_NAME);
   });
 
   test('Invalid signature', async () => {
