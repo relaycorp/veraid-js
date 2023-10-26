@@ -5,11 +5,11 @@ import { AsnSerializer } from '@peculiar/asn1-schema';
 import type { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import type { DatePeriod } from '../dates.js';
 import Certificate from '../utils/x509/Certificate.js';
-import VeraError from '../VeraError.js';
-import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
+import VeraidError from '../VeraidError.js';
+import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 import { getKeySpec } from '../dns/organisationKeys.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
-import type { VeraMember } from '../VeraMember.js';
+import type { Member } from '../Member.js';
 import { BOT_NAME, validateUserName } from '../pki/member.js';
 
 async function verifyCertificateChain(
@@ -21,7 +21,7 @@ async function verifyCertificateChain(
   try {
     certChain = await memberCertificate.getCertificationPath([], [orgCertificate]);
   } catch (err) {
-    throw new VeraError('Member certificate was not issued by organisation', { cause: err });
+    throw new VeraidError('Member certificate was not issued by organisation', { cause: err });
   }
   const certChainPeriod = certChain
     .map((certificate) => certificate.validityPeriod)
@@ -29,7 +29,7 @@ async function verifyCertificateChain(
 
   const intersection = certChainPeriod.intersect(datePeriod);
   if (!intersection) {
-    throw new VeraError(
+    throw new VeraidError(
       'Validity period of certificate chain does not overlap with required period',
     );
   }
@@ -56,7 +56,7 @@ export class MemberIdBundle {
     serviceOid: string,
     datePeriod: DatePeriod,
     dnssecTrustAnchors?: readonly TrustAnchor[],
-  ): Promise<VeraMember> {
+  ): Promise<Member> {
     const orgCertificate = Certificate.deserialize(
       AsnSerializer.serialize(this.orgCertificateSchema),
     );
@@ -69,7 +69,7 @@ export class MemberIdBundle {
       datePeriod,
     );
 
-    const dnssecChain = new VeraDnssecChain(orgCertificate.commonName, this.veraChainSchema);
+    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, this.veraChainSchema);
     const keySpec = await getKeySpec(await orgCertificate.getPublicKey());
     await dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
 

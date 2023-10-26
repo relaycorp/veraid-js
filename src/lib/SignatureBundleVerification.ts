@@ -1,6 +1,6 @@
-import type { VeraMember } from './VeraMember.js';
+import type { Member } from './Member.js';
 
 export interface SignatureBundleVerification {
   readonly plaintext: ArrayBuffer;
-  readonly member: VeraMember;
+  readonly member: Member;
 }

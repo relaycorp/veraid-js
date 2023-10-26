@@ -1,8 +1,8 @@
 import { secondsInDay } from 'date-fns';
 
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 
-import type { VeraRdataFields } from './VeraRdataFields.js';
+import type { VeraidRdataFields } from './VeraidRdataFields.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 import { getKeySpec } from './organisationKeys.js';
 
@@ -32,7 +32,7 @@ function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
     rdataSanitised = rdata.toString();
   } else {
     if (rdata.length !== 1) {
-      throw new VeraError(`TXT rdata array must contain a single item (got ${rdata.length})`);
+      throw new VeraidError(`TXT rdata array must contain a single item (got ${rdata.length})`);
     }
     rdataSanitised = rdata[0].toString();
   }
@@ -42,17 +42,17 @@ function sanitiseRdata(rdata: Buffer | string | readonly Buffer[]): string {
 function getAlgorithmId(algorithmString: string): KeyAlgorithmType {
   const id = ALGORITHM_ID_BY_STRING[algorithmString] as KeyAlgorithmType | undefined;
   if (id === undefined) {
-    throw new VeraError(`Unknown algorithm id ("${algorithmString}")`);
+    throw new VeraidError(`Unknown algorithm id ("${algorithmString}")`);
   }
   return id;
 }
 
 function validateTtlOverride(ttlOverride: number): void {
   if (ttlOverride < 0) {
-    throw new VeraError(`TTL override must not be negative (got ${ttlOverride})`);
+    throw new VeraidError(`TTL override must not be negative (got ${ttlOverride})`);
   }
   if (MAX_TTL_OVERRIDE_SECONDS < ttlOverride) {
-    throw new VeraError(
+    throw new VeraidError(
       `TTL override must not exceed ${MAX_TTL_OVERRIDE_DAYS} days (got ${ttlOverride} seconds)`,
     );
   }
@@ -60,7 +60,7 @@ function validateTtlOverride(ttlOverride: number): void {
 
 function getTtlOverrideFromString(ttlOverrideString: string): number {
   if (!TTL_OVERRIDE_REGEX.test(ttlOverrideString)) {
-    throw new VeraError(`Malformed TTL override ("${ttlOverrideString}")`);
+    throw new VeraidError(`Malformed TTL override ("${ttlOverrideString}")`);
   }
   const ttl = Number.parseInt(ttlOverrideString, 10);
   return Math.min(ttl, MAX_TTL_OVERRIDE_SECONDS);
@@ -78,11 +78,11 @@ export async function generateTxtRdata(
   return fields.join(' ');
 }
 
-export function parseTxtRdata(rdata: Buffer | string | readonly Buffer[]): VeraRdataFields {
+export function parseTxtRdata(rdata: Buffer | string | readonly Buffer[]): VeraidRdataFields {
   const rdataSanitised = sanitiseRdata(rdata);
   const fields = rdataSanitised.split(FIELD_SEPARATOR_REGEX);
   if (fields.length < MIN_RDATA_FIELDS) {
-    throw new VeraError(
+    throw new VeraidError(
       `RDATA should have at least 3 space-separated fields (got ${fields.length})`,
     );
   }

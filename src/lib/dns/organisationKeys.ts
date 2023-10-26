@@ -1,6 +1,6 @@
 import { NODE_ENGINE } from '../utils/pkijs.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 
@@ -23,11 +23,11 @@ const HASH_BY_RSA_MODULUS: { readonly [modulus: number]: string } = {
 
 function getAlgorithmIdForKey(key: CryptoKey): number {
   if (key.algorithm.name !== 'RSA-PSS') {
-    throw new VeraError(`Only RSA-PSS keys are supported (got ${key.algorithm.name})`);
+    throw new VeraidError(`Only RSA-PSS keys are supported (got ${key.algorithm.name})`);
   }
   const { modulusLength } = key.algorithm as RsaKeyAlgorithm;
   if (!(modulusLength in ALGORITHM_ID_BY_RSA_MODULUS)) {
-    throw new VeraError(`RSA key with modulus ${modulusLength} is unsupported`);
+    throw new VeraidError(`RSA key with modulus ${modulusLength} is unsupported`);
   }
   return ALGORITHM_ID_BY_RSA_MODULUS[modulusLength];
 }

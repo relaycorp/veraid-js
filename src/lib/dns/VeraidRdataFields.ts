@@ -1,6 +1,6 @@
 import type { OrganisationKeySpec } from './organisationKeys.js';
 
-export interface VeraRdataFields extends OrganisationKeySpec {
+export interface VeraidRdataFields extends OrganisationKeySpec {
   readonly ttlOverride: number;
   readonly serviceOid?: string;
 }

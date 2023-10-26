@@ -3,11 +3,11 @@
  */
 
 const RELAYCORP = '1.3.6.1.4.1.58708'; // Alias: iso.org.dod.internet.private.enterprise.relaycorp
-const VERA = `${RELAYCORP}.1`;
+const VERAID = `${RELAYCORP}.1`;
 
-export const VERA_OIDS = {
-  SIGNATURE_METADATA_ATTR: `${VERA}.0`,
-  TEST_SERVICE: `${VERA}.1`,
+export const VERAID_OIDS = {
+  SIGNATURE_METADATA_ATTR: `${VERAID}.0`,
+  TEST_SERVICE: `${VERAID}.1`,
 };
 
 export const CMS_OIDS = {

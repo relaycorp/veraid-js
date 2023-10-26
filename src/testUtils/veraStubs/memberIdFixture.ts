@@ -5,7 +5,7 @@ import { selfIssueOrganisationCertificate } from '../../lib/pki/organisation.js'
 import { issueMemberCertificate } from '../../lib/pki/member.js';
 import { DatePeriod } from '../../lib/dates.js';
 
-import { MOCK_CHAIN, VERA_RRSET } from './dnssec.js';
+import { MOCK_CHAIN, VERAID_RRSET } from './dnssec.js';
 import { ORG_KEY_PAIR, ORG_NAME } from './organisation.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from './member.js';
 
@@ -30,7 +30,7 @@ export async function generateMemberIdFixture(
   const datePeriod =
     options.datePeriod ?? DatePeriod.init(now, addMinutes(now, FIXTURE_TTL_MINUTES));
 
-  const dnssecChainFixture = MOCK_CHAIN.generateFixture(VERA_RRSET, SecurityStatus.SECURE, {
+  const dnssecChainFixture = MOCK_CHAIN.generateFixture(VERAID_RRSET, SecurityStatus.SECURE, {
     start: datePeriod.start,
     end: datePeriod.end,
   });
