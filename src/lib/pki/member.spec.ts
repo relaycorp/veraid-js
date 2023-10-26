@@ -18,9 +18,6 @@ const { orgCertificateSerialised } = await generateMemberIdFixture();
 
 describe('issueMemberCertificate', () => {
   describe('Member name', () => {
-    const validationErrorMessage =
-      'User name should not contain at signs or whitespace other than simple spaces';
-
     test('should be the at sign if member is a bot', async () => {
       const serialisation = await issueMemberCertificate(
         undefined,
@@ -47,43 +44,7 @@ describe('issueMemberCertificate', () => {
       expect(certificate.commonName).toBe(MEMBER_NAME);
     });
 
-    test('should not contain at signs', async () => {
-      await expect(async () =>
-        issueMemberCertificate(
-          '@',
-          MEMBER_KEY_PAIR.publicKey,
-          orgCertificateSerialised,
-          ORG_KEY_PAIR.privateKey,
-          EXPIRY_DATE,
-        ),
-      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
-    });
-
-    test('should not contain tabs', async () => {
-      await expect(async () =>
-        issueMemberCertificate(
-          `\t${MEMBER_NAME}`,
-          MEMBER_KEY_PAIR.publicKey,
-          orgCertificateSerialised,
-          ORG_KEY_PAIR.privateKey,
-          EXPIRY_DATE,
-        ),
-      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
-    });
-
-    test('should not contain carriage returns', async () => {
-      await expect(async () =>
-        issueMemberCertificate(
-          `\r${MEMBER_NAME}`,
-          MEMBER_KEY_PAIR.publicKey,
-          orgCertificateSerialised,
-          ORG_KEY_PAIR.privateKey,
-          EXPIRY_DATE,
-        ),
-      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
-    });
-
-    test('should not contain line feeds', async () => {
+    test('should be well-formed', async () => {
       await expect(async () =>
         issueMemberCertificate(
           `\n${MEMBER_NAME}`,
@@ -92,7 +53,7 @@ describe('issueMemberCertificate', () => {
           ORG_KEY_PAIR.privateKey,
           EXPIRY_DATE,
         ),
-      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
+      ).rejects.toThrow(VeraidError);
     });
   });
 

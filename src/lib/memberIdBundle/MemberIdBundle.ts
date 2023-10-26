@@ -10,7 +10,8 @@ import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 import { getKeySpec } from '../dns/organisationKeys.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import type { Member } from '../Member.js';
-import { BOT_NAME, validateUserName } from '../pki/member.js';
+import { BOT_NAME } from '../pki/member.js';
+import { validateUserName } from '../idValidation.js';
 
 async function verifyCertificateChain(
   orgCertificate: Certificate,
