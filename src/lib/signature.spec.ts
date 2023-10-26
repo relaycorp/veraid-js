@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { type Message, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
-import { Null } from 'asn1js';
+import { Null, type OctetString } from 'asn1js';
 import {
   Attribute,
   ContentInfo,
@@ -185,9 +185,10 @@ describe('sign', () => {
       const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
       const { encapContentInfo } = getSignedData(signature);
       expect(encapContentInfo.eContent).toBeInstanceOf(EncapsulatedContent);
-      const encapsulatedContent = encapContentInfo.eContent!;
-      expect(Buffer.from(encapsulatedContent.any!).subarray()).toMatchObject(
-        Buffer.from(PLAINTEXT),
+      const encapsulatedContentSerialised = encapContentInfo.eContent!.any!;
+      const encapsulatedContentAsn1 = derDeserialize(encapsulatedContentSerialised) as OctetString;
+      expect(new Uint8Array(encapsulatedContentAsn1.getValue())).toStrictEqual(
+        new Uint8Array(PLAINTEXT),
       );
     });
 
