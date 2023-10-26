@@ -6,7 +6,7 @@ import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
 import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 
 import { issueMemberCertificate } from './member.js';
 
@@ -56,7 +56,7 @@ describe('issueMemberCertificate', () => {
           ORG_KEY_PAIR.privateKey,
           EXPIRY_DATE,
         ),
-      ).rejects.toThrowWithMessage(VeraError, validationErrorMessage);
+      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
     });
 
     test('should not contain tabs', async () => {
@@ -68,7 +68,7 @@ describe('issueMemberCertificate', () => {
           ORG_KEY_PAIR.privateKey,
           EXPIRY_DATE,
         ),
-      ).rejects.toThrowWithMessage(VeraError, validationErrorMessage);
+      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
     });
 
     test('should not contain carriage returns', async () => {
@@ -80,7 +80,7 @@ describe('issueMemberCertificate', () => {
           ORG_KEY_PAIR.privateKey,
           EXPIRY_DATE,
         ),
-      ).rejects.toThrowWithMessage(VeraError, validationErrorMessage);
+      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
     });
 
     test('should not contain line feeds', async () => {
@@ -92,7 +92,7 @@ describe('issueMemberCertificate', () => {
           ORG_KEY_PAIR.privateKey,
           EXPIRY_DATE,
         ),
-      ).rejects.toThrowWithMessage(VeraError, validationErrorMessage);
+      ).rejects.toThrowWithMessage(VeraidError, validationErrorMessage);
     });
   });
 

@@ -6,11 +6,11 @@ import type { BaseBlock, Sequence } from 'asn1js';
 import { Attribute } from 'pkijs';
 
 import { MemberIdBundleSchema } from './schemas/MemberIdBundleSchema.js';
-import VeraError from './VeraError.js';
+import VeraidError from './VeraidError.js';
 import { SignedData } from './utils/cms/SignedData.js';
 import Certificate from './utils/x509/Certificate.js';
 import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
-import { VERA_OIDS } from './oids.js';
+import { VERAID_OIDS } from './oids.js';
 import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
 import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
 import { derDeserialize } from './utils/asn1.js';
@@ -20,7 +20,7 @@ import type { SignatureBundleVerification } from './SignatureBundleVerification.
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {
-    throw new VeraError('Signature start date cannot be after expiry date');
+    throw new VeraidError('Signature start date cannot be after expiry date');
   }
 
   const metadataSchema = new SignatureMetadataSchema();
@@ -37,9 +37,9 @@ function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date)
 }
 
 function getMetadata(signedData: SignedData) {
-  const metadataAttributeAsn1 = signedData.getSignedAttribute(VERA_OIDS.SIGNATURE_METADATA_ATTR);
+  const metadataAttributeAsn1 = signedData.getSignedAttribute(VERAID_OIDS.SIGNATURE_METADATA_ATTR);
   if (!metadataAttributeAsn1) {
-    throw new VeraError('Signature metadata is missing');
+    throw new VeraidError('Signature metadata is missing');
   }
   let metadata: SignatureMetadataSchema;
   try {
@@ -48,10 +48,10 @@ function getMetadata(signedData: SignedData) {
       SignatureMetadataSchema,
     );
   } catch {
-    throw new VeraError('Signature metadata is malformed');
+    throw new VeraidError('Signature metadata is malformed');
   }
   if (metadata.validityPeriod.end < metadata.validityPeriod.start) {
-    throw new VeraError('Signature validity period ends before it starts');
+    throw new VeraidError('Signature validity period ends before it starts');
   }
 
   return metadata;
@@ -62,7 +62,7 @@ function convertDatePeriod(dateOrPeriod: Date | IDatePeriod) {
     return DatePeriod.init(dateOrPeriod, dateOrPeriod);
   }
   if (dateOrPeriod.end < dateOrPeriod.start) {
-    throw new VeraError('Verification expiry date cannot be before start date');
+    throw new VeraidError('Verification expiry date cannot be before start date');
   }
   return DatePeriod.init(dateOrPeriod.start, dateOrPeriod.end);
 }
@@ -78,7 +78,7 @@ function getSignaturePeriodIntersection(
   const verificationPeriod = convertDatePeriod(dateOrPeriod);
   const signaturePeriodIntersection = verificationPeriod.intersect(signaturePeriod);
   if (!signaturePeriodIntersection) {
-    throw new VeraError('Signature period does not overlap with required period');
+    throw new VeraidError('Signature period does not overlap with required period');
   }
   return signaturePeriodIntersection;
 }
@@ -97,7 +97,7 @@ async function generateSignedData(
   );
   const metadataSchema = generateMetadata(serviceOid, startDate ?? new Date(), expiryDate);
   const metadataAttribute = new Attribute({
-    type: VERA_OIDS.SIGNATURE_METADATA_ATTR,
+    type: VERAID_OIDS.SIGNATURE_METADATA_ATTR,
     values: [metadataSchema],
   });
   const signedData = await SignedData.sign(plaintext, signingKey, memberCertificate, [], {
@@ -124,7 +124,7 @@ export async function sign(
   try {
     memberIdBundleSchema = AsnParser.parse(memberIdBundleSerialised, MemberIdBundleSchema);
   } catch {
-    throw new VeraError('Member id bundle is malformed');
+    throw new VeraidError('Member id bundle is malformed');
   }
 
   const signedDataSchema = await generateSignedData(
@@ -156,19 +156,19 @@ export async function verify(
   try {
     signatureBundle = AsnParser.parse(signatureBundleSerialised, SignatureBundleSchema);
   } catch {
-    throw new VeraError('Signature bundle is malformed');
+    throw new VeraidError('Signature bundle is malformed');
   }
 
   const signedData = SignedData.deserialize(AsnSerializer.serialize(signatureBundle.signature));
   try {
     await signedData.verify(plaintext);
   } catch (err) {
-    throw new VeraError('Signature is invalid', { cause: err });
+    throw new VeraidError('Signature is invalid', { cause: err });
   }
 
   const metadata = getMetadata(signedData);
   if (metadata.serviceOid !== serviceOid) {
-    throw new VeraError(`Signature is bound to a different service (${metadata.serviceOid})`);
+    throw new VeraidError(`Signature is bound to a different service (${metadata.serviceOid})`);
   }
 
   const signaturePeriodIntersection = getSignaturePeriodIntersection(metadata, dateOrPeriod);
@@ -181,7 +181,7 @@ export async function verify(
   try {
     member = await memberIdBundle.verify(serviceOid, signaturePeriodIntersection, trustAnchors);
   } catch (err) {
-    throw new VeraError('Member id bundle is invalid', { cause: err });
+    throw new VeraidError('Member id bundle is invalid', { cause: err });
   }
   return { plaintext: plaintext ?? signedData.plaintext!, member };
 }

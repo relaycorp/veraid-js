@@ -2,7 +2,7 @@ import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import { bufferToArray } from '../utils/buffers.js';
@@ -26,7 +26,7 @@ describe('serialiseMemberIdBundle', () => {
         orgCertificateSerialised,
         dnssecChainSerialised,
       ),
-    ).toThrowWithMessage(VeraError, 'Member certificate is malformed');
+    ).toThrowWithMessage(VeraidError, 'Member certificate is malformed');
   });
 
   test('Malformed organisation certificate should be refused', () => {
@@ -36,7 +36,7 @@ describe('serialiseMemberIdBundle', () => {
         arrayBufferFrom('malformed'),
         dnssecChainSerialised,
       ),
-    ).toThrowWithMessage(VeraError, 'Organisation certificate is malformed');
+    ).toThrowWithMessage(VeraidError, 'Organisation certificate is malformed');
   });
 
   test('Malformed DNSSEC chain should be refused', () => {
@@ -46,7 +46,7 @@ describe('serialiseMemberIdBundle', () => {
         orgCertificateSerialised,
         arrayBufferFrom('malformed'),
       ),
-    ).toThrowWithMessage(VeraError, 'DNSSEC chain is malformed');
+    ).toThrowWithMessage(VeraidError, 'DNSSEC chain is malformed');
   });
 
   test('Well-formed bundle should be output', () => {

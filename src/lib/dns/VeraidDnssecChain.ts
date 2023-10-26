@@ -12,7 +12,7 @@ import { AsnSerializer } from '@peculiar/asn1-schema';
 import { subSeconds } from 'date-fns';
 
 import { bufferToArray } from '../utils/buffers.js';
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
 import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
@@ -30,7 +30,7 @@ function deserialiseResponses(responsesSerialised: readonly ArrayBuffer[]) {
     try {
       response = Message.deserialise(Buffer.from(responseSerialised));
     } catch (err) {
-      throw new VeraError('At least one of the response messages is malformed', { cause: err });
+      throw new VeraidError('At least one of the response messages is malformed', { cause: err });
     }
     return response;
   });
@@ -44,13 +44,13 @@ function getTtlOverrideFromRelevantRdata(
 ): number {
   const veraTxtResponses = responses.filter((response) => response.answersQuestion(veraQuestion));
   if (veraTxtResponses.length === 0) {
-    throw new VeraError('Chain is missing Vera TXT response');
+    throw new VeraidError('Chain is missing VeraId TXT response');
   }
   if (1 < veraTxtResponses.length) {
     // If DNSSEC verification were to succeed, we wouldn't know which message was used, so we have
-    // to require exactly one response for the Vera TXT RRset. Without this check, we could be
+    // to require exactly one response for the VeraId TXT RRset. Without this check, we could be
     // reading the TTL override from a bogus response.
-    throw new VeraError('Chain contains multiple Vera TXT responses');
+    throw new VeraidError('Chain contains multiple VeraId TXT responses');
   }
 
   const veraRrset = RrSet.init(veraQuestion, veraTxtResponses[0].answers);
@@ -64,7 +64,7 @@ function getTtlOverrideFromRelevantRdata(
       (fields.serviceOid === undefined || fields.serviceOid === serviceOid),
   );
   if (relevantRdataSet.length === 0) {
-    throw new VeraError('Could not find Vera record for specified key and/or service');
+    throw new VeraidError('Could not find VeraId record for specified key and/or service');
   }
 
   const concreteRdata = relevantRdataSet.find((fields) => fields.serviceOid === serviceOid);
@@ -85,12 +85,12 @@ function getVerificationPeriod(
   return rdataPeriod.intersect(datePeriod)!;
 }
 
-export class VeraDnssecChain {
+export class VeraidDnssecChain {
   public static async retrieve(
     domainName: string,
     resolver: Resolver,
     trustAnchors?: readonly TrustAnchor[],
-  ): Promise<VeraDnssecChain> {
+  ): Promise<VeraidDnssecChain> {
     const responses: ArrayBuffer[] = [];
     const veraQuery = makeQuestion(domainName);
     const finalResolver: Resolver = async (question) => {
@@ -103,15 +103,15 @@ export class VeraDnssecChain {
     try {
       result = await dnssecLookUp(veraQuery, finalResolver, { trustAnchors });
     } catch (err) {
-      throw new VeraError('Failed to retrieve DNSSEC chain', { cause: err });
+      throw new VeraidError('Failed to retrieve DNSSEC chain', { cause: err });
     }
 
     if (result.status !== SecurityStatus.SECURE) {
       const reasons = result.reasonChain.join(', ');
-      throw new VeraError(`DNSSEC chain validation failed (${result.status}): ${reasons}`);
+      throw new VeraidError(`DNSSEC chain validation failed (${result.status}): ${reasons}`);
     }
 
-    return new VeraDnssecChain(domainName, responses);
+    return new VeraidDnssecChain(domainName, responses);
   }
 
   public constructor(
@@ -148,12 +148,12 @@ export class VeraDnssecChain {
         dateOrPeriod: finalPeriod,
       });
     } catch (err) {
-      throw new VeraError('Failed to process DNSSEC verification offline', { cause: err });
+      throw new VeraidError('Failed to process DNSSEC verification offline', { cause: err });
     }
 
     if (dnssecResult.status !== SecurityStatus.SECURE) {
       const reasons = dnssecResult.reasonChain.join(', ');
-      throw new VeraError(`Vera DNSSEC chain is ${dnssecResult.status}: ${reasons}`);
+      throw new VeraidError(`VeraId DNSSEC chain is ${dnssecResult.status}: ${reasons}`);
     }
   }
 }

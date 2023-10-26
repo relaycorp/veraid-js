@@ -2,7 +2,7 @@ import { addSeconds } from 'date-fns';
 
 import {
   issueMemberCertificate,
-  retrieveVeraDnssecChain,
+  retrieveVeraidDnssecChain,
   selfIssueOrganisationCertificate,
   serialiseMemberIdBundle,
   sign,
@@ -10,8 +10,8 @@ import {
 } from '../index.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { arrayBufferFrom } from '../testUtils/buffers.js';
-import { VERA_OIDS } from '../lib/oids.js';
-import VeraError from '../lib/VeraError.js';
+import { VERAID_OIDS } from '../lib/oids.js';
+import VeraidError from '../lib/VeraidError.js';
 import { generateRsaKeyPair } from '../lib/utils/keys/generation.js';
 
 import { TEST_ORG_KEY_PAIR, TEST_ORG_NAME } from './utils.js';
@@ -33,20 +33,24 @@ const MEMBER_CERTIFICATE = await issueMemberCertificate(
 
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 
-const DNSSEC_CHAIN = await retrieveVeraDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
+const DNSSEC_CHAIN = await retrieveVeraidDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
 const MEMBER_ID_BUNDLE = serialiseMemberIdBundle(MEMBER_CERTIFICATE, ORG_CERTIFICATE, DNSSEC_CHAIN);
 
 describe('main', () => {
   test('Valid signature bundle', async () => {
     const signatureBundle = await sign(
       PLAINTEXT,
-      VERA_OIDS.TEST_SERVICE,
+      VERAID_OIDS.TEST_SERVICE,
       MEMBER_ID_BUNDLE,
       MEMBER_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
 
-    const { plaintext, member } = await verify(PLAINTEXT, signatureBundle, VERA_OIDS.TEST_SERVICE);
+    const { plaintext, member } = await verify(
+      PLAINTEXT,
+      signatureBundle,
+      VERAID_OIDS.TEST_SERVICE,
+    );
 
     expect(new Uint8Array(plaintext)).toStrictEqual(new Uint8Array(PLAINTEXT));
     expect(member.organisation).toStrictEqual(TEST_ORG_NAME);
@@ -57,30 +61,30 @@ describe('main', () => {
     const otherMemberKeyPair = await generateRsaKeyPair();
     const signatureBundle = await sign(
       PLAINTEXT,
-      VERA_OIDS.TEST_SERVICE,
+      VERAID_OIDS.TEST_SERVICE,
       MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
 
     await expect(async () =>
-      verify(PLAINTEXT, signatureBundle, VERA_OIDS.TEST_SERVICE),
-    ).rejects.toThrow(VeraError);
+      verify(PLAINTEXT, signatureBundle, VERAID_OIDS.TEST_SERVICE),
+    ).rejects.toThrow(VeraidError);
   });
 
   test('Different service', async () => {
     const otherMemberKeyPair = await generateRsaKeyPair();
     const signatureBundle = await sign(
       PLAINTEXT,
-      VERA_OIDS.TEST_SERVICE,
+      VERAID_OIDS.TEST_SERVICE,
       MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
-    const differentService = `${VERA_OIDS.TEST_SERVICE}.42`;
+    const differentService = `${VERAID_OIDS.TEST_SERVICE}.42`;
 
     await expect(async () => verify(PLAINTEXT, signatureBundle, differentService)).rejects.toThrow(
-      VeraError,
+      VeraidError,
     );
   });
 });

@@ -1,16 +1,16 @@
 import { secondsInDay } from 'date-fns';
 
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 import {
   ORG_KEY_PAIR,
   ORG_KEY_SPEC,
-  VERA_RECORD_TTL_OVERRIDE,
+  VERAID_RECORD_TTL_OVERRIDE,
 } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 
 import { generateTxtRdata, parseTxtRdata } from './rdataSerialisation.js';
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
-import type { VeraRdataFields } from './VeraRdataFields.js';
+import type { VeraidRdataFields } from './VeraidRdataFields.js';
 
 describe('generateTxtRdata', () => {
   function splitAndGetField(rdata: string, index: number): string | undefined {
@@ -18,7 +18,7 @@ describe('generateTxtRdata', () => {
   }
 
   test('Key algorithm and id should be defined correctly', async () => {
-    const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE);
+    const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERAID_RECORD_TTL_OVERRIDE);
 
     const algorithm = splitAndGetField(rdata, 0);
     expect(algorithm).toStrictEqual(ORG_KEY_SPEC.keyAlgorithm.toString());
@@ -32,7 +32,7 @@ describe('generateTxtRdata', () => {
       await expect(async () =>
         generateTxtRdata(ORG_KEY_PAIR.publicKey, invalidTtlOverride),
       ).rejects.toThrowWithMessage(
-        VeraError,
+        VeraidError,
         `TTL override must not be negative (got ${invalidTtlOverride})`,
       );
     });
@@ -65,7 +65,7 @@ describe('generateTxtRdata', () => {
       await expect(
         generateTxtRdata(ORG_KEY_PAIR.publicKey, invalidTtlOverride),
       ).rejects.toThrowWithMessage(
-        VeraError,
+        VeraidError,
         `TTL override must not exceed 90 days (got ${invalidTtlOverride} seconds)`,
       );
     });
@@ -73,7 +73,7 @@ describe('generateTxtRdata', () => {
 
   describe('Service', () => {
     test('No service should be specified by default', async () => {
-      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERA_RECORD_TTL_OVERRIDE);
+      const rdata = await generateTxtRdata(ORG_KEY_PAIR.publicKey, VERAID_RECORD_TTL_OVERRIDE);
 
       const service = splitAndGetField(rdata, 4);
       expect(service).toBeUndefined();
@@ -82,7 +82,7 @@ describe('generateTxtRdata', () => {
     test('Service should be specified if set', async () => {
       const rdata = await generateTxtRdata(
         ORG_KEY_PAIR.publicKey,
-        VERA_RECORD_TTL_OVERRIDE,
+        VERAID_RECORD_TTL_OVERRIDE,
         SERVICE_OID,
       );
 
@@ -99,17 +99,17 @@ describe('parseTxtRdata', () => {
     const malformedRdata = 'one two';
 
     expect(() => parseTxtRdata(malformedRdata)).toThrowWithMessage(
-      VeraError,
+      VeraidError,
       'RDATA should have at least 3 space-separated fields (got 2)',
     );
   });
 
   test('Invalid key algorithm should be refused', () => {
     const invalidAlgorithmId = 4;
-    const rdata = `${invalidAlgorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
+    const rdata = `${invalidAlgorithmId} ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE}`;
 
     expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
-      VeraError,
+      VeraidError,
       `Unknown algorithm id ("${invalidAlgorithmId}")`,
     );
   });
@@ -122,7 +122,7 @@ describe('parseTxtRdata', () => {
       const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${invalidTtlOverride}`;
 
       expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
-        VeraError,
+        VeraidError,
         `Malformed TTL override ("${invalidTtlOverride}")`,
       );
     });
@@ -132,7 +132,7 @@ describe('parseTxtRdata', () => {
       const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${invalidTtlOverride}`;
 
       expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
-        VeraError,
+        VeraidError,
         `Malformed TTL override ("${invalidTtlOverride}")`,
       );
     });
@@ -155,19 +155,19 @@ describe('parseTxtRdata', () => {
   });
 
   test('Fields should be output if value is valid', () => {
-    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
+    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE}`;
 
     const fields = parseTxtRdata(rdata);
 
-    expect(fields).toMatchObject<Partial<VeraRdataFields>>({
+    expect(fields).toMatchObject<Partial<VeraidRdataFields>>({
       keyAlgorithm: algorithmId,
       keyId: ORG_KEY_SPEC.keyId,
-      ttlOverride: VERA_RECORD_TTL_OVERRIDE,
+      ttlOverride: VERAID_RECORD_TTL_OVERRIDE,
     });
   });
 
   test('Service OID should be absent if unspecified', () => {
-    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
+    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE}`;
 
     const fields = parseTxtRdata(rdata);
 
@@ -175,7 +175,9 @@ describe('parseTxtRdata', () => {
   });
 
   test('Service OID should be present if specified', () => {
-    const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE} ${SERVICE_OID}`;
+    const rdata = [algorithmId, ORG_KEY_SPEC.keyId, VERAID_RECORD_TTL_OVERRIDE, SERVICE_OID].join(
+      ' ',
+    );
 
     const fields = parseTxtRdata(rdata);
 
@@ -183,11 +185,11 @@ describe('parseTxtRdata', () => {
   });
 
   describe('Input type', () => {
-    const rdataString = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
-    const expectedFields: Partial<VeraRdataFields> = {
+    const rdataString = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE}`;
+    const expectedFields: Partial<VeraidRdataFields> = {
       keyAlgorithm: algorithmId,
       keyId: ORG_KEY_SPEC.keyId,
-      ttlOverride: VERA_RECORD_TTL_OVERRIDE,
+      ttlOverride: VERAID_RECORD_TTL_OVERRIDE,
     };
 
     test('Buffer input should be supported', () => {
@@ -195,10 +197,10 @@ describe('parseTxtRdata', () => {
 
       const fields = parseTxtRdata(rdata);
 
-      expect(fields).toMatchObject<Partial<VeraRdataFields>>({
+      expect(fields).toMatchObject<Partial<VeraidRdataFields>>({
         keyAlgorithm: algorithmId,
         keyId: ORG_KEY_SPEC.keyId,
-        ttlOverride: VERA_RECORD_TTL_OVERRIDE,
+        ttlOverride: VERAID_RECORD_TTL_OVERRIDE,
       });
     });
 
@@ -207,12 +209,12 @@ describe('parseTxtRdata', () => {
 
       const fields = parseTxtRdata(rdata);
 
-      expect(fields).toMatchObject<Partial<VeraRdataFields>>(expectedFields);
+      expect(fields).toMatchObject<Partial<VeraidRdataFields>>(expectedFields);
     });
 
     test('Empty array should not be supported', () => {
       expect(() => parseTxtRdata([])).toThrowWithMessage(
-        VeraError,
+        VeraidError,
         'TXT rdata array must contain a single item (got 0)',
       );
     });
@@ -221,37 +223,37 @@ describe('parseTxtRdata', () => {
       const rdata = [Buffer.from(rdataString), Buffer.from(rdataString)];
 
       expect(() => parseTxtRdata(rdata)).toThrowWithMessage(
-        VeraError,
+        VeraidError,
         'TXT rdata array must contain a single item (got 2)',
       );
     });
   });
 
   describe('Extraneous whitespace tolerance', () => {
-    let expectedFields: VeraRdataFields;
+    let expectedFields: VeraidRdataFields;
     beforeAll(() => {
       expectedFields = {
         keyAlgorithm: algorithmId,
         keyId: ORG_KEY_SPEC.keyId,
-        ttlOverride: VERA_RECORD_TTL_OVERRIDE,
+        ttlOverride: VERAID_RECORD_TTL_OVERRIDE,
         serviceOid: undefined,
       };
     });
 
     test('Leading whitespace should be ignored', () => {
-      const rdata = ` \t ${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
+      const rdata = ` \t ${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE}`;
 
       expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
     });
 
     test('Trailing whitespace should be ignored', () => {
-      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE} \t `;
+      const rdata = `${algorithmId} ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE} \t `;
 
       expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
     });
 
     test('Extra whitespace in separator should be ignored', () => {
-      const rdata = `${algorithmId} \t   ${ORG_KEY_SPEC.keyId} ${VERA_RECORD_TTL_OVERRIDE}`;
+      const rdata = `${algorithmId} \t   ${ORG_KEY_SPEC.keyId} ${VERAID_RECORD_TTL_OVERRIDE}`;
 
       expect(parseTxtRdata(rdata)).toStrictEqual(expectedFields);
     });

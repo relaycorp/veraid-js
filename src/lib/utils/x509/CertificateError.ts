@@ -1,5 +1,5 @@
-import VeraError from '../../VeraError.js';
+import VeraidError from '../../VeraidError.js';
 
-export default class CertificateError extends VeraError {
+export default class CertificateError extends VeraidError {
   public override name = 'CertificateError';
 }

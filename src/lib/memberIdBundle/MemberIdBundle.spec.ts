@@ -15,9 +15,9 @@ import {
   ORG_NAME,
 } from '../../testUtils/veraStubs/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 import { DatePeriod } from '../dates.js';
-import { VeraDnssecChain } from '../dns/VeraDnssecChain.js';
+import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
 import CertificateError from '../utils/x509/CertificateError.js';
@@ -94,12 +94,12 @@ describe('MemberIdBundle', () => {
 
         const error = await getPromiseRejection(
           async () => bundle.verify(SERVICE_OID, datePeriod),
-          VeraError,
+          VeraidError,
         );
 
         expectErrorToEqual(
           error,
-          new VeraError('Member certificate was not issued by organisation', {
+          new VeraidError('Member certificate was not issued by organisation', {
             cause: expect.any(CertificateError),
           }),
         );
@@ -117,7 +117,7 @@ describe('MemberIdBundle', () => {
         );
 
         await expect(async () => bundle.verify(SERVICE_OID, pastPeriod)).rejects.toThrowWithMessage(
-          VeraError,
+          VeraidError,
           'Validity period of certificate chain does not overlap with required period',
         );
       });
@@ -151,7 +151,7 @@ describe('MemberIdBundle', () => {
 
         await expect(async () =>
           bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
       });
 
       test('should not contain tabs', async () => {
@@ -164,7 +164,7 @@ describe('MemberIdBundle', () => {
 
         await expect(async () =>
           bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
       });
 
       test('should not contain carriage returns', async () => {
@@ -177,7 +177,7 @@ describe('MemberIdBundle', () => {
 
         await expect(async () =>
           bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
       });
 
       test('should not contain line feeds', async () => {
@@ -190,7 +190,7 @@ describe('MemberIdBundle', () => {
 
         await expect(async () =>
           bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraError, errorMessage);
+        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
       });
     });
 
@@ -201,7 +201,7 @@ describe('MemberIdBundle', () => {
           orgCertificateSchema,
           memberCertificateSchema,
         );
-        const chainVerificationSpy = jest.spyOn(VeraDnssecChain.prototype, 'verify');
+        const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
 
         await bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
 
@@ -219,7 +219,7 @@ describe('MemberIdBundle', () => {
           orgCertificateSchema,
           memberCertificateSchema,
         );
-        const chainVerificationSpy = jest.spyOn(VeraDnssecChain.prototype, 'verify');
+        const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
 
         await bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
 
@@ -237,7 +237,7 @@ describe('MemberIdBundle', () => {
           orgCertificateSchema,
           memberCertificateSchema,
         );
-        const chainVerificationSpy = jest.spyOn(VeraDnssecChain.prototype, 'verify');
+        const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
         const narrowPeriod = DatePeriod.init(
           subSeconds(datePeriod.start, 1),
           subSeconds(datePeriod.end, 1),
@@ -263,8 +263,8 @@ describe('MemberIdBundle', () => {
 
         // Do not pass trusted anchors
         await expect(async () => bundle.verify(SERVICE_OID, datePeriod)).rejects.toThrowWithMessage(
-          VeraError,
-          /^Vera DNSSEC chain is BOGUS/u,
+          VeraidError,
+          /^VeraId DNSSEC chain is BOGUS/u,
         );
       });
     });

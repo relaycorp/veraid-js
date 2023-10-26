@@ -2,7 +2,7 @@ import type { RsaModulus } from '../utils/algorithms.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
-import VeraError from '../VeraError.js';
+import VeraidError from '../VeraidError.js';
 import { NODE_ENGINE } from '../utils/pkijs.js';
 
 import { getKeySpec } from './organisationKeys.js';
@@ -42,7 +42,7 @@ describe('getKeySpec', () => {
     });
 
     await expect(async () => getKeySpec(publicKey)).rejects.toThrowWithMessage(
-      VeraError,
+      VeraidError,
       `RSA key with modulus ${modulusLength} is unsupported`,
     );
   });
@@ -52,7 +52,7 @@ describe('getKeySpec', () => {
     const publicKey = await generatePublicKey({ name: algorithmName, namedCurve: 'P-256' });
 
     await expect(async () => getKeySpec(publicKey)).rejects.toThrowWithMessage(
-      VeraError,
+      VeraidError,
       `Only RSA-PSS keys are supported (got ${algorithmName})`,
     );
   });

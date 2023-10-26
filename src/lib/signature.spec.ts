@@ -20,8 +20,8 @@ import { arrayBufferFrom } from '../testUtils/buffers.js';
 import {
   ORG_KEY_PAIR,
   ORG_NAME,
-  VERA_RECORD,
-  VERA_RECORD_TTL_OVERRIDE,
+  VERAID_RECORD,
+  VERAID_RECORD_TTL_OVERRIDE,
 } from '../testUtils/veraStubs/organisation.js';
 import { expectErrorToEqual, getPromiseRejection } from '../testUtils/errors.js';
 import { MOCK_CHAIN } from '../testUtils/veraStubs/dnssec.js';
@@ -32,9 +32,9 @@ import { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
 import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
 import { SignedData } from './utils/cms/SignedData.js';
 import Certificate from './utils/x509/Certificate.js';
-import { CMS_OIDS, VERA_OIDS } from './oids.js';
+import { CMS_OIDS, VERAID_OIDS } from './oids.js';
 import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
-import VeraError from './VeraError.js';
+import VeraidError from './VeraidError.js';
 import { sign, verify } from './signature.js';
 import CmsError from './utils/cms/CmsError.js';
 import { generateTxtRdata } from './dns/rdataSerialisation.js';
@@ -73,7 +73,7 @@ describe('sign', () => {
 
     await expect(async () =>
       sign(PLAINTEXT, SERVICE_OID, malformedBundle, MEMBER_KEY_PAIR.privateKey, datePeriod.end),
-    ).rejects.toThrowWithMessage(VeraError, 'Member id bundle is malformed');
+    ).rejects.toThrowWithMessage(VeraidError, 'Member id bundle is malformed');
   });
 
   test('Version should be 0', async () => {
@@ -205,7 +205,7 @@ describe('sign', () => {
         const { signerInfos } = getSignedData(signature);
         const attributeValues = getSignedAttribute(
           signerInfos[0],
-          VERA_OIDS.SIGNATURE_METADATA_ATTR,
+          VERAID_OIDS.SIGNATURE_METADATA_ATTR,
         );
         expect(attributeValues).toHaveLength(1);
         return AsnParser.parse(attributeValues[0], SignatureMetadataSchema);
@@ -283,7 +283,10 @@ describe('sign', () => {
             invalidExpiryDate,
             { startDate: datePeriod.start },
           ),
-        ).rejects.toThrowWithMessage(VeraError, 'Signature start date cannot be after expiry date');
+        ).rejects.toThrowWithMessage(
+          VeraidError,
+          'Signature start date cannot be after expiry date',
+        );
       });
     });
   });
@@ -320,7 +323,7 @@ describe('verify', () => {
 
     await expect(async () =>
       verify(PLAINTEXT, malformedSignatureBundle, SERVICE_OID),
-    ).rejects.toThrowWithMessage(VeraError, 'Signature bundle is malformed');
+    ).rejects.toThrowWithMessage(VeraidError, 'Signature bundle is malformed');
   });
 
   test('Metadata attribute should be present in signature', async () => {
@@ -344,13 +347,13 @@ describe('verify', () => {
         datePeriod,
         dnssecChainFixture.trustAnchors,
       ),
-    ).rejects.toThrowWithMessage(VeraError, 'Signature metadata is missing');
+    ).rejects.toThrowWithMessage(VeraidError, 'Signature metadata is missing');
   });
 
   test('Metadata attribute should be well-formed', async () => {
     const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
     const attribute = new PkijsAttribute({
-      type: VERA_OIDS.SIGNATURE_METADATA_ATTR,
+      type: VERAID_OIDS.SIGNATURE_METADATA_ATTR,
       values: [new Null()],
     });
     const signedData = await SignedData.sign(
@@ -375,7 +378,7 @@ describe('verify', () => {
         datePeriod,
         dnssecChainFixture.trustAnchors,
       ),
-    ).rejects.toThrowWithMessage(VeraError, 'Signature metadata is malformed');
+    ).rejects.toThrowWithMessage(VeraidError, 'Signature metadata is malformed');
   });
 
   test('Metadata should contain valid validity period', async () => {
@@ -386,7 +389,7 @@ describe('verify', () => {
     metadata.validityPeriod.start = datePeriod.start;
     metadata.validityPeriod.end = subSeconds(datePeriod.start, 1); // Invalid
     const attribute = new PkijsAttribute({
-      type: VERA_OIDS.SIGNATURE_METADATA_ATTR,
+      type: VERAID_OIDS.SIGNATURE_METADATA_ATTR,
       values: [derDeserialize(AsnSerializer.serialize(metadata))],
     });
     const signedData = await SignedData.sign(
@@ -411,7 +414,7 @@ describe('verify', () => {
         datePeriod,
         dnssecChainFixture.trustAnchors,
       ),
-    ).rejects.toThrowWithMessage(VeraError, 'Signature validity period ends before it starts');
+    ).rejects.toThrowWithMessage(VeraidError, 'Signature validity period ends before it starts');
   });
 
   test('Signature should correspond to specified plaintext', async () => {
@@ -426,12 +429,12 @@ describe('verify', () => {
           datePeriod,
           dnssecChainFixture.trustAnchors,
         ),
-      VeraError,
+      VeraidError,
     );
 
     expectErrorToEqual(
       error,
-      new VeraError('Signature is invalid', { cause: expect.any(CmsError) }),
+      new VeraidError('Signature is invalid', { cause: expect.any(CmsError) }),
     );
   });
 
@@ -459,12 +462,12 @@ describe('verify', () => {
           datePeriod,
           dnssecChainFixture.trustAnchors,
         ),
-      VeraError,
+      VeraidError,
     );
 
     expectErrorToEqual(
       error,
-      new VeraError('Member id bundle is invalid', { cause: expect.any(VeraError) }),
+      new VeraidError('Member id bundle is invalid', { cause: expect.any(VeraidError) }),
     );
   });
 
@@ -481,7 +484,7 @@ describe('verify', () => {
           dnssecChainFixture.trustAnchors,
         ),
       ).rejects.toThrowWithMessage(
-        VeraError,
+        VeraidError,
         `Signature is bound to a different service (${SERVICE_OID})`,
       );
     });
@@ -489,10 +492,10 @@ describe('verify', () => {
     test('Service OID in signature should match that of member id bundle', async () => {
       const bundleVerifySpy = jest.spyOn(MemberIdBundle.prototype, 'verify');
       const differentServiceOid = `${SERVICE_OID}.1`;
-      const record = VERA_RECORD.shallowCopy({
+      const record = VERAID_RECORD.shallowCopy({
         data: await generateTxtRdata(
           ORG_KEY_PAIR.publicKey,
-          VERA_RECORD_TTL_OVERRIDE,
+          VERAID_RECORD_TTL_OVERRIDE,
           differentServiceOid,
         ),
       });
@@ -507,7 +510,7 @@ describe('verify', () => {
 
       await expect(async () =>
         verify(PLAINTEXT, signatureBundleSerialised, SERVICE_OID, datePeriod, trustAnchors),
-      ).rejects.toThrowWithMessage(VeraError, 'Member id bundle is invalid');
+      ).rejects.toThrowWithMessage(VeraidError, 'Member id bundle is invalid');
       expect(bundleVerifySpy).toHaveBeenCalledWith(
         SERVICE_OID,
         expect.anything(),
@@ -574,7 +577,7 @@ describe('verify', () => {
           dnssecChainFixture.trustAnchors,
         ),
       ).rejects.toThrowWithMessage(
-        VeraError,
+        VeraidError,
         'Verification expiry date cannot be before start date',
       );
     });
@@ -598,7 +601,7 @@ describe('verify', () => {
           dnssecChainFixture.trustAnchors,
         ),
       ).rejects.toThrowWithMessage(
-        VeraError,
+        VeraidError,
         'Signature period does not overlap with required period',
       );
     });
@@ -636,7 +639,7 @@ describe('verify', () => {
           verificationPeriod,
           dnssecChainFixture.trustAnchors,
         ),
-      ).rejects.toThrowWithMessage(VeraError, 'Member id bundle is invalid');
+      ).rejects.toThrowWithMessage(VeraidError, 'Member id bundle is invalid');
       expect(bundleVerifySpy).toHaveBeenCalledWith(
         expect.anything(),
         datePeriod.intersect(verificationPeriod),
@@ -659,7 +662,7 @@ describe('verify', () => {
       const error = await getPromiseRejection(
         async () =>
           verify(PLAINTEXT, bundle, SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        VeraError,
+        VeraidError,
       );
 
       expect(error.cause).toBeInstanceOf(CmsError);
@@ -678,7 +681,7 @@ describe('verify', () => {
       const error = await getPromiseRejection(
         async () =>
           verify(undefined, bundle, SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        VeraError,
+        VeraidError,
       );
 
       expect(error.cause).toBeInstanceOf(CmsError);
