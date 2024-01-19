@@ -31,7 +31,8 @@ async function verifyCertificateChain(
   const intersection = certChainPeriod.intersect(datePeriod);
   if (!intersection) {
     throw new VeraidError(
-      'Validity period of certificate chain does not overlap with required period',
+      `Validity period of certificate chain (${certChainPeriod.toString()}) ` +
+        `does not overlap with required period (${datePeriod.toString()})`,
     );
   }
   return intersection;

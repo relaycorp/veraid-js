@@ -118,7 +118,8 @@ describe('MemberIdBundle', () => {
 
         await expect(async () => bundle.verify(SERVICE_OID, pastPeriod)).rejects.toThrowWithMessage(
           VeraidError,
-          'Validity period of certificate chain does not overlap with required period',
+          `Validity period of certificate chain (${datePeriod.toString()}) ` +
+            `does not overlap with required period (${pastPeriod.toString()})`,
         );
       });
     });
