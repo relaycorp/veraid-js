@@ -78,7 +78,10 @@ function getSignaturePeriodIntersection(
   const verificationPeriod = convertDatePeriod(dateOrPeriod);
   const signaturePeriodIntersection = verificationPeriod.intersect(signaturePeriod);
   if (!signaturePeriodIntersection) {
-    throw new VeraidError('Signature period does not overlap with required period');
+    throw new VeraidError(
+      `Signature period (${signaturePeriod.toString()}) ` +
+        `does not overlap with required period (${verificationPeriod.toString()})`,
+    );
   }
   return signaturePeriodIntersection;
 }

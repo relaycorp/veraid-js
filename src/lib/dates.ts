@@ -36,4 +36,8 @@ export class DatePeriod implements IDatePeriod {
     const end = this.end < otherPeriod.end ? this.end : otherPeriod.end;
     return new DatePeriod(start, end);
   }
+
+  public toString(): string {
+    return `${this.start.toISOString()}..${this.end.toISOString()}`;
+  }
 }
