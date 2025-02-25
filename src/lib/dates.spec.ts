@@ -141,3 +141,13 @@ describe('intersect', () => {
     });
   });
 });
+
+describe('toString', () => {
+  test('Should return a string representation of the period', () => {
+    const start = new Date();
+    const end = addSeconds(start, 1);
+    const period = DatePeriod.init(start, end);
+
+    expect(period.toString()).toBe(`${start.toISOString()}..${end.toISOString()}`);
+  });
+});

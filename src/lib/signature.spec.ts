@@ -583,13 +583,17 @@ describe('verify', () => {
     });
 
     test('Period should overlap with that of signature', async () => {
+      const signaturePeriod = DatePeriod.init(
+        subSeconds(datePeriod.start, 2),
+        subSeconds(datePeriod.start, 1),
+      );
       const signatureBundleSerialised = await sign(
         PLAINTEXT,
         SERVICE_OID,
         MEMBER_ID_BUNDLE,
         MEMBER_KEY_PAIR.privateKey,
-        subSeconds(datePeriod.start, 1),
-        { startDate: subSeconds(datePeriod.start, 2) },
+        signaturePeriod.end,
+        { startDate: signaturePeriod.start },
       );
 
       await expect(async () =>
@@ -602,7 +606,8 @@ describe('verify', () => {
         ),
       ).rejects.toThrowWithMessage(
         VeraidError,
-        'Signature period does not overlap with required period',
+        `Signature period (${signaturePeriod.toString()}) ` +
+          `does not overlap with required period (${datePeriod.toString()})`,
       );
     });
 
