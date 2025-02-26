@@ -67,7 +67,7 @@
     "asn1js": "^3.0.5",
     "date-fns": "^2.30.0",
     "dohdec": "^6.0.4",
-    "pkijs": "^3.0.15",
+    "pkijs": "^3.2.4",
     "webcrypto-core": "^1.7.7"
   }
 }
