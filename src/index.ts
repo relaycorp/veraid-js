@@ -7,6 +7,7 @@ export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export { retrieveVeraidDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
 export { serialiseMemberIdBundle } from './lib/memberIdBundle/serialisation.js';
 export { MemberIdBundle } from './lib/memberIdBundle/MemberIdBundle.js';
+export { SignatureBundle } from './lib/SignatureBundle.js';
 export { verify } from './lib/signature.js';
 export type { SignatureOptions } from './lib/SignatureOptions.js';
 export type { Member } from './lib/Member.js';

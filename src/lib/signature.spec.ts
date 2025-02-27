@@ -37,6 +37,7 @@ import { DatePeriod, type IDatePeriod } from './dates.js';
 import { issueMemberCertificate } from './pki/member.js';
 import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
 import { derDeserialize } from './utils/asn1.js';
+import { SignatureBundle } from './SignatureBundle.js';
 
 const PLAINTEXT = arrayBufferFrom('the plaintext');
 
@@ -54,13 +55,15 @@ const MEMBER_ID_BUNDLE = serialiseMemberIdBundle(
 
 // Create a signature bundle for testing
 const bundleInstance = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE);
-const SIGNATURE_BUNDLE_SERIALISED = await bundleInstance.sign(
+const signatureBundle = await SignatureBundle.sign(
   PLAINTEXT,
   SERVICE_OID,
+  bundleInstance,
   MEMBER_KEY_PAIR.privateKey,
   datePeriod.end,
   { startDate: datePeriod.start },
 );
+const SIGNATURE_BUNDLE_SERIALISED = signatureBundle.serialise();
 
 describe('verify', () => {
   interface SignatureBundleAttributeSet {
@@ -72,20 +75,23 @@ describe('verify', () => {
     signatureBundleSerialised: ArrayBuffer,
     attributes: Partial<SignatureBundleAttributeSet>,
   ): ArrayBuffer {
-    const signatureBundle = AsnParser.parse(signatureBundleSerialised, SignatureBundleSchema);
+    const signatureBundleSchema = AsnParser.parse(signatureBundleSerialised, SignatureBundleSchema);
 
     if (attributes.dnssecResponses) {
       const responsesSerialised = attributes.dnssecResponses
         .map(serialiseMessage)
         .map(arrayBufferFrom);
-      signatureBundle.dnssecChain = new DnssecChainSchema(responsesSerialised);
+      signatureBundleSchema.dnssecChain = new DnssecChainSchema(responsesSerialised);
     }
 
     if (attributes.signedData) {
-      signatureBundle.signature = AsnParser.parse(attributes.signedData.serialize(), ContentInfo);
+      signatureBundleSchema.signature = AsnParser.parse(
+        attributes.signedData.serialize(),
+        ContentInfo,
+      );
     }
 
-    return AsnSerializer.serialize(signatureBundle);
+    return AsnSerializer.serialize(signatureBundleSchema);
   }
 
   test('Signature bundle should be well-formed', async () => {
@@ -97,7 +103,10 @@ describe('verify', () => {
   });
 
   test('Metadata attribute should be present in signature', async () => {
-    const signatureBundle = AsnParser.parse(SIGNATURE_BUNDLE_SERIALISED, SignatureBundleSchema);
+    const signatureBundleSchema = AsnParser.parse(
+      SIGNATURE_BUNDLE_SERIALISED,
+      SignatureBundleSchema,
+    );
     const memberCertificate = Certificate.deserialize(memberCertificateSerialised);
     const signedData = await SignedData.sign(
       PLAINTEXT,
@@ -106,8 +115,8 @@ describe('verify', () => {
       [],
       { encapsulatePlaintext: false },
     );
-    signatureBundle.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
-    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundle);
+    signatureBundleSchema.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
+    const signatureBundleSerialised = AsnSerializer.serialize(signatureBundleSchema);
 
     await expect(async () =>
       verify(
@@ -215,19 +224,21 @@ describe('verify', () => {
       DNSSEC_CHAIN_SERIALISED,
     );
     const invalidBundle = MemberIdBundle.deserialise(invalidMemberIdBundle);
-    const signatureBundle = await invalidBundle.sign(
+    const invalidSignatureBundle = await SignatureBundle.sign(
       PLAINTEXT,
       SERVICE_OID,
+      invalidBundle,
       MEMBER_KEY_PAIR.privateKey,
       datePeriod.end,
       { startDate: datePeriod.start },
     );
+    const signatureBundleSerialised = invalidSignatureBundle.serialise();
 
     const error = await getPromiseRejection(
       async () =>
         verify(
           PLAINTEXT,
-          signatureBundle,
+          signatureBundleSerialised,
           SERVICE_OID,
           datePeriod,
           dnssecChainFixture.trustAnchors,
@@ -358,13 +369,15 @@ describe('verify', () => {
         subSeconds(datePeriod.start, 1),
       );
       const testBundle = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE);
-      const signatureBundleSerialised = await testBundle.sign(
+      const periodSignatureBundle = await SignatureBundle.sign(
         PLAINTEXT,
         SERVICE_OID,
+        testBundle,
         MEMBER_KEY_PAIR.privateKey,
         signaturePeriod.end,
         { startDate: signaturePeriod.start },
       );
+      const signatureBundleSerialised = periodSignatureBundle.serialise();
 
       await expect(async () =>
         verify(
@@ -398,13 +411,15 @@ describe('verify', () => {
         DNSSEC_CHAIN_SERIALISED,
       );
       const testBundle = MemberIdBundle.deserialise(testMemberIdBundle);
-      const signatureBundleSerialised = await testBundle.sign(
+      const certSignatureBundle = await SignatureBundle.sign(
         PLAINTEXT,
         SERVICE_OID,
+        testBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
         { startDate: datePeriod.start },
       );
+      const signatureBundleSerialised = certSignatureBundle.serialise();
 
       await expect(async () =>
         verify(
@@ -426,13 +441,15 @@ describe('verify', () => {
   describe('Plaintext', () => {
     test('Verification should fail if plaintext is attached and passed', async () => {
       const testBundle = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE);
-      const signatureBundleSerialised = await testBundle.sign(
+      const attachedPlaintextBundle = await SignatureBundle.sign(
         PLAINTEXT,
         SERVICE_OID,
+        testBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
         { shouldEncapsulatePlaintext: true },
       );
+      const signatureBundleSerialised = attachedPlaintextBundle.serialise();
 
       const error = await getPromiseRejection(
         async () =>
@@ -451,13 +468,15 @@ describe('verify', () => {
 
     test('Verification should fail if plaintext is detached and not passed', async () => {
       const testBundle = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE);
-      const signatureBundleSerialised = await testBundle.sign(
+      const detachedPlaintextBundle = await SignatureBundle.sign(
         PLAINTEXT,
         SERVICE_OID,
+        testBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
         { shouldEncapsulatePlaintext: false },
       );
+      const signatureBundleSerialised = detachedPlaintextBundle.serialise();
 
       const error = await getPromiseRejection(
         async () =>
@@ -478,13 +497,15 @@ describe('verify', () => {
   describe('Valid result', () => {
     test('Plaintext should be taken from bundle if attached', async () => {
       const testBundle = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE);
-      const signatureBundleSerialised = await testBundle.sign(
+      const attachedPlaintextBundle2 = await SignatureBundle.sign(
         PLAINTEXT,
         SERVICE_OID,
+        testBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
         { shouldEncapsulatePlaintext: true },
       );
+      const signatureBundleSerialised = attachedPlaintextBundle2.serialise();
 
       const { plaintext } = await verify(
         undefined,
@@ -552,13 +573,15 @@ describe('verify', () => {
         DNSSEC_CHAIN_SERIALISED,
       );
       const botBundle = MemberIdBundle.deserialise(botMemberIdBundle);
-      const signatureBundleSerialised = await botBundle.sign(
+      const botSignatureBundle = await SignatureBundle.sign(
         PLAINTEXT,
         SERVICE_OID,
+        botBundle,
         MEMBER_KEY_PAIR.privateKey,
         datePeriod.end,
         { startDate: datePeriod.start },
       );
+      const signatureBundleSerialised = botSignatureBundle.serialise();
 
       const {
         member: { user },

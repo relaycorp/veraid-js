@@ -19,7 +19,7 @@ To produce a signature for a given plaintext, you need a _Member Id Bundle_ (pro
 For example, if you wanted to produce signatures valid for up to 30 days for a service identified by the [OID](https://en.wikipedia.org/wiki/Object_identifier) `1.2.3.4.5`, you could implement the following function and call it in your code:
 
 ```typescript
-import { MemberIdBundle } from '@relaycorp/veraid';
+import { MemberIdBundle, SignatureBundle } from '@relaycorp/veraid';
 import { addDays } from 'date-fns';
 
 const TTL_DAYS = 30;
@@ -32,16 +32,18 @@ async function produceSignature(
 ): Promise<ArrayBuffer> {
   const memberIdBundle = MemberIdBundle.deserialise(memberIdBundleSerialised);
   const expiryDate = addDays(new Date(), TTL_DAYS);
-  return await memberIdBundle.sign(
+  const signatureBundle = await SignatureBundle.sign(
     plaintext,
     SERVICE_OID,
+    memberIdBundle,
     memberSigningKey,
     expiryDate,
   );
+  return signatureBundle.serialise();
 }
 ```
 
-The output of the `sign()` method is the _VeraId Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
+The output is the _VeraId Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
 
 Note that for signatures to actually be valid for up to 30 days, the TTL override in the VeraId TXT record should allow 30 days or more.
 
