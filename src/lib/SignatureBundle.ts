@@ -60,6 +60,26 @@ async function generateSignedData(
 
 export class SignatureBundle {
   /**
+   * Deserialise a binary representation into a SignatureBundle instance
+   * @param serialisation - The serialised signature bundle
+   * @returns A new SignatureBundle instance
+   * @throws {VeraidError} If the version is not 0
+   */
+  public static deserialise(serialisation: ArrayBuffer): SignatureBundle {
+    const bundleSchema = AsnParser.parse(serialisation, SignatureBundleSchema);
+
+    if (bundleSchema.version !== 0) {
+      throw new VeraidError('Unsupported SignatureBundle version');
+    }
+
+    return new SignatureBundle(
+      bundleSchema.dnssecChain,
+      bundleSchema.organisationCertificate,
+      bundleSchema.signature,
+    );
+  }
+
+  /**
    * Create a signature for the specified plaintext using the provided member ID
    * @param plaintext - The data to sign
    * @param serviceOid - The OID of the service for which the signature is created

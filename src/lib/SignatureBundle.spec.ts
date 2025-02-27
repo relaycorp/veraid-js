@@ -432,4 +432,126 @@ describe('SignatureBundle', () => {
       expect(bundleDeserialised.signature.contentType).toStrictEqual(CMS_OIDS.SIGNED_DATA);
     });
   });
+
+  describe('deserialise', () => {
+    test('Should throw error if version is not 0', async () => {
+      const memberIdBundle = new MemberIdBundle(
+        dnssecChain,
+        orgCertificateSchema,
+        memberCertificateSchema,
+      );
+      const signatureBundle = await SignatureBundle.sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+      );
+      const serialisation = signatureBundle.serialise();
+      const bundleSchema = AsnParser.parse(serialisation, SignatureBundleSchema);
+      bundleSchema.version = 1;
+      const modifiedSerialisation = AsnSerializer.serialize(bundleSchema);
+
+      expect(() => SignatureBundle.deserialise(modifiedSerialisation)).toThrowWithMessage(
+        VeraidError,
+        'Unsupported SignatureBundle version',
+      );
+    });
+
+    test('Should correctly deserialise DNSSEC chain', async () => {
+      const memberIdBundle = new MemberIdBundle(
+        dnssecChain,
+        orgCertificateSchema,
+        memberCertificateSchema,
+      );
+      const signatureBundle = await SignatureBundle.sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+      );
+      const serialisation = signatureBundle.serialise();
+
+      const deserialisedBundle = SignatureBundle.deserialise(serialisation);
+
+      const { dnssecChainSchema } = deserialisedBundle as unknown as {
+        dnssecChainSchema: DnssecChainSchema;
+      };
+      expect(dnssecChainSchema.map((message) => Buffer.from(message))).toStrictEqual(
+        dnssecChain.map((message) => Buffer.from(message)),
+      );
+    });
+
+    test('Should correctly deserialise organisation certificate', async () => {
+      const memberIdBundle = new MemberIdBundle(
+        dnssecChain,
+        orgCertificateSchema,
+        memberCertificateSchema,
+      );
+      const signatureBundle = await SignatureBundle.sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+      );
+      const serialisation = signatureBundle.serialise();
+
+      const deserialisedBundle = SignatureBundle.deserialise(serialisation);
+
+      const { orgCertificateSchema: orgCertificate } = deserialisedBundle as unknown as {
+        orgCertificateSchema: CertificateSchema;
+      };
+      expect(Buffer.from(AsnSerializer.serialize(orgCertificate))).toStrictEqual(
+        Buffer.from(orgCertificateSerialised),
+      );
+    });
+
+    test('Should correctly deserialise signature', async () => {
+      const memberIdBundle = new MemberIdBundle(
+        dnssecChain,
+        orgCertificateSchema,
+        memberCertificateSchema,
+      );
+      const signatureBundle = await SignatureBundle.sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+      );
+      const serialisation = signatureBundle.serialise();
+
+      const deserialisedBundle = SignatureBundle.deserialise(serialisation);
+
+      const { signature } = deserialisedBundle as unknown as { signature: ContentInfo };
+      expect(signature.contentType).toStrictEqual(CMS_OIDS.SIGNED_DATA);
+
+      const signedData = SignedData.deserialize(AsnSerializer.serialize(signature));
+      await expect(signedData.verify(PLAINTEXT)).resolves.not.toThrow();
+    });
+
+    test('Should preserve version 0', async () => {
+      const memberIdBundle = new MemberIdBundle(
+        dnssecChain,
+        orgCertificateSchema,
+        memberCertificateSchema,
+      );
+      const signatureBundle = await SignatureBundle.sign(
+        PLAINTEXT,
+        SERVICE_OID,
+        memberIdBundle,
+        MEMBER_KEY_PAIR.privateKey,
+        datePeriod.end,
+      );
+      const serialisation = signatureBundle.serialise();
+
+      const deserialisedBundle = SignatureBundle.deserialise(serialisation);
+
+      const reserialisation = deserialisedBundle.serialise();
+      const bundleSchema = AsnParser.parse(reserialisation, SignatureBundleSchema);
+      expect(bundleSchema.version).toBe(0);
+    });
+  });
 });
