@@ -79,16 +79,9 @@ export class SignatureBundle {
     expiryDate: Date,
     { startDate, shouldEncapsulatePlaintext }: Partial<SignatureOptions> = {},
   ): Promise<SignatureBundle> {
-    // Access the protected properties using type assertion
-    const memberIdBundle = signer as unknown as {
-      dnssecChainSchema: DnssecChainSchema;
-      orgCertificateSchema: CertificateSchema;
-      memberCertificateSchema: CertificateSchema;
-    };
-
     const signedDataSchema = await generateSignedData(
       plaintext,
-      memberIdBundle.memberCertificateSchema,
+      signer.memberCertificateSchema,
       signingKey,
       serviceOid,
       shouldEncapsulatePlaintext ?? false,
@@ -97,8 +90,8 @@ export class SignatureBundle {
     );
 
     return new SignatureBundle(
-      memberIdBundle.dnssecChainSchema,
-      memberIdBundle.orgCertificateSchema,
+      signer.dnssecChainSchema,
+      signer.orgCertificateSchema,
       signedDataSchema,
     );
   }

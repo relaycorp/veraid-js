@@ -64,9 +64,9 @@ export class MemberIdBundle {
   }
 
   public constructor(
-    protected readonly dnssecChainSchema: DnssecChainSchema,
-    protected readonly orgCertificateSchema: CertificateSchema,
-    protected readonly memberCertificateSchema: CertificateSchema,
+    public readonly dnssecChainSchema: DnssecChainSchema,
+    public readonly orgCertificateSchema: CertificateSchema,
+    public readonly memberCertificateSchema: CertificateSchema,
   ) {}
 
   /**
