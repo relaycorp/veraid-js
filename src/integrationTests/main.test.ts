@@ -5,7 +5,7 @@ import {
   retrieveVeraidDnssecChain,
   selfIssueOrganisationCertificate,
   serialiseMemberIdBundle,
-  sign,
+  MemberIdBundle,
   verify,
 } from '../index.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
@@ -34,14 +34,18 @@ const MEMBER_CERTIFICATE = await issueMemberCertificate(
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 
 const DNSSEC_CHAIN = await retrieveVeraidDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
-const MEMBER_ID_BUNDLE = serialiseMemberIdBundle(MEMBER_CERTIFICATE, ORG_CERTIFICATE, DNSSEC_CHAIN);
+const MEMBER_ID_BUNDLE_SERIALISED = serialiseMemberIdBundle(
+  MEMBER_CERTIFICATE,
+  ORG_CERTIFICATE,
+  DNSSEC_CHAIN,
+);
+const MEMBER_ID_BUNDLE = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE_SERIALISED);
 
 describe('main', () => {
   test('Valid signature bundle', async () => {
-    const signatureBundle = await sign(
+    const signatureBundle = await MEMBER_ID_BUNDLE.sign(
       PLAINTEXT,
       VERAID_OIDS.TEST_SERVICE,
-      MEMBER_ID_BUNDLE,
       MEMBER_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
@@ -59,10 +63,9 @@ describe('main', () => {
 
   test('Invalid signature', async () => {
     const otherMemberKeyPair = await generateRsaKeyPair();
-    const signatureBundle = await sign(
+    const signatureBundle = await MEMBER_ID_BUNDLE.sign(
       PLAINTEXT,
       VERAID_OIDS.TEST_SERVICE,
-      MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
@@ -74,10 +77,9 @@ describe('main', () => {
 
   test('Different service', async () => {
     const otherMemberKeyPair = await generateRsaKeyPair();
-    const signatureBundle = await sign(
+    const signatureBundle = await MEMBER_ID_BUNDLE.sign(
       PLAINTEXT,
       VERAID_OIDS.TEST_SERVICE,
-      MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
