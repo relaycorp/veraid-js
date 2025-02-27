@@ -116,7 +116,7 @@ export class MemberIdBundle {
   }
 
   public constructor(
-    protected readonly veraChainSchema: DnssecChainSchema,
+    protected readonly dnssecChainSchema: DnssecChainSchema,
     protected readonly orgCertificateSchema: CertificateSchema,
     protected readonly memberCertificateSchema: CertificateSchema,
   ) {}
@@ -130,7 +130,7 @@ export class MemberIdBundle {
     bundle.version = 0;
     bundle.memberCertificate = this.memberCertificateSchema;
     bundle.organisationCertificate = this.orgCertificateSchema;
-    bundle.dnssecChain = this.veraChainSchema;
+    bundle.dnssecChain = this.dnssecChainSchema;
     return AsnSerializer.serialize(bundle);
   }
 
@@ -164,7 +164,7 @@ export class MemberIdBundle {
 
     const signatureSchema = new SignatureBundleSchema();
     signatureSchema.version = 0;
-    signatureSchema.dnssecChain = this.veraChainSchema;
+    signatureSchema.dnssecChain = this.dnssecChainSchema;
     signatureSchema.organisationCertificate = this.orgCertificateSchema;
     signatureSchema.signature = signedDataSchema;
     return AsnSerializer.serialize(signatureSchema);
@@ -195,7 +195,7 @@ export class MemberIdBundle {
       datePeriod,
     );
 
-    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, this.veraChainSchema);
+    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, this.dnssecChainSchema);
     const keySpec = await getKeySpec(await orgCertificate.getPublicKey());
     await dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
 
