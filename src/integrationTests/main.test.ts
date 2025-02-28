@@ -6,7 +6,6 @@ import {
   selfIssueOrganisationCertificate,
   serialiseMemberIdBundle,
   MemberIdBundle,
-  verify,
   SignatureBundle,
 } from '../index.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
@@ -52,12 +51,9 @@ describe('main', () => {
       EXPIRY_DATE,
     );
     const signatureBundleSerialised = signatureBundle.serialise();
+    const bundle = SignatureBundle.deserialise(signatureBundleSerialised);
 
-    const { plaintext, member } = await verify(
-      PLAINTEXT,
-      signatureBundleSerialised,
-      VERAID_OIDS.TEST_SERVICE,
-    );
+    const { plaintext, member } = await bundle.verify(PLAINTEXT, VERAID_OIDS.TEST_SERVICE);
 
     expect(new Uint8Array(plaintext)).toStrictEqual(new Uint8Array(PLAINTEXT));
     expect(member.organisation).toStrictEqual(TEST_ORG_NAME);
@@ -74,10 +70,11 @@ describe('main', () => {
       EXPIRY_DATE,
     );
     const signatureBundleSerialised = signatureBundle.serialise();
+    const bundle = SignatureBundle.deserialise(signatureBundleSerialised);
 
-    await expect(async () =>
-      verify(PLAINTEXT, signatureBundleSerialised, VERAID_OIDS.TEST_SERVICE),
-    ).rejects.toThrow(VeraidError);
+    await expect(async () => bundle.verify(PLAINTEXT, VERAID_OIDS.TEST_SERVICE)).rejects.toThrow(
+      VeraidError,
+    );
   });
 
   test('Different service', async () => {
@@ -90,10 +87,11 @@ describe('main', () => {
       EXPIRY_DATE,
     );
     const signatureBundleSerialised = signatureBundle.serialise();
+    const bundle = SignatureBundle.deserialise(signatureBundleSerialised);
     const differentService = `${VERAID_OIDS.TEST_SERVICE}.42`;
 
-    await expect(async () =>
-      verify(PLAINTEXT, signatureBundleSerialised, differentService),
-    ).rejects.toThrow(VeraidError);
+    await expect(async () => bundle.verify(PLAINTEXT, differentService)).rejects.toThrow(
+      VeraidError,
+    );
   });
 });

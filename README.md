@@ -56,7 +56,7 @@ If VeraId's maximum TTL of 90 days or the TTL specified by the signature produce
 For example, if you only want to accept signatures valid for the past 30 days in a service identified by `1.2.3.4.5`, you could use the following function:
 
 ```typescript
-import { type IDatePeriod, verify } from '@relaycorp/veraid';
+import { type IDatePeriod, SignatureBundle } from '@relaycorp/veraid';
 import { subDays } from 'date-fns';
 
 const TTL_DAYS = 30;
@@ -68,9 +68,10 @@ async function verifySignature(
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
+  const bundle = SignatureBundle.deserialise(signatureBundle);
   const {
     member: { user, organisation },
-  } = await verify(plaintext, signatureBundle, SERVICE_OID, datePeriod);
+  } = await bundle.verify(plaintext, SERVICE_OID, datePeriod);
   return user === undefined ? organisation : `${user}@${organisation}`;
 }
 ```

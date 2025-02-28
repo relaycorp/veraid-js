@@ -1,8 +1,9 @@
 import { ContentInfo } from '@peculiar/asn1-cms';
-import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
+import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Attribute } from 'pkijs';
-import type { Sequence } from 'asn1js';
+import type { Sequence, BaseBlock } from 'asn1js';
+import type { TrustAnchor } from '@relaycorp/dnssec';
 
 import type { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
 import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
@@ -14,7 +15,12 @@ import { SignedData } from './utils/cms/SignedData.js';
 import type { SignatureOptions } from './SignatureOptions.js';
 import Certificate from './utils/x509/Certificate.js';
 import VeraidError from './VeraidError.js';
-import type { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
+import {
+  MemberIdBundle as MemberIdBundleClass,
+  type MemberIdBundle,
+} from './memberIdBundle/MemberIdBundle.js';
+import { DatePeriod, type IDatePeriod } from './dates.js';
+import type { SignatureBundleVerification } from './SignatureBundleVerification.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {
@@ -56,6 +62,56 @@ async function generateSignedData(
     encapsulatePlaintext: shouldEncapsulatePlaintext,
   });
   return AsnParser.parse(signedData.serialize(), ContentInfo);
+}
+
+function getMetadata(signedData: SignedData) {
+  const metadataAttributeAsn1 = signedData.getSignedAttribute(VERAID_OIDS.SIGNATURE_METADATA_ATTR);
+  if (!metadataAttributeAsn1) {
+    throw new VeraidError('Signature metadata is missing');
+  }
+  let metadata: SignatureMetadataSchema;
+  try {
+    metadata = AsnParser.parse(
+      (metadataAttributeAsn1 as BaseBlock[])[0].toBER(),
+      SignatureMetadataSchema,
+    );
+  } catch {
+    throw new VeraidError('Signature metadata is malformed');
+  }
+  if (metadata.validityPeriod.end < metadata.validityPeriod.start) {
+    throw new VeraidError('Signature validity period ends before it starts');
+  }
+
+  return metadata;
+}
+
+function convertDatePeriod(dateOrPeriod: Date | IDatePeriod) {
+  if (dateOrPeriod instanceof Date) {
+    return DatePeriod.init(dateOrPeriod, dateOrPeriod);
+  }
+  if (dateOrPeriod.end < dateOrPeriod.start) {
+    throw new VeraidError('Verification expiry date cannot be before start date');
+  }
+  return DatePeriod.init(dateOrPeriod.start, dateOrPeriod.end);
+}
+
+function getSignaturePeriodIntersection(
+  metadata: SignatureMetadataSchema,
+  dateOrPeriod: Date | IDatePeriod,
+) {
+  const signaturePeriod = DatePeriod.init(
+    metadata.validityPeriod.start,
+    metadata.validityPeriod.end,
+  );
+  const verificationPeriod = convertDatePeriod(dateOrPeriod);
+  const signaturePeriodIntersection = verificationPeriod.intersect(signaturePeriod);
+  if (!signaturePeriodIntersection) {
+    throw new VeraidError(
+      `Signature period (${signaturePeriod.toString()}) ` +
+        `does not overlap with required period (${verificationPeriod.toString()})`,
+    );
+  }
+  return signaturePeriodIntersection;
 }
 
 export class SignatureBundle {
@@ -133,5 +189,47 @@ export class SignatureBundle {
     signatureSchema.organisationCertificate = this.orgCertificateSchema;
     signatureSchema.signature = this.signature;
     return AsnSerializer.serialize(signatureSchema);
+  }
+
+  /**
+   * Verify the signature against the specified plaintext
+   * @param plaintext - The plaintext to verify (can be undefined if the plaintext is encapsulated in the signature)
+   * @param serviceOid - The OID of the service for which the signature should be valid
+   * @param dateOrPeriod - The date or period for which the signature should be valid (defaults to now)
+   * @param trustAnchors - The DNSSEC trust anchors to use for verification
+   * @returns The verification result containing the plaintext and member information
+   * @throws {VeraidError} If the signature is invalid
+   */
+  public async verify(
+    plaintext: ArrayBuffer | undefined,
+    serviceOid: string,
+    dateOrPeriod: Date | IDatePeriod = new Date(),
+    trustAnchors?: readonly TrustAnchor[],
+  ): Promise<SignatureBundleVerification> {
+    const signedData = SignedData.deserialize(AsnSerializer.serialize(this.signature));
+    try {
+      await signedData.verify(plaintext);
+    } catch (err) {
+      throw new VeraidError('Signature is invalid', { cause: err });
+    }
+
+    const metadata = getMetadata(signedData);
+    if (metadata.serviceOid !== serviceOid) {
+      throw new VeraidError(`Signature is bound to a different service (${metadata.serviceOid})`);
+    }
+
+    const signaturePeriodIntersection = getSignaturePeriodIntersection(metadata, dateOrPeriod);
+    const memberIdBundle = new MemberIdBundleClass(
+      this.dnssecChainSchema,
+      this.orgCertificateSchema,
+      AsnParser.parse(signedData.signerCertificate!.serialize(), CertificateSchema),
+    );
+    let member;
+    try {
+      member = await memberIdBundle.verify(serviceOid, signaturePeriodIntersection, trustAnchors);
+    } catch (err) {
+      throw new VeraidError('Member id bundle is invalid', { cause: err });
+    }
+    return { plaintext: plaintext ?? signedData.plaintext!, member };
   }
 }
