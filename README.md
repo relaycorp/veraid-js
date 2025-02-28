@@ -64,19 +64,19 @@ const SERVICE_OID = '1.2.3.4.5';
 
 async function verifySignature(
   plaintext: ArrayBuffer,
-  signatureBundle: ArrayBuffer,
+  signatureBundleSerialised: ArrayBuffer,
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
-  const bundle = SignatureBundle.deserialise(signatureBundle);
+  const signatureBundle = SignatureBundle.deserialise(signatureBundleSerialised);
   const {
     member: { user, organisation },
-  } = await bundle.verify(plaintext, SERVICE_OID, datePeriod);
+  } = await signatureBundle.verify(plaintext, SERVICE_OID, datePeriod);
   return user === undefined ? organisation : `${user}@${organisation}`;
 }
 ```
 
-`verify()` will throw an error if the signature is invalid for whatever reason.
+`signatureBundle.verify()` will throw an error if the signature is invalid for whatever reason.
 
 `verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 
