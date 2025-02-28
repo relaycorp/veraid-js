@@ -1,4 +1,5 @@
-import { secondsInDay } from 'date-fns';
+// eslint-disable-next-line import/extensions, node/file-extension-in-import
+import { secondsInDay } from 'date-fns/constants';
 import { DnsClass, DnsRecord } from '@relaycorp/dnssec';
 
 import { derSerializePublicKey } from '../../lib/utils/keys/serialisation.js';

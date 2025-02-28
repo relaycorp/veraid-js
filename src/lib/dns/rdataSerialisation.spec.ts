@@ -1,4 +1,5 @@
-import { secondsInDay } from 'date-fns';
+// eslint-disable-next-line import/extensions, node/file-extension-in-import
+import { secondsInDay } from 'date-fns/constants';
 
 import VeraidError from '../VeraidError.js';
 import {
