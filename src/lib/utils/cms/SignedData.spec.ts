@@ -280,7 +280,7 @@ describe('sign', () => {
         MEMBER_KEY_PAIR.privateKey,
         certificate,
         undefined,
-        { encapsulatePlaintext: false },
+        { shouldEncapsulatePlaintext: false },
       );
 
       const { encapContentInfo } = signedData.pkijsSignedData;
@@ -362,7 +362,7 @@ describe('verify', () => {
       certificate,
       undefined,
       {
-        encapsulatePlaintext: false,
+        shouldEncapsulatePlaintext: false,
       },
     );
 
@@ -387,7 +387,7 @@ describe('verify', () => {
       certificate,
       undefined,
       {
-        encapsulatePlaintext: false,
+        shouldEncapsulatePlaintext: false,
       },
     );
     const differentPlaintext = arrayBufferFrom('this is an invalid plaintext');
@@ -428,7 +428,7 @@ describe('verify', () => {
       certificate,
       undefined,
       {
-        encapsulatePlaintext: false,
+        shouldEncapsulatePlaintext: false,
       },
     );
 

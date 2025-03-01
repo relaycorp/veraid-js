@@ -59,7 +59,7 @@ async function generateSignedData(
   });
   const signedData = await SignedData.sign(plaintext, signingKey, memberCertificate, [], {
     extraSignedAttrs: [metadataAttribute],
-    encapsulatePlaintext: shouldEncapsulatePlaintext,
+    shouldEncapsulatePlaintext,
   });
   return AsnParser.parse(signedData.serialize(), ContentInfo);
 }
@@ -230,6 +230,6 @@ export class SignatureBundle {
     } catch (err) {
       throw new VeraidError('Member id bundle is invalid', { cause: err });
     }
-    return { plaintext: plaintext ?? signedData.plaintext!, member };
+    return { plaintext: plaintext ?? signedData.plaintext!, member, wasSignedByMember: true };
   }
 }

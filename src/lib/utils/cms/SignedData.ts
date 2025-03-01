@@ -81,7 +81,7 @@ export class SignedData {
     const hashingAlgorithmName = options.hashingAlgorithmName ?? 'SHA-256';
     const digest = await NODE_ENGINE.digest({ name: hashingAlgorithmName }, plaintext);
     const signerInfo = initSignerInfo(signerCertificate, digest, options.extraSignedAttrs ?? []);
-    const shouldEncapsulatePlaintext = options.encapsulatePlaintext ?? true;
+    const shouldEncapsulatePlaintext = options.shouldEncapsulatePlaintext ?? true;
     const pkijsSignedData = new PkijsSignedData({
       certificates: [signerCertificate, ...caCertificates].map((cert) => cert.pkijsCertificate),
 

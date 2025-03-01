@@ -637,7 +637,7 @@ describe('SignatureBundle', () => {
         MEMBER_KEY_PAIR.privateKey,
         memberCertificate,
         [],
-        { encapsulatePlaintext: false },
+        { shouldEncapsulatePlaintext: false },
       );
       signatureBundleSchema.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
       const signatureBundleSerialised = AsnSerializer.serialize(signatureBundleSchema);
@@ -660,7 +660,7 @@ describe('SignatureBundle', () => {
         memberCertificate,
         [],
         {
-          encapsulatePlaintext: false,
+          shouldEncapsulatePlaintext: false,
           extraSignedAttrs: [attribute],
         },
       );
@@ -691,7 +691,7 @@ describe('SignatureBundle', () => {
         memberCertificate,
         [],
         {
-          encapsulatePlaintext: false,
+          shouldEncapsulatePlaintext: false,
           extraSignedAttrs: [attribute],
         },
       );
@@ -1082,6 +1082,19 @@ describe('SignatureBundle', () => {
         );
 
         expect(user).toBeUndefined();
+      });
+
+      test('Signature should be deemed as signed by member', async () => {
+        const bundle = SignatureBundle.deserialise(SIGNATURE_BUNDLE_SERIALISED);
+
+        const { wasSignedByMember } = await bundle.verify(
+          VERIFY_PLAINTEXT,
+          SERVICE_OID,
+          datePeriod,
+          dnssecChainFixture.trustAnchors,
+        );
+
+        expect(wasSignedByMember).toBe(true);
       });
     });
   });
