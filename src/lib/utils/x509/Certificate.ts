@@ -7,6 +7,7 @@ import {
   Certificate as PkijsCertificate,
   CertificateChainValidationEngine,
   Extension,
+  type IssuerAndSerialNumber,
 } from 'pkijs';
 
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
@@ -217,6 +218,18 @@ export default class Certificate {
     const thisCertSerialized = Buffer.from(this.serialize());
     const otherCertSerialized = Buffer.from(otherCertificate.serialize());
     return thisCertSerialized.equals(otherCertSerialized);
+  }
+
+  /**
+   * Checks if this certificate matches the given issuer and serial number.
+   * @param issuerAndSerialNumber - The issuer and serial number to match against
+   * @returns True if the certificate matches the issuer and serial number, false otherwise
+   */
+  public matchesIssuerAndSerialNumber(issuerAndSerialNumber: IssuerAndSerialNumber): boolean {
+    return (
+      this.pkijsCertificate.issuer.isEqual(issuerAndSerialNumber.issuer) &&
+      this.pkijsCertificate.serialNumber.isEqual(issuerAndSerialNumber.serialNumber)
+    );
   }
 
   public async getPublicKey(): Promise<CryptoKey> {

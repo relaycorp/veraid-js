@@ -129,18 +129,25 @@ export class SignedData {
    * The signer's certificate, if it was encapsulated.
    */
   public get signerCertificate(): Certificate | null {
+    const sid = this.signerIssuerAndSerialNumber;
+    if (!sid) {
+      return null;
+    }
+    const match = Array.from(this.certificates).find((cert) =>
+      cert.matchesIssuerAndSerialNumber(sid),
+    );
+    return match ?? null;
+  }
+
+  /**
+   * The signer's issuer and serial number, if available.
+   */
+  public get signerIssuerAndSerialNumber(): IssuerAndSerialNumber | null {
     if (this.pkijsSignedData.signerInfos.length === 0) {
       return null;
     }
     const [signerInfo] = this.pkijsSignedData.signerInfos;
-    const match = Array.from(this.certificates).find((cert) => {
-      const sid = signerInfo.sid as IssuerAndSerialNumber;
-      return (
-        cert.pkijsCertificate.issuer.isEqual(sid.issuer) &&
-        cert.pkijsCertificate.serialNumber.isEqual(sid.serialNumber)
-      );
-    });
-    return match ?? null;
+    return signerInfo.sid as IssuerAndSerialNumber;
   }
 
   /**

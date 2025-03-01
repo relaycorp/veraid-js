@@ -2,7 +2,7 @@ import { ContentInfo } from '@peculiar/asn1-cms';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Attribute } from 'pkijs';
-import type { Sequence, BaseBlock } from 'asn1js';
+import { type Sequence, type BaseBlock, Utf8String } from 'asn1js';
 import type { TrustAnchor } from '@relaycorp/dnssec';
 
 import type { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
@@ -21,6 +21,8 @@ import {
 } from './memberIdBundle/MemberIdBundle.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
 import type { SignatureBundleVerification } from './SignatureBundleVerification.js';
+import { BOT_NAME } from './pki/member.js';
+import type { OrganisationSigner } from './OrganisationSigner.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {
@@ -40,30 +42,55 @@ function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date)
   return derDeserialize(serialisation) as Sequence;
 }
 
-async function generateSignedData(
-  plaintext: ArrayBuffer,
-  memberCertificateSchema: CertificateSchema,
-  signingKey: CryptoKey,
-  serviceOid: string,
-  shouldEncapsulatePlaintext: boolean,
-  expiryDate: Date,
-  startDate?: Date,
-) {
-  const memberCertificate = Certificate.deserialize(
-    AsnSerializer.serialize(memberCertificateSchema),
+interface SignedDataOptions extends Partial<SignatureOptions> {
+  plaintext: ArrayBuffer;
+  signerCertificateSchema: CertificateSchema;
+  signingKey: CryptoKey;
+  serviceOid: string;
+  expiryDate: Date;
+  attributedMemberName?: Utf8String;
+  shouldIncludeSignerCertificates: boolean;
+}
+
+async function generateSignedData(options: SignedDataOptions) {
+  const {
+    plaintext,
+    signerCertificateSchema,
+    signingKey,
+    serviceOid,
+    shouldEncapsulatePlaintext = false,
+    expiryDate,
+    startDate,
+    attributedMemberName,
+    shouldIncludeSignerCertificates,
+  } = options;
+
+  const signerCertificate = Certificate.deserialize(
+    AsnSerializer.serialize(signerCertificateSchema),
   );
   const metadataSchema = generateMetadata(serviceOid, startDate ?? new Date(), expiryDate);
   const metadataAttribute = new Attribute({
     type: VERAID_OIDS.SIGNATURE_METADATA_ATTR,
     values: [metadataSchema],
   });
+
+  const extraSignedAttrs = [metadataAttribute];
+
+  if (attributedMemberName !== undefined) {
+    const memberAttributionAttribute = new Attribute({
+      type: VERAID_OIDS.MEMBER_ATTRIBUTION_ATTR,
+      values: [attributedMemberName],
+    });
+    extraSignedAttrs.push(memberAttributionAttribute);
+  }
+
   const signedData = await SignedData.sign(
     plaintext,
     signingKey,
-    memberCertificate,
-    [memberCertificate],
+    signerCertificate,
+    shouldIncludeSignerCertificates ? [signerCertificate] : [],
     {
-      extraSignedAttrs: [metadataAttribute],
+      extraSignedAttrs,
       shouldEncapsulatePlaintext,
     },
   );
@@ -142,11 +169,11 @@ export class SignatureBundle {
   }
 
   /**
-   * Create a signature for the specified plaintext using the provided member ID
+   * Create a signature for the specified plaintext
    * @param plaintext - The data to sign
    * @param serviceOid - The OID of the service for which the signature is created
-   * @param signer - The member ID bundle to use for signing
-   * @param signingKey - The private key corresponding to the member certificate
+   * @param signer - The member id bundle or organisation signer to use for signing
+   * @param signingKey - The private key corresponding to the signer certificate
    * @param expiryDate - The date when the signature expires
    * @param options - Additional options for signature creation
    * @param options.startDate - The date when the signature becomes valid (defaults to now)
@@ -156,32 +183,46 @@ export class SignatureBundle {
   public static async sign(
     plaintext: ArrayBuffer,
     serviceOid: string,
-    signer: MemberIdBundle,
+    signer: MemberIdBundle | OrganisationSigner,
     signingKey: CryptoKey,
     expiryDate: Date,
-    { startDate, shouldEncapsulatePlaintext }: Partial<SignatureOptions> = {},
+    options: Partial<SignatureOptions> = {},
   ): Promise<SignatureBundle> {
-    const signedDataSchema = await generateSignedData(
+    let signerCertificateSchema: CertificateSchema;
+    let attributedMemberName: Utf8String | undefined;
+    let shouldIncludeCertificates: boolean;
+    if (signer instanceof MemberIdBundleClass) {
+      // It's a member signature bundle
+      signerCertificateSchema = signer.memberCertificateSchema;
+      attributedMemberName = undefined;
+      shouldIncludeCertificates = true;
+    } else {
+      // It's an organisation signature bundle
+      signerCertificateSchema = signer.orgCertificateSchema;
+      attributedMemberName = new Utf8String({
+        value: signer.attributedMemberName ?? BOT_NAME,
+      });
+      shouldIncludeCertificates = false;
+    }
+
+    const signedData = await generateSignedData({
       plaintext,
-      signer.memberCertificateSchema,
+      signerCertificateSchema,
       signingKey,
       serviceOid,
-      shouldEncapsulatePlaintext ?? false,
       expiryDate,
-      startDate,
-    );
+      attributedMemberName,
+      shouldIncludeSignerCertificates: shouldIncludeCertificates,
+      ...options,
+    });
 
-    return new SignatureBundle(
-      signer.dnssecChainSchema,
-      signer.orgCertificateSchema,
-      signedDataSchema,
-    );
+    return new SignatureBundle(signer.dnssecChainSchema, signer.orgCertificateSchema, signedData);
   }
 
   public constructor(
-    protected readonly dnssecChainSchema: DnssecChainSchema,
-    protected readonly orgCertificateSchema: CertificateSchema,
-    protected readonly signature: ContentInfo,
+    public readonly dnssecChainSchema: DnssecChainSchema,
+    public readonly orgCertificateSchema: CertificateSchema,
+    public readonly signature: ContentInfo,
   ) {}
 
   /**
@@ -236,6 +277,7 @@ export class SignatureBundle {
     } catch (err) {
       throw new VeraidError('Member id bundle is invalid', { cause: err });
     }
+
     return { plaintext: plaintext ?? signedData.plaintext!, member, wasSignedByMember: true };
   }
 }

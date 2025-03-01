@@ -552,6 +552,30 @@ describe('signerCertificate', () => {
   });
 });
 
+describe('signerIssuerAndSerialNumber', () => {
+  test('Nothing should be output if there are no SignerInfo values', async () => {
+    const signerCertificate = await generateStubCert({
+      issuerPrivateKey: MEMBER_KEY_PAIR.privateKey,
+      subjectPublicKey: MEMBER_KEY_PAIR.publicKey,
+    });
+    const signedData = await SignedData.sign(
+      plaintext,
+      MEMBER_KEY_PAIR.privateKey,
+      signerCertificate,
+    );
+    signedData.pkijsSignedData.signerInfos.pop();
+
+    expect(signedData.signerIssuerAndSerialNumber).toBeNull();
+  });
+
+  test('IssuerAndSerialNumber should be output if SignerInfo exists', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+    const issuerAndSerialNumber = signedData.signerIssuerAndSerialNumber!;
+    expect(certificate.matchesIssuerAndSerialNumber(issuerAndSerialNumber)).toBeTrue();
+  });
+});
+
 describe('certificates', () => {
   test('Attached certificates should be output', async () => {
     const rootCaKeyPair = await generateRsaKeyPair();

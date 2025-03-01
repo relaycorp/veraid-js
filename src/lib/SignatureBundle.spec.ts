@@ -2,7 +2,7 @@
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { subSeconds, setMilliseconds } from 'date-fns';
-import { type OctetString, Null } from 'asn1js';
+import { type OctetString, Null, type Utf8String } from 'asn1js';
 import {
   Attribute,
   ContentInfo,
@@ -39,12 +39,18 @@ import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
 import { derDeserialize } from './utils/asn1.js';
 import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
 import { SignatureBundle } from './SignatureBundle.js';
+import type { OrganisationSigner } from './OrganisationSigner.js';
 import CmsError from './utils/cms/CmsError.js';
 import { serialiseMemberIdBundle } from './memberIdBundle/serialisation.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
-import { issueMemberCertificate } from './pki/member.js';
+import { issueMemberCertificate, BOT_NAME } from './pki/member.js';
 import { DatePeriodSchema } from './schemas/DatePeriodSchema.js';
 import { generateTxtRdata } from './dns/rdataSerialisation.js';
+
+function getSignedData(contentInfo: ContentInfo) {
+  expect(contentInfo.contentType).toStrictEqual(CMS_OIDS.SIGNED_DATA);
+  return AsnParser.parse(contentInfo.content, SignedDataSchema);
+}
 
 const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();
@@ -152,11 +158,6 @@ describe('SignatureBundle', () => {
     });
 
     describe('Signature', () => {
-      function getSignedData(contentInfo: ContentInfo) {
-        expect(contentInfo.contentType).toStrictEqual(CMS_OIDS.SIGNED_DATA);
-        return AsnParser.parse(contentInfo.content, SignedDataSchema);
-      }
-
       test('Plaintext should be signed with specified private key', async () => {
         const memberIdBundle = new MemberIdBundle(
           dnssecChain,
@@ -180,7 +181,7 @@ describe('SignatureBundle', () => {
         expect(signedData.signerCertificate!.isEqual(memberCertificate)).toBeTrue();
       });
 
-      test('Member certificate should be attached', async () => {
+      test("Signer certificate should be attached if it's a member signature", async () => {
         const memberIdBundle = new MemberIdBundle(
           dnssecChain,
           orgCertificateSchema,
@@ -202,6 +203,50 @@ describe('SignatureBundle', () => {
           Buffer.from(AsnSerializer.serialize(cert)),
         );
         expect(attachedCertsSerialised).toContainEqual(Buffer.from(memberCertificateSerialised));
+      });
+
+      test('Member signature should not contain attribution attribute', async () => {
+        const memberIdBundle = new MemberIdBundle(
+          dnssecChain,
+          orgCertificateSchema,
+          memberCertificateSchema,
+        );
+
+        const signatureBundle = await SignatureBundle.sign(
+          PLAINTEXT,
+          SERVICE_OID,
+          memberIdBundle,
+          MEMBER_KEY_PAIR.privateKey,
+          datePeriod.end,
+        );
+
+        const signatureSerialised = signatureBundle.serialise();
+        const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
+        const signedData = SignedData.deserialize(AsnSerializer.serialize(signature));
+        const memberAttributionAttr = signedData.getSignedAttribute(
+          VERAID_OIDS.MEMBER_ATTRIBUTION_ATTR,
+        );
+        expect(memberAttributionAttr).toBeNull();
+      });
+
+      test('Org signature should not include certificates', async () => {
+        const orgSigner: OrganisationSigner = {
+          orgCertificateSchema,
+          dnssecChainSchema: dnssecChain,
+        };
+
+        const signatureBundle = await SignatureBundle.sign(
+          PLAINTEXT,
+          SERVICE_OID,
+          orgSigner,
+          ORG_KEY_PAIR.privateKey,
+          datePeriod.end,
+        );
+
+        const signatureSerialised = signatureBundle.serialise();
+        const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
+        const signedDataSchema = getSignedData(signature);
+        expect(signedDataSchema.certificates).toHaveLength(0);
       });
 
       test('Plaintext should be detached by default', async () => {
@@ -252,6 +297,56 @@ describe('SignatureBundle', () => {
         expect(new Uint8Array(encapsulatedContentAsn1.getValue())).toStrictEqual(
           new Uint8Array(PLAINTEXT),
         );
+      });
+
+      test('Organisation signature should be attributed to bot by default', async () => {
+        const orgSigner: OrganisationSigner = {
+          orgCertificateSchema,
+          dnssecChainSchema: dnssecChain,
+        };
+
+        const signatureBundle = await SignatureBundle.sign(
+          PLAINTEXT,
+          SERVICE_OID,
+          orgSigner,
+          ORG_KEY_PAIR.privateKey,
+          datePeriod.end,
+        );
+
+        const signatureSerialised = signatureBundle.serialise();
+        const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
+        const signedData = SignedData.deserialize(AsnSerializer.serialize(signature));
+        const memberAttributionAttr = signedData.getSignedAttribute(
+          VERAID_OIDS.MEMBER_ATTRIBUTION_ATTR,
+        );
+        expect(memberAttributionAttr).not.toBeNull();
+        expect((memberAttributionAttr![0] as Utf8String).getValue()).toBe(BOT_NAME);
+      });
+
+      test('Organisation signature may be attributed to user if requested', async () => {
+        const attributedMemberName = 'alice';
+        const orgSigner: OrganisationSigner = {
+          orgCertificateSchema,
+          dnssecChainSchema: dnssecChain,
+          attributedMemberName,
+        };
+
+        const signatureBundle = await SignatureBundle.sign(
+          PLAINTEXT,
+          SERVICE_OID,
+          orgSigner,
+          ORG_KEY_PAIR.privateKey,
+          datePeriod.end,
+        );
+
+        const signatureSerialised = signatureBundle.serialise();
+        const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
+        const signedData = SignedData.deserialize(AsnSerializer.serialize(signature));
+        const memberAttributionAttr = signedData.getSignedAttribute(
+          VERAID_OIDS.MEMBER_ATTRIBUTION_ATTR,
+        );
+        expect(memberAttributionAttr).not.toBeNull();
+        expect((memberAttributionAttr![0] as Utf8String).getValue()).toBe(attributedMemberName);
       });
 
       describe('Metadata', () => {

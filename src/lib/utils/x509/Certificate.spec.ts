@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { jest } from '@jest/globals';
 import { OctetString } from 'asn1js';
 import { addDays, addSeconds, setMilliseconds } from 'date-fns';
@@ -6,6 +7,7 @@ import {
   AuthorityKeyIdentifier,
   Certificate as PkijsCertificate,
   CryptoEngine,
+  IssuerAndSerialNumber,
   PublicKeyInfo,
 } from 'pkijs';
 
@@ -759,4 +761,89 @@ test('getPublicKey should return the subject public key', async () => {
   await expect(derSerializePublicKey(publicKey)).resolves.toStrictEqual(
     await derSerializePublicKey(subjectKeyPair.publicKey),
   );
+});
+
+describe('matchesIssuerAndSerialNumber', () => {
+  test('should return true when both issuer and serial number match', async () => {
+    const certificate = await generateStubCert();
+    const issuerAndSerialNumber = new IssuerAndSerialNumber({
+      issuer: certificate.pkijsCertificate.issuer,
+      serialNumber: certificate.pkijsCertificate.serialNumber,
+    });
+
+    expect(certificate.matchesIssuerAndSerialNumber(issuerAndSerialNumber)).toBeTrue();
+  });
+
+  test('should return false when issuer matches but serial number does not', async () => {
+    const keyPair1 = await generateRsaKeyPair();
+    const keyPair2 = await generateRsaKeyPair();
+
+    const certificate1 = await Certificate.issue({
+      ...baseCertificateOptions,
+      issuerPrivateKey: keyPair1.privateKey,
+      subjectPublicKey: keyPair1.publicKey,
+    });
+
+    const certificate2 = await Certificate.issue({
+      ...baseCertificateOptions,
+      issuerPrivateKey: keyPair1.privateKey,
+      subjectPublicKey: keyPair2.publicKey,
+    });
+
+    const issuerAndSerialNumber = new IssuerAndSerialNumber({
+      issuer: certificate1.pkijsCertificate.issuer,
+      serialNumber: certificate2.pkijsCertificate.serialNumber,
+    });
+
+    expect(certificate1.matchesIssuerAndSerialNumber(issuerAndSerialNumber)).toBeFalse();
+  });
+
+  test('should return false when serial number matches but issuer does not', async () => {
+    const keyPair1 = await generateRsaKeyPair();
+    const keyPair2 = await generateRsaKeyPair();
+
+    const certificate1 = await Certificate.issue({
+      ...baseCertificateOptions,
+      issuerPrivateKey: keyPair1.privateKey,
+      subjectPublicKey: keyPair1.publicKey,
+    });
+
+    const certificate2 = await Certificate.issue({
+      ...baseCertificateOptions,
+      commonName: 'different CN',
+      issuerPrivateKey: keyPair2.privateKey,
+      subjectPublicKey: keyPair2.publicKey,
+    });
+
+    const issuerAndSerialNumber = new IssuerAndSerialNumber({
+      issuer: certificate2.pkijsCertificate.issuer,
+      serialNumber: certificate1.pkijsCertificate.serialNumber,
+    });
+
+    expect(certificate1.matchesIssuerAndSerialNumber(issuerAndSerialNumber)).toBeFalse();
+  });
+
+  test('should return false when neither issuer nor serial number match', async () => {
+    const keyPair1 = await generateRsaKeyPair();
+    const keyPair2 = await generateRsaKeyPair();
+
+    const certificate1 = await Certificate.issue({
+      ...baseCertificateOptions,
+      issuerPrivateKey: keyPair1.privateKey,
+      subjectPublicKey: keyPair1.publicKey,
+    });
+
+    const certificate2 = await Certificate.issue({
+      ...baseCertificateOptions,
+      issuerPrivateKey: keyPair2.privateKey,
+      subjectPublicKey: keyPair2.publicKey,
+    });
+
+    const issuerAndSerialNumber = new IssuerAndSerialNumber({
+      issuer: certificate2.pkijsCertificate.issuer,
+      serialNumber: certificate2.pkijsCertificate.serialNumber,
+    });
+
+    expect(certificate1.matchesIssuerAndSerialNumber(issuerAndSerialNumber)).toBeFalse();
+  });
 });
