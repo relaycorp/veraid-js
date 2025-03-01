@@ -636,7 +636,7 @@ describe('SignatureBundle', () => {
         VERIFY_PLAINTEXT,
         MEMBER_KEY_PAIR.privateKey,
         memberCertificate,
-        [],
+        [memberCertificate],
         { shouldEncapsulatePlaintext: false },
       );
       signatureBundleSchema.signature = AsnParser.parse(signedData.serialize(), ContentInfo);
@@ -658,7 +658,7 @@ describe('SignatureBundle', () => {
         VERIFY_PLAINTEXT,
         MEMBER_KEY_PAIR.privateKey,
         memberCertificate,
-        [],
+        [memberCertificate],
         {
           shouldEncapsulatePlaintext: false,
           extraSignedAttrs: [attribute],
@@ -689,7 +689,7 @@ describe('SignatureBundle', () => {
         VERIFY_PLAINTEXT,
         MEMBER_KEY_PAIR.privateKey,
         memberCertificate,
-        [],
+        [memberCertificate],
         {
           shouldEncapsulatePlaintext: false,
           extraSignedAttrs: [attribute],

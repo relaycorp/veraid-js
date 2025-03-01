@@ -57,10 +57,16 @@ async function generateSignedData(
     type: VERAID_OIDS.SIGNATURE_METADATA_ATTR,
     values: [metadataSchema],
   });
-  const signedData = await SignedData.sign(plaintext, signingKey, memberCertificate, [], {
-    extraSignedAttrs: [metadataAttribute],
-    shouldEncapsulatePlaintext,
-  });
+  const signedData = await SignedData.sign(
+    plaintext,
+    signingKey,
+    memberCertificate,
+    [memberCertificate],
+    {
+      extraSignedAttrs: [metadataAttribute],
+      shouldEncapsulatePlaintext,
+    },
+  );
   return AsnParser.parse(signedData.serialize(), ContentInfo);
 }
 
