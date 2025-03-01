@@ -2,8 +2,8 @@ import type { Attribute } from 'pkijs';
 
 import type { HashingAlgorithm } from '../algorithms.js';
 
-export interface SignatureOptions {
+export interface SignedDataSignatureOptions {
   readonly hashingAlgorithmName: HashingAlgorithm;
-  readonly encapsulatePlaintext: boolean;
+  readonly shouldEncapsulatePlaintext: boolean;
   readonly extraSignedAttrs: readonly Attribute[];
 }

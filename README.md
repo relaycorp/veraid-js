@@ -19,7 +19,7 @@ To produce a signature for a given plaintext, you need a _Member Id Bundle_ (pro
 For example, if you wanted to produce signatures valid for up to 30 days for a service identified by the [OID](https://en.wikipedia.org/wiki/Object_identifier) `1.2.3.4.5`, you could implement the following function and call it in your code:
 
 ```typescript
-import { sign } from '@relaycorp/veraid';
+import { MemberIdBundle, SignatureBundle } from '@relaycorp/veraid';
 import { addDays } from 'date-fns';
 
 const TTL_DAYS = 30;
@@ -27,21 +27,25 @@ const SERVICE_OID = '1.2.3.4.5';
 
 async function produceSignature(
   plaintext: ArrayBuffer,
-  memberIdBundle: ArrayBuffer,
+  memberIdBundleSerialised: ArrayBuffer,
   memberSigningKey: CryptoKey,
 ): Promise<ArrayBuffer> {
+  const memberIdBundle = MemberIdBundle.deserialise(memberIdBundleSerialised);
   const expiryDate = addDays(new Date(), TTL_DAYS);
-  return await sign(
+  const signatureBundle = await SignatureBundle.sign(
     plaintext,
     SERVICE_OID,
     memberIdBundle,
     memberSigningKey,
     expiryDate,
   );
+  return signatureBundle.serialise();
 }
 ```
 
-The output of the `sign()` function is the _Vera Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
+The output is the _VeraId Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
+
+To produce an _organisation signature_, use the interface [`OrganisationSigner`](https://docs.relaycorp.tech/veraid-js/interfaces/OrganisationSigner.html) instead of a `MemberIdBundle`.
 
 Note that for signatures to actually be valid for up to 30 days, the TTL override in the VeraId TXT record should allow 30 days or more.
 
@@ -54,7 +58,7 @@ If VeraId's maximum TTL of 90 days or the TTL specified by the signature produce
 For example, if you only want to accept signatures valid for the past 30 days in a service identified by `1.2.3.4.5`, you could use the following function:
 
 ```typescript
-import { type IDatePeriod, verify } from '@relaycorp/veraid';
+import { type IDatePeriod, SignatureBundle } from '@relaycorp/veraid';
 import { subDays } from 'date-fns';
 
 const TTL_DAYS = 30;
@@ -62,18 +66,19 @@ const SERVICE_OID = '1.2.3.4.5';
 
 async function verifySignature(
   plaintext: ArrayBuffer,
-  signatureBundle: ArrayBuffer,
+  signatureBundleSerialised: ArrayBuffer,
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
+  const signatureBundle = SignatureBundle.deserialise(signatureBundleSerialised);
   const {
     member: { user, organisation },
-  } = await verify(plaintext, signatureBundle, SERVICE_OID, datePeriod);
+  } = await signatureBundle.verify(plaintext, SERVICE_OID, datePeriod);
   return user === undefined ? organisation : `${user}@${organisation}`;
 }
 ```
 
-`verify()` will throw an error if the signature is invalid for whatever reason.
+`signatureBundle.verify()` will throw an error if the signature is invalid for whatever reason.
 
 `verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 

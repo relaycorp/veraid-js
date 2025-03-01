@@ -6,7 +6,10 @@ export type { CertificateIssuanceOptions } from './lib/pki/CertificateIssuanceOp
 export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export { retrieveVeraidDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
 export { serialiseMemberIdBundle } from './lib/memberIdBundle/serialisation.js';
-export { sign, verify, type SignatureOptions } from './lib/signature.js';
+export { MemberIdBundle } from './lib/memberIdBundle/MemberIdBundle.js';
+export { SignatureBundle } from './lib/SignatureBundle.js';
+export type { SignatureOptions } from './lib/SignatureOptions.js';
+export type { OrganisationSigner } from './lib/OrganisationSigner.js';
 export type { Member } from './lib/Member.js';
 export type { SignatureBundleVerification } from './lib/SignatureBundleVerification.js';
 export type { IDatePeriod } from './lib/dates.js';

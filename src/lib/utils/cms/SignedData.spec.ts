@@ -151,8 +151,16 @@ describe('sign', () => {
   });
 
   describe('Attached certificates', () => {
-    test('The signer certificate should be attached', async () => {
+    test('No certificates should be attached by default', async () => {
       const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+      expect(signedData.pkijsSignedData.certificates).toHaveLength(0);
+    });
+
+    test('The signer certificate should be attachable explicitly', async () => {
+      const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate, [
+        certificate,
+      ]);
 
       expect(signedData.pkijsSignedData.certificates).toHaveLength(1);
       expectPkijsValuesToBeEqual(
@@ -161,10 +169,11 @@ describe('sign', () => {
       );
     });
 
-    test('CA certificate chain should optionally be attached', async () => {
+    test('Multiple certificates should be attachable', async () => {
       const rootCaCertificate = await generateStubCert();
       const intermediateCaCertificate = await generateStubCert();
       const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate, [
+        certificate,
         intermediateCaCertificate,
         rootCaCertificate,
       ]);
@@ -280,7 +289,7 @@ describe('sign', () => {
         MEMBER_KEY_PAIR.privateKey,
         certificate,
         undefined,
-        { encapsulatePlaintext: false },
+        { shouldEncapsulatePlaintext: false },
       );
 
       const { encapContentInfo } = signedData.pkijsSignedData;
@@ -362,7 +371,7 @@ describe('verify', () => {
       certificate,
       undefined,
       {
-        encapsulatePlaintext: false,
+        shouldEncapsulatePlaintext: false,
       },
     );
 
@@ -387,7 +396,7 @@ describe('verify', () => {
       certificate,
       undefined,
       {
-        encapsulatePlaintext: false,
+        shouldEncapsulatePlaintext: false,
       },
     );
     const differentPlaintext = arrayBufferFrom('this is an invalid plaintext');
@@ -409,7 +418,9 @@ describe('verify', () => {
 
   test('Invalid signature should be rejected', async () => {
     // Let's tamper with the signature
-    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate, [
+      certificate,
+    ]);
     const differentSignature = arrayBufferFrom('Different');
     signedData.pkijsSignedData.signerInfos[0].signature = new OctetString({
       valueHex: differentSignature,
@@ -426,9 +437,9 @@ describe('verify', () => {
       plaintext,
       MEMBER_KEY_PAIR.privateKey,
       certificate,
-      undefined,
+      [certificate],
       {
-        encapsulatePlaintext: false,
+        shouldEncapsulatePlaintext: false,
       },
     );
 
@@ -436,7 +447,9 @@ describe('verify', () => {
   });
 
   test('Valid signature with encapsulated plaintext should be accepted', async () => {
-    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate, [
+      certificate,
+    ]);
     await expect(signedData.verify()).toResolve();
   });
 });
@@ -477,6 +490,7 @@ describe('signerCertificate', () => {
       plaintext,
       MEMBER_KEY_PAIR.privateKey,
       signerCertificate,
+      [signerCertificate],
     );
     signedData.pkijsSignedData.signerInfos.pop();
 
@@ -492,6 +506,7 @@ describe('signerCertificate', () => {
       plaintext,
       MEMBER_KEY_PAIR.privateKey,
       signerCertificate,
+      [signerCertificate],
     );
     signedData.pkijsSignedData.signerInfos.forEach((signerInfo) => {
       // eslint-disable-next-line no-param-reassign
@@ -512,6 +527,7 @@ describe('signerCertificate', () => {
       plaintext,
       MEMBER_KEY_PAIR.privateKey,
       signerCertificate,
+      [signerCertificate],
     );
     signedData.pkijsSignedData.signerInfos.forEach((info) => {
       // eslint-disable-next-line no-param-reassign
@@ -521,15 +537,47 @@ describe('signerCertificate', () => {
     expect(signedData.signerCertificate).toBeNull();
   });
 
-  test('Certificate with same SN and issuer should be output', async () => {
-    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+  test('Certificate with same SN and issuer should be output if attached', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate, [
+      certificate,
+    ]);
 
     expect(signedData.signerCertificate?.isEqual(certificate)).toBeTrue();
+  });
+
+  test('Certificate with same SN and issuer should not be output if not attached', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+    expect(signedData.signerCertificate).toBeNull();
+  });
+});
+
+describe('signerIssuerAndSerialNumber', () => {
+  test('Nothing should be output if there are no SignerInfo values', async () => {
+    const signerCertificate = await generateStubCert({
+      issuerPrivateKey: MEMBER_KEY_PAIR.privateKey,
+      subjectPublicKey: MEMBER_KEY_PAIR.publicKey,
+    });
+    const signedData = await SignedData.sign(
+      plaintext,
+      MEMBER_KEY_PAIR.privateKey,
+      signerCertificate,
+    );
+    signedData.pkijsSignedData.signerInfos.pop();
+
+    expect(signedData.signerIssuerAndSerialNumber).toBeNull();
+  });
+
+  test('IssuerAndSerialNumber should be output if SignerInfo exists', async () => {
+    const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+    const issuerAndSerialNumber = signedData.signerIssuerAndSerialNumber!;
+    expect(certificate.matchesIssuerAndSerialNumber(issuerAndSerialNumber)).toBeTrue();
   });
 });
 
 describe('certificates', () => {
-  test('Attached CA certificates should be output', async () => {
+  test('Attached certificates should be output', async () => {
     const rootCaKeyPair = await generateRsaKeyPair();
     const rootCaCertificate = await generateStubCert({
       attributes: { isCa: true },
@@ -552,7 +600,7 @@ describe('certificates', () => {
       plaintext,
       signerKeyPair.privateKey,
       signerCertificate,
-      [intermediateCaCertificate, rootCaCertificate],
+      [signerCertificate, intermediateCaCertificate, rootCaCertificate],
     );
 
     const certificates = Array.from(signedData.certificates);

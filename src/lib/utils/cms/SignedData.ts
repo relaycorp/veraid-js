@@ -18,7 +18,7 @@ import { CMS_OIDS } from '../../oids.js';
 
 import { deserializeContentInfo } from './utils.js';
 import CmsError from './CmsError.js';
-import type { SignatureOptions } from './SignatureOptions.js';
+import type { SignedDataSignatureOptions } from './SignedDataSignatureOptions.js';
 
 function initSignerInfo(
   signerCertificate: Certificate,
@@ -67,12 +67,23 @@ export class SignedData {
     return new SignedData(pkijsSignedData);
   }
 
+  /**
+   * Create a CMS SignedData value for the specified plaintext.
+   * @param plaintext - The plaintext to be signed
+   * @param privateKey - The private key to sign with
+   * @param signerCertificate - The certificate corresponding to the private key
+   * @param attachedCertificates - The certificates to attach to the SignedData (empty by default)
+   *                               The signer certificate is NOT automatically attached.
+   * @param options - Additional options for the signature
+   * @returns The SignedData object
+   * @throws {CmsError} If the hashing algorithm is unsupported
+   */
   public static async sign(
     plaintext: ArrayBuffer,
     privateKey: CryptoKey,
     signerCertificate: Certificate,
-    caCertificates: readonly Certificate[] = [],
-    options: Partial<SignatureOptions> = {},
+    attachedCertificates: readonly Certificate[] = [],
+    options: Partial<SignedDataSignatureOptions> = {},
   ): Promise<SignedData> {
     if ((options.hashingAlgorithmName as any) === 'SHA-1') {
       throw new CmsError('SHA-1 is unsupported');
@@ -81,9 +92,9 @@ export class SignedData {
     const hashingAlgorithmName = options.hashingAlgorithmName ?? 'SHA-256';
     const digest = await NODE_ENGINE.digest({ name: hashingAlgorithmName }, plaintext);
     const signerInfo = initSignerInfo(signerCertificate, digest, options.extraSignedAttrs ?? []);
-    const shouldEncapsulatePlaintext = options.encapsulatePlaintext ?? true;
+    const shouldEncapsulatePlaintext = options.shouldEncapsulatePlaintext ?? true;
     const pkijsSignedData = new PkijsSignedData({
-      certificates: [signerCertificate, ...caCertificates].map((cert) => cert.pkijsCertificate),
+      certificates: attachedCertificates.map((cert) => cert.pkijsCertificate),
 
       encapContentInfo: new EncapsulatedContentInfo({
         eContentType: CMS_OIDS.DATA,
@@ -118,18 +129,25 @@ export class SignedData {
    * The signer's certificate, if it was encapsulated.
    */
   public get signerCertificate(): Certificate | null {
+    const sid = this.signerIssuerAndSerialNumber;
+    if (!sid) {
+      return null;
+    }
+    const match = Array.from(this.certificates).find((cert) =>
+      cert.matchesIssuerAndSerialNumber(sid),
+    );
+    return match ?? null;
+  }
+
+  /**
+   * The signer's issuer and serial number, if available.
+   */
+  public get signerIssuerAndSerialNumber(): IssuerAndSerialNumber | null {
     if (this.pkijsSignedData.signerInfos.length === 0) {
       return null;
     }
     const [signerInfo] = this.pkijsSignedData.signerInfos;
-    const match = Array.from(this.certificates).find((cert) => {
-      const sid = signerInfo.sid as IssuerAndSerialNumber;
-      return (
-        cert.pkijsCertificate.issuer.isEqual(sid.issuer) &&
-        cert.pkijsCertificate.serialNumber.isEqual(sid.serialNumber)
-      );
-    });
-    return match ?? null;
+    return signerInfo.sid as IssuerAndSerialNumber;
   }
 
   /**

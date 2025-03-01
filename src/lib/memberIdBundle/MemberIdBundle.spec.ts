@@ -1,19 +1,20 @@
 import { jest } from '@jest/globals';
-import { AsnParser } from '@peculiar/asn1-schema';
+import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { subSeconds } from 'date-fns';
 
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
-import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import { serialiseMessage } from '../../testUtils/dns.js';
-import { bufferToArray } from '../utils/buffers.js';
-import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
 import {
+  ORG_NAME,
   ORG_DOMAIN,
   ORG_KEY_PAIR,
   ORG_KEY_SPEC,
-  ORG_NAME,
 } from '../../testUtils/veraStubs/organisation.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
+import { serialiseMessage } from '../../testUtils/dns.js';
+import { arrayBufferFrom } from '../../testUtils/buffers.js';
+import { bufferToArray } from '../utils/buffers.js';
+import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
 import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
 import VeraidError from '../VeraidError.js';
 import { DatePeriod } from '../dates.js';
@@ -27,6 +28,7 @@ import { issueMemberCertificate } from '../pki/member.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
+import { serialiseMemberIdBundle } from './serialisation.js';
 
 const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();
@@ -355,5 +357,38 @@ describe('MemberIdBundle', () => {
         expect(user).toBeUndefined();
       });
     });
+  });
+});
+
+describe('deserialise', () => {
+  test('Malformed member Id bundle should be refused', () => {
+    const malformedBundle = arrayBufferFrom('malformed');
+
+    expect(() => MemberIdBundle.deserialise(malformedBundle)).toThrowWithMessage(
+      VeraidError,
+      'Member id bundle is malformed',
+    );
+  });
+
+  test('Should create a MemberIdBundle instance from serialized data', async () => {
+    const fixture = await generateMemberIdFixture();
+    const fixtureOrgCertSerialised = fixture.orgCertificateSerialised;
+    const fixtureMemberCertSerialised = fixture.memberCertificateSerialised;
+    const fixtureDnssecChain = fixture.dnssecChainFixture;
+
+    const dnssecChainSerialised = AsnSerializer.serialize(
+      new DnssecChainSchema(fixtureDnssecChain.responses.map(serialiseMessage).map(bufferToArray)),
+    );
+
+    const memberIdBundle = serialiseMemberIdBundle(
+      fixtureMemberCertSerialised,
+      fixtureOrgCertSerialised,
+      dnssecChainSerialised,
+    );
+
+    const bundle = MemberIdBundle.deserialise(memberIdBundle);
+
+    expect(bundle).toBeInstanceOf(MemberIdBundle);
+    expect(Buffer.from(bundle.serialise())).toStrictEqual(Buffer.from(memberIdBundle));
   });
 });

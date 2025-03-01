@@ -5,8 +5,8 @@ import {
   retrieveVeraidDnssecChain,
   selfIssueOrganisationCertificate,
   serialiseMemberIdBundle,
-  sign,
-  verify,
+  MemberIdBundle,
+  SignatureBundle,
 } from '../index.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { arrayBufferFrom } from '../testUtils/buffers.js';
@@ -34,23 +34,26 @@ const MEMBER_CERTIFICATE = await issueMemberCertificate(
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 
 const DNSSEC_CHAIN = await retrieveVeraidDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
-const MEMBER_ID_BUNDLE = serialiseMemberIdBundle(MEMBER_CERTIFICATE, ORG_CERTIFICATE, DNSSEC_CHAIN);
+const MEMBER_ID_BUNDLE_SERIALISED = serialiseMemberIdBundle(
+  MEMBER_CERTIFICATE,
+  ORG_CERTIFICATE,
+  DNSSEC_CHAIN,
+);
+const MEMBER_ID_BUNDLE = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE_SERIALISED);
 
 describe('main', () => {
   test('Valid signature bundle', async () => {
-    const signatureBundle = await sign(
+    const signatureBundle = await SignatureBundle.sign(
       PLAINTEXT,
       VERAID_OIDS.TEST_SERVICE,
       MEMBER_ID_BUNDLE,
       MEMBER_KEY_PAIR.privateKey,
       EXPIRY_DATE,
     );
+    const signatureBundleSerialised = signatureBundle.serialise();
+    const bundle = SignatureBundle.deserialise(signatureBundleSerialised);
 
-    const { plaintext, member } = await verify(
-      PLAINTEXT,
-      signatureBundle,
-      VERAID_OIDS.TEST_SERVICE,
-    );
+    const { plaintext, member } = await bundle.verify(PLAINTEXT, VERAID_OIDS.TEST_SERVICE);
 
     expect(new Uint8Array(plaintext)).toStrictEqual(new Uint8Array(PLAINTEXT));
     expect(member.organisation).toStrictEqual(TEST_ORG_NAME);
@@ -59,31 +62,35 @@ describe('main', () => {
 
   test('Invalid signature', async () => {
     const otherMemberKeyPair = await generateRsaKeyPair();
-    const signatureBundle = await sign(
+    const signatureBundle = await SignatureBundle.sign(
       PLAINTEXT,
       VERAID_OIDS.TEST_SERVICE,
       MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
+    const signatureBundleSerialised = signatureBundle.serialise();
+    const bundle = SignatureBundle.deserialise(signatureBundleSerialised);
 
-    await expect(async () =>
-      verify(PLAINTEXT, signatureBundle, VERAID_OIDS.TEST_SERVICE),
-    ).rejects.toThrow(VeraidError);
+    await expect(async () => bundle.verify(PLAINTEXT, VERAID_OIDS.TEST_SERVICE)).rejects.toThrow(
+      VeraidError,
+    );
   });
 
   test('Different service', async () => {
     const otherMemberKeyPair = await generateRsaKeyPair();
-    const signatureBundle = await sign(
+    const signatureBundle = await SignatureBundle.sign(
       PLAINTEXT,
       VERAID_OIDS.TEST_SERVICE,
       MEMBER_ID_BUNDLE,
       otherMemberKeyPair.privateKey,
       EXPIRY_DATE,
     );
+    const signatureBundleSerialised = signatureBundle.serialise();
+    const bundle = SignatureBundle.deserialise(signatureBundleSerialised);
     const differentService = `${VERAID_OIDS.TEST_SERVICE}.42`;
 
-    await expect(async () => verify(PLAINTEXT, signatureBundle, differentService)).rejects.toThrow(
+    await expect(async () => bundle.verify(PLAINTEXT, differentService)).rejects.toThrow(
       VeraidError,
     );
   });

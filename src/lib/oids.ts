@@ -8,6 +8,7 @@ const VERAID = `${RELAYCORP}.1`;
 export const VERAID_OIDS = {
   SIGNATURE_METADATA_ATTR: `${VERAID}.0`,
   TEST_SERVICE: `${VERAID}.1`,
+  MEMBER_ATTRIBUTION_ATTR: `${VERAID}.2`,
 };
 
 export const CMS_OIDS = {
