@@ -39,7 +39,7 @@ import { SignatureMetadataSchema } from './schemas/SignatureMetadataSchema.js';
 import { derDeserialize } from './utils/asn1.js';
 import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
 import { SignatureBundle } from './SignatureBundle.js';
-import type { OrganisationSigner } from './OrganisationSigner.js';
+import { OrganisationSigner } from './OrganisationSigner.js';
 import CmsError from './utils/cms/CmsError.js';
 import { serialiseMemberIdBundle } from './memberIdBundle/serialisation.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
@@ -230,10 +230,7 @@ describe('SignatureBundle', () => {
       });
 
       test('Org signature should not include certificates', async () => {
-        const orgSigner: OrganisationSigner = {
-          orgCertificateSchema,
-          dnssecChainSchema: dnssecChain,
-        };
+        const orgSigner = new OrganisationSigner(dnssecChain, orgCertificateSchema);
 
         const signatureBundle = await SignatureBundle.sign(
           PLAINTEXT,
@@ -300,10 +297,7 @@ describe('SignatureBundle', () => {
       });
 
       test('Organisation signature should be attributed to bot by default', async () => {
-        const orgSigner: OrganisationSigner = {
-          orgCertificateSchema,
-          dnssecChainSchema: dnssecChain,
-        };
+        const orgSigner = new OrganisationSigner(dnssecChain, orgCertificateSchema);
 
         const signatureBundle = await SignatureBundle.sign(
           PLAINTEXT,
@@ -325,11 +319,11 @@ describe('SignatureBundle', () => {
 
       test('Organisation signature may be attributed to user if requested', async () => {
         const attributedMemberName = 'alice';
-        const orgSigner: OrganisationSigner = {
+        const orgSigner = new OrganisationSigner(
+          dnssecChain,
           orgCertificateSchema,
-          dnssecChainSchema: dnssecChain,
           attributedMemberName,
-        };
+        );
 
         const signatureBundle = await SignatureBundle.sign(
           PLAINTEXT,

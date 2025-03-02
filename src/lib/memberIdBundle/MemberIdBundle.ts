@@ -12,6 +12,7 @@ import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import type { Member } from '../Member.js';
 import { BOT_NAME } from '../pki/member.js';
 import { validateUserName } from '../idValidation.js';
+import { Chain } from '../Chain.js';
 
 async function verifyCertificateChain(
   orgCertificate: Certificate,
@@ -41,7 +42,7 @@ async function verifyCertificateChain(
 /**
  * VeraId member identity bundle containing certificates and DNSSEC chain
  */
-export class MemberIdBundle {
+export class MemberIdBundle extends Chain {
   /**
    * Deserialise a member ID bundle from its binary representation
    * @param memberIdBundleSerialised - The serialised member ID bundle
@@ -64,10 +65,12 @@ export class MemberIdBundle {
   }
 
   public constructor(
-    public readonly dnssecChainSchema: DnssecChainSchema,
-    public readonly orgCertificateSchema: CertificateSchema,
+    dnssecChainSchema: DnssecChainSchema,
+    orgCertificateSchema: CertificateSchema,
     public readonly memberCertificateSchema: CertificateSchema,
-  ) {}
+  ) {
+    super(dnssecChainSchema, orgCertificateSchema);
+  }
 
   /**
    * Serialise this member ID bundle to its binary representation
