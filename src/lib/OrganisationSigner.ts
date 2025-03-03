@@ -19,4 +19,12 @@ export class OrganisationSigner extends Chain {
   ) {
     super(dnssecChainSchema, orgCertificateSchema);
   }
+
+  public override get signerCertificateSchema() {
+    return undefined;
+  }
+
+  public override get signerName() {
+    return this.attributedMemberName;
+  }
 }

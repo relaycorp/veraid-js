@@ -1,31 +1,16 @@
-import { jest } from '@jest/globals';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
-import { subSeconds } from 'date-fns';
 
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
-import {
-  ORG_NAME,
-  ORG_DOMAIN,
-  ORG_KEY_PAIR,
-  ORG_KEY_SPEC,
-} from '../../testUtils/veraStubs/organisation.js';
-import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
+import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
+import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { bufferToArray } from '../utils/buffers.js';
-import { selfIssueOrganisationCertificate } from '../pki/organisation.js';
-import { SERVICE_OID } from '../../testUtils/veraStubs/service.js';
-import VeraidError from '../VeraidError.js';
-import { DatePeriod } from '../dates.js';
-import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
-import { generateRsaKeyPair } from '../utils/keys/generation.js';
-import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
-import CertificateError from '../utils/x509/CertificateError.js';
+import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
-import Certificate from '../utils/x509/Certificate.js';
 import { issueMemberCertificate } from '../pki/member.js';
-import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
+import VeraidError from '../VeraidError.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
 import { serialiseMemberIdBundle } from './serialisation.js';
@@ -79,316 +64,78 @@ describe('MemberIdBundle', () => {
     });
   });
 
-  describe('verify', () => {
-    describe('Certificate chain', () => {
-      test('Member certificate should be issued by organisation certificate', async () => {
-        const otherOrgCertSerialised = await selfIssueOrganisationCertificate(
-          ORG_NAME,
-          await generateRsaKeyPair(),
-          datePeriod.end,
-          { startDate: datePeriod.start },
-        );
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          AsnParser.parse(otherOrgCertSerialised, CertificateSchema),
-          memberCertificateSchema,
-        );
+  describe('signerCertificateSchema', () => {
+    test('should return the member certificate schema', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
 
-        const error = await getPromiseRejection(
-          async () => bundle.verify(SERVICE_OID, datePeriod),
-          VeraidError,
-        );
+      // Access the public getter directly using destructuring
+      const { signerCertificateSchema } = bundle;
 
-        expectErrorToEqual(
-          error,
-          new VeraidError('Member certificate was not issued by organisation', {
-            cause: expect.any(CertificateError),
-          }),
-        );
-      });
-
-      test('Certificates should overlap with specified period', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-        const pastPeriod = DatePeriod.init(
-          subSeconds(datePeriod.start, 2),
-          subSeconds(datePeriod.start, 1),
-        );
-
-        await expect(async () => bundle.verify(SERVICE_OID, pastPeriod)).rejects.toThrowWithMessage(
-          VeraidError,
-          `Validity period of certificate chain (${datePeriod.toString()}) ` +
-            `does not overlap with required period (${pastPeriod.toString()})`,
-        );
-      });
-    });
-
-    describe('User name validation', () => {
-      const errorMessage =
-        'User name should not contain at signs or whitespace other than simple spaces';
-      const orgCertificate = Certificate.deserialize(orgCertificateSerialised);
-
-      async function issueInvalidMemberCertificate(userName: string): Promise<CertificateSchema> {
-        const certificate = await Certificate.issue({
-          commonName: userName,
-          subjectPublicKey: MEMBER_KEY_PAIR.publicKey,
-          issuerCertificate: orgCertificate,
-          issuerPrivateKey: ORG_KEY_PAIR.privateKey,
-          validityEndDate: datePeriod.end,
-          validityStartDate: datePeriod.start,
-        });
-        const serialisation = certificate.serialize();
-        return AsnParser.parse(serialisation, CertificateSchema);
-      }
-
-      test('should not contain at signs', async () => {
-        const invalidMemberCertificate = await issueInvalidMemberCertificate(`@${MEMBER_NAME}`);
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          invalidMemberCertificate,
-        );
-
-        await expect(async () =>
-          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
-      });
-
-      test('should not contain tabs', async () => {
-        const invalidMemberCertificate = await issueInvalidMemberCertificate(`\t${MEMBER_NAME}`);
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          invalidMemberCertificate,
-        );
-
-        await expect(async () =>
-          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
-      });
-
-      test('should not contain carriage returns', async () => {
-        const invalidMemberCertificate = await issueInvalidMemberCertificate(`\r${MEMBER_NAME}`);
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          invalidMemberCertificate,
-        );
-
-        await expect(async () =>
-          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
-      });
-
-      test('should not contain line feeds', async () => {
-        const invalidMemberCertificate = await issueInvalidMemberCertificate(`\n${MEMBER_NAME}`);
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          invalidMemberCertificate,
-        );
-
-        await expect(async () =>
-          bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors),
-        ).rejects.toThrowWithMessage(VeraidError, errorMessage);
-      });
-    });
-
-    describe('DNSSEC chain', () => {
-      test('Service OID should be verified', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-        const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
-
-        await bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
-
-        expect(chainVerificationSpy).toHaveBeenCalledWith(
-          expect.anything(),
-          SERVICE_OID,
-          expect.anything(),
-          expect.anything(),
-        );
-      });
-
-      test('Key spec should match that set in TXT rdata', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-        const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
-
-        await bundle.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
-
-        expect(chainVerificationSpy).toHaveBeenCalledWith(
-          ORG_KEY_SPEC,
-          expect.anything(),
-          expect.anything(),
-          expect.anything(),
-        );
-      });
-
-      test('Date period should be intersection of specified one and the certificates', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-        const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
-        const narrowPeriod = DatePeriod.init(
-          subSeconds(datePeriod.start, 1),
-          subSeconds(datePeriod.end, 1),
-        );
-
-        await bundle.verify(SERVICE_OID, narrowPeriod, dnssecChainFixture.trustAnchors);
-
-        const intersection = datePeriod.intersect(narrowPeriod)!;
-        expect(chainVerificationSpy).toHaveBeenCalledWith(
-          expect.anything(),
-          expect.anything(),
-          intersection,
-          expect.anything(),
-        );
-      });
-
-      test('Verification errors should be propagated', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-
-        // Do not pass trusted anchors
-        await expect(async () => bundle.verify(SERVICE_OID, datePeriod)).rejects.toThrowWithMessage(
-          VeraidError,
-          /^VeraId DNSSEC chain is BOGUS/u,
-        );
-      });
-    });
-
-    describe('Valid result', () => {
-      test('Organisation name should be output', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-
-        const { organisation } = await bundle.verify(
-          SERVICE_OID,
-          datePeriod,
-          dnssecChainFixture.trustAnchors,
-        );
-
-        expect(organisation).toStrictEqual(ORG_NAME);
-      });
-
-      test('Trailing dot should be removed from domain if present', async () => {
-        const otherOrgCertificateSerialised = await selfIssueOrganisationCertificate(
-          ORG_DOMAIN,
-          ORG_KEY_PAIR,
-          datePeriod.end,
-          { startDate: datePeriod.start },
-        );
-        const fixture = await generateMemberIdFixture({
-          datePeriod,
-          orgCertificateSerialised: otherOrgCertificateSerialised,
-        });
-        expect(Certificate.deserialize(otherOrgCertificateSerialised).commonName).toEndWith('.');
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          AsnParser.parse(otherOrgCertificateSerialised, CertificateSchema),
-          AsnParser.parse(fixture.memberCertificateSerialised, CertificateSchema),
-        );
-
-        const { organisation } = await bundle.verify(
-          SERVICE_OID,
-          datePeriod,
-          fixture.dnssecChainFixture.trustAnchors,
-        );
-
-        expect(organisation).toStrictEqual(ORG_NAME);
-        expect(organisation).not.toEndWith('.');
-      });
-
-      test('User name should be output if member is a user', async () => {
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          memberCertificateSchema,
-        );
-
-        const { user } = await bundle.verify(
-          SERVICE_OID,
-          datePeriod,
-          dnssecChainFixture.trustAnchors,
-        );
-
-        expect(user).toStrictEqual(MEMBER_NAME);
-      });
-
-      test('User name should not be output if member is a bot', async () => {
-        const botCertificateSerialised = await issueMemberCertificate(
-          undefined,
-          MEMBER_KEY_PAIR.publicKey,
-          orgCertificateSerialised,
-          ORG_KEY_PAIR.privateKey,
-          datePeriod.end,
-          { startDate: datePeriod.start },
-        );
-        const bundle = new MemberIdBundle(
-          dnssecChain,
-          orgCertificateSchema,
-          AsnParser.parse(botCertificateSerialised, CertificateSchema),
-        );
-
-        const { user } = await bundle.verify(
-          SERVICE_OID,
-          datePeriod,
-          dnssecChainFixture.trustAnchors,
-        );
-
-        expect(user).toBeUndefined();
-      });
+      expect(signerCertificateSchema).toBe(memberCertificateSchema);
     });
   });
-});
 
-describe('deserialise', () => {
-  test('Malformed member Id bundle should be refused', () => {
-    const malformedBundle = arrayBufferFrom('malformed');
+  describe('signerName', () => {
+    test('should return the member name if not a bot', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
 
-    expect(() => MemberIdBundle.deserialise(malformedBundle)).toThrowWithMessage(
-      VeraidError,
-      'Member id bundle is malformed',
-    );
+      // Access the public getter directly using destructuring
+      const { signerName } = bundle;
+
+      expect(signerName).toBe(MEMBER_NAME);
+    });
+
+    test('should return undefined if member is a bot', async () => {
+      const botCertificateSerialised = await issueMemberCertificate(
+        undefined,
+        MEMBER_KEY_PAIR.publicKey,
+        orgCertificateSerialised,
+        ORG_KEY_PAIR.privateKey,
+        datePeriod.end,
+        { startDate: datePeriod.start },
+      );
+      const botCertificateSchema = AsnParser.parse(botCertificateSerialised, CertificateSchema);
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, botCertificateSchema);
+
+      // Access the public getter directly using destructuring
+      const { signerName } = bundle;
+
+      expect(signerName).toBeUndefined();
+    });
   });
 
-  test('Should create a MemberIdBundle instance from serialized data', async () => {
-    const fixture = await generateMemberIdFixture();
-    const fixtureOrgCertSerialised = fixture.orgCertificateSerialised;
-    const fixtureMemberCertSerialised = fixture.memberCertificateSerialised;
-    const fixtureDnssecChain = fixture.dnssecChainFixture;
+  describe('deserialise', () => {
+    test('Malformed member Id bundle should be refused', () => {
+      const malformedBundle = arrayBufferFrom('malformed');
 
-    const dnssecChainSerialised = AsnSerializer.serialize(
-      new DnssecChainSchema(fixtureDnssecChain.responses.map(serialiseMessage).map(bufferToArray)),
-    );
+      expect(() => MemberIdBundle.deserialise(malformedBundle)).toThrowWithMessage(
+        VeraidError,
+        'Member id bundle is malformed',
+      );
+    });
 
-    const memberIdBundle = serialiseMemberIdBundle(
-      fixtureMemberCertSerialised,
-      fixtureOrgCertSerialised,
-      dnssecChainSerialised,
-    );
+    test('Should create a MemberIdBundle instance from serialized data', async () => {
+      const fixture = await generateMemberIdFixture();
+      const fixtureOrgCertSerialised = fixture.orgCertificateSerialised;
+      const fixtureMemberCertSerialised = fixture.memberCertificateSerialised;
+      const fixtureDnssecChain = fixture.dnssecChainFixture;
 
-    const bundle = MemberIdBundle.deserialise(memberIdBundle);
+      const dnssecChainSerialised = AsnSerializer.serialize(
+        new DnssecChainSchema(
+          fixtureDnssecChain.responses.map(serialiseMessage).map(bufferToArray),
+        ),
+      );
 
-    expect(bundle).toBeInstanceOf(MemberIdBundle);
-    expect(Buffer.from(bundle.serialise())).toStrictEqual(Buffer.from(memberIdBundle));
+      const memberIdBundle = serialiseMemberIdBundle(
+        fixtureMemberCertSerialised,
+        fixtureOrgCertSerialised,
+        dnssecChainSerialised,
+      );
+
+      const bundle = MemberIdBundle.deserialise(memberIdBundle);
+
+      expect(bundle).toBeInstanceOf(MemberIdBundle);
+      expect(Buffer.from(bundle.serialise())).toStrictEqual(Buffer.from(memberIdBundle));
+    });
   });
 });

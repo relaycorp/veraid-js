@@ -1,43 +1,12 @@
-import type { TrustAnchor } from '@relaycorp/dnssec';
 import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
 import type { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import type { DatePeriod } from '../dates.js';
 import Certificate from '../utils/x509/Certificate.js';
 import VeraidError from '../VeraidError.js';
-import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
-import { getKeySpec } from '../dns/organisationKeys.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
-import type { Member } from '../Member.js';
 import { BOT_NAME } from '../pki/member.js';
-import { validateUserName } from '../idValidation.js';
 import { Chain } from '../Chain.js';
-
-async function verifyCertificateChain(
-  orgCertificate: Certificate,
-  memberCertificate: Certificate,
-  datePeriod: DatePeriod,
-): Promise<DatePeriod> {
-  let certChain: readonly Certificate[];
-  try {
-    certChain = await memberCertificate.getCertificationPath([], [orgCertificate]);
-  } catch (err) {
-    throw new VeraidError('Member certificate was not issued by organisation', { cause: err });
-  }
-  const certChainPeriod = certChain
-    .map((certificate) => certificate.validityPeriod)
-    .reduce((previousValue, currentValue) => previousValue.intersect(currentValue)!);
-
-  const intersection = certChainPeriod.intersect(datePeriod);
-  if (!intersection) {
-    throw new VeraidError(
-      `Validity period of certificate chain (${certChainPeriod.toString()}) ` +
-        `does not overlap with required period (${datePeriod.toString()})`,
-    );
-  }
-  return intersection;
-}
 
 /**
  * VeraId member identity bundle containing certificates and DNSSEC chain
@@ -85,41 +54,14 @@ export class MemberIdBundle extends Chain {
     return AsnSerializer.serialize(bundle);
   }
 
-  /**
-   * Verify this member ID bundle against the specified service and time period
-   * @param serviceOid - The OID of the service for which the bundle should be valid
-   * @param datePeriod - The time period during which the bundle should be valid
-   * @param dnssecTrustAnchors - The DNSSEC trust anchors to use for verification
-   * @returns The verified member information
-   * @throws If verification fails
-   */
-  public async verify(
-    serviceOid: string,
-    datePeriod: DatePeriod,
-    dnssecTrustAnchors?: readonly TrustAnchor[],
-  ): Promise<Member> {
-    const orgCertificate = Certificate.deserialize(
-      AsnSerializer.serialize(this.orgCertificateSchema),
-    );
+  public override get signerCertificateSchema(): CertificateSchema {
+    return this.memberCertificateSchema;
+  }
+
+  public override get signerName(): string | undefined {
     const memberCertificate = Certificate.deserialize(
       AsnSerializer.serialize(this.memberCertificateSchema),
     );
-    const certChainPeriod = await verifyCertificateChain(
-      orgCertificate,
-      memberCertificate,
-      datePeriod,
-    );
-
-    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, this.dnssecChainSchema);
-    const keySpec = await getKeySpec(await orgCertificate.getPublicKey());
-    await dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
-
-    const organisation = orgCertificate.commonName.replace(/\.$/u, '');
-    const user =
-      memberCertificate.commonName === BOT_NAME ? undefined : memberCertificate.commonName;
-    if (user !== undefined) {
-      validateUserName(user);
-    }
-    return { organisation, user };
+    return memberCertificate.commonName === BOT_NAME ? undefined : memberCertificate.commonName;
   }
 }

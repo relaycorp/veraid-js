@@ -49,7 +49,7 @@ interface SignedDataOptions extends Partial<SignatureOptions> {
   serviceOid: string;
   expiryDate: Date;
   attributedMemberName?: Utf8String;
-  shouldIncludeSignerCertificates: boolean;
+  shouldIncludeSignerCertificate: boolean;
 }
 
 async function generateSignedData(options: SignedDataOptions) {
@@ -62,7 +62,7 @@ async function generateSignedData(options: SignedDataOptions) {
     expiryDate,
     startDate,
     attributedMemberName,
-    shouldIncludeSignerCertificates,
+    shouldIncludeSignerCertificate,
   } = options;
 
   const signerCertificate = Certificate.deserialize(
@@ -88,7 +88,7 @@ async function generateSignedData(options: SignedDataOptions) {
     plaintext,
     signingKey,
     signerCertificate,
-    shouldIncludeSignerCertificates ? [signerCertificate] : [],
+    shouldIncludeSignerCertificate ? [signerCertificate] : [],
     {
       extraSignedAttrs,
       shouldEncapsulatePlaintext,
@@ -190,19 +190,19 @@ export class SignatureBundle {
   ): Promise<SignatureBundle> {
     let signerCertificateSchema: CertificateSchema;
     let attributedMemberName: Utf8String | undefined;
-    let shouldIncludeCertificates: boolean;
+    let shouldIncludeSignerCertificate: boolean;
     if (signer instanceof MemberIdBundleClass) {
       // It's a member signature bundle
       signerCertificateSchema = signer.memberCertificateSchema;
       attributedMemberName = undefined;
-      shouldIncludeCertificates = true;
+      shouldIncludeSignerCertificate = true;
     } else {
       // It's an organisation signature bundle
       signerCertificateSchema = signer.orgCertificateSchema;
       attributedMemberName = new Utf8String({
         value: signer.attributedMemberName ?? BOT_NAME,
       });
-      shouldIncludeCertificates = false;
+      shouldIncludeSignerCertificate = false;
     }
 
     const signedData = await generateSignedData({
@@ -212,7 +212,7 @@ export class SignatureBundle {
       serviceOid,
       expiryDate,
       attributedMemberName,
-      shouldIncludeSignerCertificates: shouldIncludeCertificates,
+      shouldIncludeSignerCertificate,
       ...options,
     });
 
