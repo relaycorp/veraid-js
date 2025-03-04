@@ -79,6 +79,7 @@ async function verifySignature(
 ```
 
 `signatureBundle.verify()` will throw an error if the signature is invalid for whatever reason.
+See [`SignatureBundleVerification`](https://docs.relaycorp.tech/veraid-js/interfaces/SignatureBundleVerification.html) for more details on the result.
 
 `verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 
