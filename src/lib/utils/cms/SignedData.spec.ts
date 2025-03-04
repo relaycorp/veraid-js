@@ -452,6 +452,56 @@ describe('verify', () => {
     ]);
     await expect(signedData.verify()).toResolve();
   });
+
+  describe('Detached signer certificate', () => {
+    test('Should verify when signer certificate is provided explicitly', async () => {
+      const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+      await expect(signedData.verify(undefined, certificate)).toResolve();
+    });
+
+    test('Should not alter original signed data', async () => {
+      const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+      const originalSignedDataSerialised = signedData.serialize();
+
+      await signedData.verify(undefined, certificate);
+
+      expect(Buffer.from(signedData.serialize())).toStrictEqual(
+        Buffer.from(originalSignedDataSerialised),
+      );
+    });
+
+    test('Should reject when provided signer certificate does not match', async () => {
+      const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+      const differentCertificate = await generateStubCert();
+
+      await expect(signedData.verify(undefined, differentCertificate)).rejects.toThrowWithMessage(
+        CmsError,
+        'Invalid signature',
+      );
+    });
+
+    test('Should reject when signer certificate is neither embedded nor specified', async () => {
+      const signedData = await SignedData.sign(plaintext, MEMBER_KEY_PAIR.privateKey, certificate);
+
+      await expect(signedData.verify()).rejects.toThrowWithMessage(CmsError, 'Invalid signature');
+    });
+
+    test('Should verify when signer matches and certificates is undefined', async () => {
+      const originalSignedData = await SignedData.sign(
+        plaintext,
+        MEMBER_KEY_PAIR.privateKey,
+        certificate,
+      );
+      const modifiedPkijsSignedData = new PkijsSignedData({
+        ...originalSignedData.pkijsSignedData,
+        certificates: undefined,
+      });
+      const signedData = new SignedData(modifiedPkijsSignedData);
+
+      await expect(signedData.verify(undefined, certificate)).toResolve();
+    });
+  });
 });
 
 describe('plaintext', () => {
