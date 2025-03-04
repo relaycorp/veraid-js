@@ -1,25 +1,30 @@
 import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 
+import { Chain } from './Chain.js';
 import type { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
 
 /**
  * Configuration for organisation signature bundles.
  */
-export interface OrganisationSigner {
+export class OrganisationSigner extends Chain {
   /**
-   * The organisation certificate.
+   * @param dnssecChainSchema - The DNSSEC chain for the organisation
+   * @param orgCertificateSchema - The organisation certificate
+   * @param attributedMemberName - The name of the member to whom the content is attributed (optional)
    */
-  readonly orgCertificateSchema: CertificateSchema;
+  public constructor(
+    dnssecChainSchema: DnssecChainSchema,
+    orgCertificateSchema: CertificateSchema,
+    public readonly attributedMemberName?: string,
+  ) {
+    super(dnssecChainSchema, orgCertificateSchema);
+  }
 
-  /**
-   * The DNSSEC chain for the organisation.
-   */
-  readonly dnssecChainSchema: DnssecChainSchema;
+  public override get signerCertificateSchema() {
+    return undefined;
+  }
 
-  /**
-   * The name of the member to whom the content is attributed.
-   *
-   * If absent, the content is attributed to the organisation.
-   */
-  readonly attributedMemberName?: string;
+  public override get signerName() {
+    return this.attributedMemberName;
+  }
 }

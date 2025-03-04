@@ -45,7 +45,7 @@ async function produceSignature(
 
 The output is the _VeraId Signature Bundle_, which contains the Member Id Bundle and the actual signature. It does not include the plaintext.
 
-To produce an _organisation signature_, use the interface [`OrganisationSigner`](https://docs.relaycorp.tech/veraid-js/interfaces/OrganisationSigner.html) instead of a `MemberIdBundle`.
+To produce an _organisation signature_, use the class [`OrganisationSigner`](https://docs.relaycorp.tech/veraid-js/classes/OrganisationSigner.html) instead of a `MemberIdBundle`.
 
 Note that for signatures to actually be valid for up to 30 days, the TTL override in the VeraId TXT record should allow 30 days or more.
 
@@ -79,6 +79,7 @@ async function verifySignature(
 ```
 
 `signatureBundle.verify()` will throw an error if the signature is invalid for whatever reason.
+See [`SignatureBundleVerification`](https://docs.relaycorp.tech/veraid-js/interfaces/SignatureBundleVerification.html) for more details on the result.
 
 `verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 

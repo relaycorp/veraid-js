@@ -2,7 +2,7 @@ import { ContentInfo } from '@peculiar/asn1-cms';
 import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { Attribute } from 'pkijs';
-import { type Sequence, type BaseBlock, Utf8String } from 'asn1js';
+import { type Sequence, Utf8String } from 'asn1js';
 import type { TrustAnchor } from '@relaycorp/dnssec';
 
 import type { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
@@ -15,14 +15,12 @@ import { SignedData } from './utils/cms/SignedData.js';
 import type { SignatureOptions } from './SignatureOptions.js';
 import Certificate from './utils/x509/Certificate.js';
 import VeraidError from './VeraidError.js';
-import {
-  MemberIdBundle as MemberIdBundleClass,
-  type MemberIdBundle,
-} from './memberIdBundle/MemberIdBundle.js';
+import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
 import type { SignatureBundleVerification } from './SignatureBundleVerification.js';
 import { BOT_NAME } from './pki/member.js';
-import type { OrganisationSigner } from './OrganisationSigner.js';
+import { OrganisationSigner } from './OrganisationSigner.js';
+import type { Chain } from './Chain.js';
 
 function generateMetadata(serviceOid: string, startDate: Date, expiryDate: Date): Sequence {
   if (expiryDate < startDate) {
@@ -49,7 +47,7 @@ interface SignedDataOptions extends Partial<SignatureOptions> {
   serviceOid: string;
   expiryDate: Date;
   attributedMemberName?: Utf8String;
-  shouldIncludeSignerCertificates: boolean;
+  shouldIncludeSignerCertificate: boolean;
 }
 
 async function generateSignedData(options: SignedDataOptions) {
@@ -62,7 +60,7 @@ async function generateSignedData(options: SignedDataOptions) {
     expiryDate,
     startDate,
     attributedMemberName,
-    shouldIncludeSignerCertificates,
+    shouldIncludeSignerCertificate,
   } = options;
 
   const signerCertificate = Certificate.deserialize(
@@ -88,7 +86,7 @@ async function generateSignedData(options: SignedDataOptions) {
     plaintext,
     signingKey,
     signerCertificate,
-    shouldIncludeSignerCertificates ? [signerCertificate] : [],
+    shouldIncludeSignerCertificate ? [signerCertificate] : [],
     {
       extraSignedAttrs,
       shouldEncapsulatePlaintext,
@@ -105,7 +103,7 @@ function getMetadata(signedData: SignedData) {
   let metadata: SignatureMetadataSchema;
   try {
     metadata = AsnParser.parse(
-      (metadataAttributeAsn1 as BaseBlock[])[0].toBER(),
+      (metadataAttributeAsn1 as Sequence[])[0].toBER(),
       SignatureMetadataSchema,
     );
   } catch {
@@ -190,19 +188,19 @@ export class SignatureBundle {
   ): Promise<SignatureBundle> {
     let signerCertificateSchema: CertificateSchema;
     let attributedMemberName: Utf8String | undefined;
-    let shouldIncludeCertificates: boolean;
-    if (signer instanceof MemberIdBundleClass) {
+    let shouldIncludeSignerCertificate: boolean;
+    if (signer instanceof MemberIdBundle) {
       // It's a member signature bundle
       signerCertificateSchema = signer.memberCertificateSchema;
       attributedMemberName = undefined;
-      shouldIncludeCertificates = true;
+      shouldIncludeSignerCertificate = true;
     } else {
       // It's an organisation signature bundle
       signerCertificateSchema = signer.orgCertificateSchema;
       attributedMemberName = new Utf8String({
         value: signer.attributedMemberName ?? BOT_NAME,
       });
-      shouldIncludeCertificates = false;
+      shouldIncludeSignerCertificate = false;
     }
 
     const signedData = await generateSignedData({
@@ -212,7 +210,7 @@ export class SignatureBundle {
       serviceOid,
       expiryDate,
       attributedMemberName,
-      shouldIncludeSignerCertificates: shouldIncludeCertificates,
+      shouldIncludeSignerCertificate,
       ...options,
     });
 
@@ -238,6 +236,64 @@ export class SignatureBundle {
     return AsnSerializer.serialize(signatureSchema);
   }
 
+  private buildVerificationChain(signedData: SignedData): Chain {
+    const memberAttributionAttr = signedData.getSignedAttribute(
+      VERAID_OIDS.MEMBER_ATTRIBUTION_ATTR,
+    );
+
+    let chain: Chain;
+    if (memberAttributionAttr) {
+      // It's an organisation signature
+      const [memberAttribution] = memberAttributionAttr;
+      if (!(memberAttribution instanceof Utf8String)) {
+        throw new VeraidError('Member attribution attribute is malformed');
+      }
+      const memberAttributionValue = memberAttribution.getValue();
+      chain = new OrganisationSigner(
+        this.dnssecChainSchema,
+        this.orgCertificateSchema,
+        memberAttributionValue === BOT_NAME ? undefined : memberAttributionValue,
+      );
+    } else {
+      // It's a member signature
+      if (!signedData.signerCertificate) {
+        throw new VeraidError('Member signature is missing signer certificate');
+      }
+      chain = new MemberIdBundle(
+        this.dnssecChainSchema,
+        this.orgCertificateSchema,
+        AsnParser.parse(signedData.signerCertificate.serialize(), CertificateSchema),
+      );
+    }
+
+    return chain;
+  }
+
+  private async verifySignature(
+    signedData: SignedData,
+    plaintext: ArrayBuffer | undefined,
+    serviceOid: string,
+    dateOrPeriod: Date | IDatePeriod,
+    chain: Chain,
+  ): Promise<DatePeriod> {
+    const signerCertificate =
+      chain instanceof MemberIdBundle
+        ? undefined
+        : Certificate.deserialize(AsnSerializer.serialize(this.orgCertificateSchema));
+    try {
+      await signedData.verify(plaintext, signerCertificate);
+    } catch (err) {
+      throw new VeraidError('Signature is invalid', { cause: err });
+    }
+
+    const metadata = getMetadata(signedData);
+    if (metadata.serviceOid !== serviceOid) {
+      throw new VeraidError(`Signature is bound to a different service (${metadata.serviceOid})`);
+    }
+
+    return getSignaturePeriodIntersection(metadata, dateOrPeriod);
+  }
+
   /**
    * Verify the signature against the specified plaintext
    * @param plaintext - The plaintext to verify (can be undefined if the plaintext is encapsulated in the signature)
@@ -254,30 +310,28 @@ export class SignatureBundle {
     trustAnchors?: readonly TrustAnchor[],
   ): Promise<SignatureBundleVerification> {
     const signedData = SignedData.deserialize(AsnSerializer.serialize(this.signature));
-    try {
-      await signedData.verify(plaintext);
-    } catch (err) {
-      throw new VeraidError('Signature is invalid', { cause: err });
-    }
 
-    const metadata = getMetadata(signedData);
-    if (metadata.serviceOid !== serviceOid) {
-      throw new VeraidError(`Signature is bound to a different service (${metadata.serviceOid})`);
-    }
+    const chain = this.buildVerificationChain(signedData);
 
-    const signaturePeriodIntersection = getSignaturePeriodIntersection(metadata, dateOrPeriod);
-    const memberIdBundle = new MemberIdBundleClass(
-      this.dnssecChainSchema,
-      this.orgCertificateSchema,
-      AsnParser.parse(signedData.signerCertificate!.serialize(), CertificateSchema),
+    const signaturePeriodIntersection = await this.verifySignature(
+      signedData,
+      plaintext,
+      serviceOid,
+      dateOrPeriod,
+      chain,
     );
+
     let member;
     try {
-      member = await memberIdBundle.verify(serviceOid, signaturePeriodIntersection, trustAnchors);
+      member = await chain.verify(serviceOid, signaturePeriodIntersection, trustAnchors);
     } catch (err) {
-      throw new VeraidError('Member id bundle is invalid', { cause: err });
+      throw new VeraidError('Chain verification failed', { cause: err });
     }
 
-    return { plaintext: plaintext ?? signedData.plaintext!, member, wasSignedByMember: true };
+    return {
+      plaintext: plaintext ?? signedData.plaintext!,
+      member,
+      wasSignedByMember: chain instanceof MemberIdBundle,
+    };
   }
 }
