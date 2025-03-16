@@ -1,12 +1,5 @@
 import { jest } from '@jest/globals';
-import {
-  Message,
-  Question,
-  type Resolver,
-  RrSet,
-  SecurityStatus,
-  type TrustAnchor,
-} from '@relaycorp/dnssec';
+import { Message, Question, type Resolver, RrSet, SecurityStatus } from '@relaycorp/dnssec';
 import { AsnParser } from '@peculiar/asn1-schema';
 import { addSeconds, setMilliseconds, subSeconds } from 'date-fns';
 
@@ -27,28 +20,62 @@ import { MOCK_CHAIN, VERAID_RRSET } from '../../testUtils/veraStubs/dnssec.js';
 import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
-import { VeraidDnssecChain } from './VeraidDnssecChain.js';
 import { generateTxtRdata } from './rdataSerialisation.js';
+import type { DnsResolutionOptions } from './VeraidDnssecChain.js';
 
-const mockResolver = jest.fn<Resolver>();
-beforeEach(() => {
-  mockResolver.mockReset();
-});
+const mockDnssecOnlineResolve = jest.fn<Resolver>();
+jest.unstable_mockModule('./onlineDnsResolver.js', () => ({
+  dnssecOnlineResolve: mockDnssecOnlineResolve,
+}));
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const { VeraidDnssecChain } = await import('./VeraidDnssecChain.js');
 
 describe('VeraDnssecChain', () => {
   describe('retrieve', () => {
-    function generateFixture(status: SecurityStatus): readonly TrustAnchor[] {
-      const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(VERAID_RRSET, status);
-      mockResolver.mockImplementation(resolver);
-      return trustAnchors;
+    function makeRetrievalOptions(status: SecurityStatus): DnsResolutionOptions {
+      return MOCK_CHAIN.generateFixture(VERAID_RRSET, status);
     }
 
+    test('IANA trust anchors should be used by default', async () => {
+      const { resolver } = MOCK_CHAIN.generateFixture(VERAID_RRSET, SecurityStatus.SECURE);
+      mockDnssecOnlineResolve.mockImplementation(resolver);
+
+      await expect(VeraidDnssecChain.retrieve(ORG_DOMAIN)).rejects.toThrowWithMessage(
+        VeraidError,
+        'DNSSEC chain validation failed (BOGUS): ' +
+          'Got invalid DNSKEY for root zone, No DNSKEY matched specified DS(s)',
+      );
+    });
+
+    test('Online DNSSEC resolver should be used by default', async () => {
+      const { resolver, trustAnchors } = MOCK_CHAIN.generateFixture(
+        VERAID_RRSET,
+        SecurityStatus.SECURE,
+      );
+      mockDnssecOnlineResolve.mockImplementation(resolver);
+
+      await VeraidDnssecChain.retrieve(ORG_DOMAIN, { trustAnchors });
+
+      expect(mockDnssecOnlineResolve).toHaveBeenCalledWith(expect.anything());
+    });
+
+    test('Explicit DNSSEC resolver should be used if set', async () => {
+      const { resolver, trustAnchors } = makeRetrievalOptions(SecurityStatus.SECURE);
+      const resolverSpy = jest.fn(resolver);
+
+      await VeraidDnssecChain.retrieve(ORG_DOMAIN, { resolver: resolverSpy, trustAnchors });
+
+      expect(resolverSpy).toHaveBeenCalledWith(expect.anything());
+    });
+
     test('TXT subdomain _veraid of specified domain should be queried', async () => {
-      const trustAnchors = generateFixture(SecurityStatus.SECURE);
+      const { resolver, trustAnchors } = makeRetrievalOptions(SecurityStatus.SECURE);
+      const resolverSpy = jest.fn(resolver);
 
-      await VeraidDnssecChain.retrieve(ORG_DOMAIN, mockResolver, trustAnchors);
+      await VeraidDnssecChain.retrieve(ORG_DOMAIN, { resolver: resolverSpy, trustAnchors });
 
-      expect(mockResolver).toHaveBeenCalledWith(
+      expect(resolverSpy).toHaveBeenCalledWith(
         expect.toSatisfy<Question>(
           (question) => question.name === ORG_VERAID_DOMAIN && question.getTypeName() === 'TXT',
         ),
@@ -56,11 +83,12 @@ describe('VeraDnssecChain', () => {
     });
 
     test('Errors should be wrapped', async () => {
+      const resolver = jest.fn<Resolver>();
       const originalError = new Error('Whoops');
-      mockResolver.mockRejectedValue(originalError);
+      resolver.mockRejectedValue(originalError);
 
       const error = await getPromiseRejection(
-        async () => VeraidDnssecChain.retrieve(ORG_DOMAIN, mockResolver, undefined),
+        async () => VeraidDnssecChain.retrieve(ORG_DOMAIN, { resolver }),
         VeraidError,
       );
 
@@ -70,10 +98,10 @@ describe('VeraDnssecChain', () => {
 
     test('Non-SECURE result should be refused', async () => {
       const status = SecurityStatus.BOGUS;
-      const trustAnchors = generateFixture(status);
+      const options = makeRetrievalOptions(status);
 
       const error = await getPromiseRejection(
-        async () => VeraidDnssecChain.retrieve(ORG_DOMAIN, mockResolver, trustAnchors),
+        async () => VeraidDnssecChain.retrieve(ORG_DOMAIN, options),
         VeraidError,
       );
 
@@ -81,32 +109,38 @@ describe('VeraDnssecChain', () => {
     });
 
     test('Responses in wire format should be supported', async () => {
-      const trustAnchors = generateFixture(SecurityStatus.SECURE);
-      const resolver: Resolver = async (question) => {
-        const response = (await mockResolver(question)) as Message;
+      const { resolver, trustAnchors } = makeRetrievalOptions(SecurityStatus.SECURE);
+      const mockResolver: Resolver = async (question) => {
+        const response = (await resolver!(question)) as Message;
         return serialiseMessage(response);
       };
 
-      await expect(VeraidDnssecChain.retrieve(ORG_DOMAIN, resolver, trustAnchors)).toResolve();
+      await expect(
+        VeraidDnssecChain.retrieve(ORG_DOMAIN, { resolver: mockResolver, trustAnchors }),
+      ).toResolve();
     });
 
     test('Domain should be stored in the instance', async () => {
-      const trustAnchors = generateFixture(SecurityStatus.SECURE);
+      const options = makeRetrievalOptions(SecurityStatus.SECURE);
 
-      const chain = await VeraidDnssecChain.retrieve(ORG_DOMAIN, mockResolver, trustAnchors);
+      const chain = await VeraidDnssecChain.retrieve(ORG_DOMAIN, options);
 
       expect(chain.domainName).toStrictEqual(ORG_DOMAIN);
     });
 
     test('Responses should be stored in instance', async () => {
-      const trustAnchors = generateFixture(SecurityStatus.SECURE);
+      const { resolver, trustAnchors } = makeRetrievalOptions(SecurityStatus.SECURE);
+      const resolverSpy = jest.fn(resolver);
 
-      const chain = await VeraidDnssecChain.retrieve(ORG_DOMAIN, mockResolver, trustAnchors);
+      const chain = await VeraidDnssecChain.retrieve(ORG_DOMAIN, {
+        resolver: resolverSpy,
+        trustAnchors,
+      });
 
-      expect(chain.responses).toHaveLength(mockResolver.mock.calls.length);
+      expect(chain.responses).toHaveLength(resolverSpy.mock.calls.length);
       expect(chain.responses.length).toBeGreaterThan(0);
       const responses = await Promise.all(
-        mockResolver.mock.results.map((promise) => promise.value as Message),
+        resolverSpy.mock.results.map((promise) => promise.value as Message),
       );
       const responsesSerialised = responses.map(serialiseMessage);
       chain.responses.forEach((response) => {

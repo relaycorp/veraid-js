@@ -1,10 +1,10 @@
 /* eslint-disable import/no-unused-modules */
 
+export { type DnsResolutionOptions, VeraidDnssecChain } from './lib/dns/VeraidDnssecChain.js';
 export { issueMemberCertificate } from './lib/pki/member.js';
 export { selfIssueOrganisationCertificate } from './lib/pki/organisation.js';
 export type { CertificateIssuanceOptions } from './lib/pki/CertificateIssuanceOptions.js';
 export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
-export { retrieveVeraidDnssecChain } from './lib/dns/dnssecChainRetrieval.js';
 export { serialiseMemberIdBundle } from './lib/memberIdBundle/serialisation.js';
 export { MemberIdBundle } from './lib/memberIdBundle/MemberIdBundle.js';
 export { SignatureBundle } from './lib/SignatureBundle.js';
