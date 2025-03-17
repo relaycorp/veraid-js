@@ -14,7 +14,6 @@ import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 import Certificate from '../utils/x509/Certificate.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
-import { serialiseMemberIdBundle } from './serialisation.js';
 
 const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();
@@ -139,28 +138,21 @@ describe('MemberIdBundle', () => {
       );
     });
 
-    test('Should create a MemberIdBundle instance from serialized data', async () => {
-      const fixture = await generateMemberIdFixture();
-      const fixtureOrgCertSerialised = fixture.orgCertificateSerialised;
-      const fixtureMemberCertSerialised = fixture.memberCertificateSerialised;
-      const fixtureDnssecChain = fixture.dnssecChainFixture;
-
-      const dnssecChainSerialised = AsnSerializer.serialize(
+    test('should deserialise valid bundle', () => {
+      const dnssecChain = new VeraidDnssecChain(
+        ORG_CERTIFICATE.commonName,
         new DnssecChainSchema(
-          fixtureDnssecChain.responses.map(serialiseMessage).map(bufferToArray),
+          dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
         ),
       );
+      const bundle = new MemberIdBundle(dnssecChain, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundleSerialised = bundle.serialise();
 
-      const memberIdBundle = serialiseMemberIdBundle(
-        fixtureMemberCertSerialised,
-        fixtureOrgCertSerialised,
-        dnssecChainSerialised,
+      const deserializedBundle = MemberIdBundle.deserialise(bundleSerialised);
+
+      expect(Buffer.from(deserializedBundle.serialise())).toStrictEqual(
+        Buffer.from(bundleSerialised),
       );
-
-      const bundle = MemberIdBundle.deserialise(memberIdBundle);
-
-      expect(bundle).toBeInstanceOf(MemberIdBundle);
-      expect(Buffer.from(bundle.serialise())).toStrictEqual(Buffer.from(memberIdBundle));
     });
   });
 });

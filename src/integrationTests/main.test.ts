@@ -3,7 +3,6 @@ import { addSeconds } from 'date-fns';
 import {
   issueMemberCertificate,
   selfIssueOrganisationCertificate,
-  serialiseMemberIdBundle,
   MemberIdBundle,
   SignatureBundle,
   VeraidDnssecChain,
@@ -13,35 +12,33 @@ import { arrayBufferFrom } from '../testUtils/buffers.js';
 import { VERAID_OIDS } from '../lib/oids.js';
 import VeraidError from '../lib/VeraidError.js';
 import { generateRsaKeyPair } from '../lib/utils/keys/generation.js';
+import Certificate from '../lib/utils/x509/Certificate.js';
 
 import { TEST_ORG_KEY_PAIR, TEST_ORG_NAME } from './utils.js';
 import { resolveWithRetries } from './resolver.js';
 
 const EXPIRY_DATE = addSeconds(new Date(), 60);
-const ORG_CERTIFICATE = await selfIssueOrganisationCertificate(
+const ORG_CERTIFICATE_SERIALISED = await selfIssueOrganisationCertificate(
   TEST_ORG_NAME,
   TEST_ORG_KEY_PAIR,
   EXPIRY_DATE,
 );
-const MEMBER_CERTIFICATE = await issueMemberCertificate(
+const ORG_CERTIFICATE = Certificate.deserialize(ORG_CERTIFICATE_SERIALISED);
+const MEMBER_CERTIFICATE_SERIALISED = await issueMemberCertificate(
   MEMBER_NAME,
   MEMBER_KEY_PAIR.publicKey,
-  ORG_CERTIFICATE,
+  ORG_CERTIFICATE_SERIALISED,
   TEST_ORG_KEY_PAIR.privateKey,
   EXPIRY_DATE,
 );
+const MEMBER_CERTIFICATE = Certificate.deserialize(MEMBER_CERTIFICATE_SERIALISED);
 
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 
 const DNSSEC_CHAIN = await VeraidDnssecChain.retrieve(TEST_ORG_NAME, {
   resolver: resolveWithRetries,
 });
-const MEMBER_ID_BUNDLE_SERIALISED = serialiseMemberIdBundle(
-  MEMBER_CERTIFICATE,
-  ORG_CERTIFICATE,
-  DNSSEC_CHAIN.serialise(),
-);
-const MEMBER_ID_BUNDLE = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE_SERIALISED);
+const MEMBER_ID_BUNDLE = new MemberIdBundle(DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
 
 describe('main', () => {
   test('Valid signature bundle', async () => {
