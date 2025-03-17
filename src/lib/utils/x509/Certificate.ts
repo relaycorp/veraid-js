@@ -257,7 +257,6 @@ export class Certificate {
 
   /**
    * Get the subject public key.
-   * @internal
    */
   public async getPublicKey(): Promise<CryptoKey> {
     return this.pkijsCertificate.getPublicKey(undefined, NODE_ENGINE);
@@ -265,7 +264,6 @@ export class Certificate {
 
   /**
    * Return the certification path (aka "certificate chain") if this certificate can be trusted.
-   * @internal
    * @param intermediateCaCertificates The alleged chain for the certificate
    * @param trustedCertificates The collection of certificates that are actually trusted
    * @throws CertificateError when this certificate is not on a certificate path from a CA in
