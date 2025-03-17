@@ -1,5 +1,7 @@
 import { BmpString, Integer, OctetString, type BaseBlock } from 'asn1js';
 import { min, setMilliseconds } from 'date-fns';
+import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
+import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import {
   AttributeTypeAndValue,
   AuthorityKeyIdentifier,
@@ -107,6 +109,15 @@ export default class Certificate {
   }
 
   /**
+   * Create a Certificate instance from an ASN.1 schema
+   * @param schema - The ASN.1 schema representation of a certificate
+   */
+  public static fromSchema(schema: CertificateSchema): Certificate {
+    const certDer = AsnSerializer.serialize(schema);
+    return Certificate.deserialize(certDer);
+  }
+
+  /**
    * Issue a Relaynet PKI certificate.
    */
   public static async issue(options: FullIssuanceOptions): Promise<Certificate> {
@@ -209,6 +220,14 @@ export default class Certificate {
   public serialize(): ArrayBuffer {
     const certAsn1js = this.pkijsCertificate.toSchema(true);
     return certAsn1js.toBER(false);
+  }
+
+  /**
+   * Convert a Certificate instance to its ASN.1 schema representation
+   */
+  public toSchema(): CertificateSchema {
+    const certDer = this.serialize();
+    return AsnParser.parse(certDer, CertificateSchema);
   }
 
   /**

@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Message, Question, type Resolver, RrSet, SecurityStatus } from '@relaycorp/dnssec';
-import { AsnParser } from '@peculiar/asn1-schema';
+import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { addSeconds, setMilliseconds, subSeconds } from 'date-fns';
 
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
@@ -31,7 +31,7 @@ jest.unstable_mockModule('./onlineDnsResolver.js', () => ({
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const { VeraidDnssecChain } = await import('./VeraidDnssecChain.js');
 
-describe('VeraDnssecChain', () => {
+describe('VeraidDnssecChain', () => {
   describe('retrieve', () => {
     function makeRetrievalOptions(status: SecurityStatus): DnsResolutionOptions {
       return MOCK_CHAIN.generateFixture(VERAID_RRSET, status);
@@ -146,6 +146,37 @@ describe('VeraDnssecChain', () => {
       chain.responses.forEach((response) => {
         expect(responsesSerialised).toContainEqual(Buffer.from(response));
       });
+    });
+  });
+
+  describe('toSchema', () => {
+    test('should output ASN.1 schema', () => {
+      const { responses } = MOCK_CHAIN.generateFixture(VERAID_RRSET, SecurityStatus.SECURE);
+      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+      const chain = new VeraidDnssecChain(ORG_DOMAIN, responsesSerialised);
+
+      const schema = chain.toSchema();
+
+      const schemaBuffer = Buffer.from(AsnSerializer.serialize(schema));
+      const serializedBuffer = Buffer.from(chain.serialise());
+      expect(schemaBuffer).toStrictEqual(serializedBuffer);
+    });
+  });
+
+  describe('fromSchema', () => {
+    test('should create instance from valid schema', () => {
+      const { responses } = MOCK_CHAIN.generateFixture(VERAID_RRSET, SecurityStatus.SECURE);
+      const responsesSerialised = responses.map(serialiseMessage).map(arrayBufferFrom);
+      const chain = new VeraidDnssecChain(ORG_DOMAIN, responsesSerialised);
+      const schema = chain.toSchema();
+
+      const chainFromSchema = VeraidDnssecChain.fromSchema(schema, ORG_DOMAIN);
+
+      expect(chainFromSchema.domainName).toStrictEqual(chain.domainName);
+      const mapToBuffer = (arr: ArrayBuffer): Buffer => Buffer.from(arr);
+      expect(chainFromSchema.responses.map(mapToBuffer)).toStrictEqual(
+        chain.responses.map(mapToBuffer),
+      );
     });
   });
 

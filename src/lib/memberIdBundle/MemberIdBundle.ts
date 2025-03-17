@@ -33,6 +33,19 @@ export class MemberIdBundle extends Chain {
     );
   }
 
+  /**
+   * Create a MemberIdBundle instance from an ASN.1 schema
+   * @param schema - The ASN.1 schema representation of a member ID bundle
+   * @returns A new MemberIdBundle instance
+   */
+  public static fromSchema(schema: MemberIdBundleSchema): MemberIdBundle {
+    return new MemberIdBundle(
+      schema.dnssecChain,
+      schema.organisationCertificate,
+      schema.memberCertificate,
+    );
+  }
+
   public constructor(
     dnssecChainSchema: DnssecChainSchema,
     orgCertificateSchema: CertificateSchema,
@@ -46,12 +59,21 @@ export class MemberIdBundle extends Chain {
    * @returns The serialised member ID bundle
    */
   public serialise(): ArrayBuffer {
+    const schema = this.toSchema();
+    return AsnSerializer.serialize(schema);
+  }
+
+  /**
+   * Convert a MemberIdBundle instance to its ASN.1 schema representation
+   * @returns The ASN.1 schema representation of the member ID bundle
+   */
+  public toSchema(): MemberIdBundleSchema {
     const bundle = new MemberIdBundleSchema();
     bundle.version = 0;
     bundle.memberCertificate = this.memberCertificateSchema;
     bundle.organisationCertificate = this.orgCertificateSchema;
     bundle.dnssecChain = this.dnssecChainSchema;
-    return AsnSerializer.serialize(bundle);
+    return bundle;
   }
 
   public override get signerCertificateSchema(): CertificateSchema {

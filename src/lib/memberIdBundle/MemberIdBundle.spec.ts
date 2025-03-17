@@ -24,6 +24,31 @@ const orgCertificateSchema = AsnParser.parse(orgCertificateSerialised, Certifica
 const memberCertificateSchema = AsnParser.parse(memberCertificateSerialised, CertificateSchema);
 
 describe('MemberIdBundle', () => {
+  describe('toSchema', () => {
+    test('should output ASN.1 schema', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
+
+      const schema = bundle.toSchema();
+
+      const schemaBuffer = Buffer.from(AsnSerializer.serialize(schema));
+      const serializedBuffer = Buffer.from(bundle.serialise());
+      expect(schemaBuffer).toStrictEqual(serializedBuffer);
+    });
+  });
+
+  describe('fromSchema', () => {
+    test('should create instance from valid schema', () => {
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);
+      const schema = bundle.toSchema();
+
+      const bundleFromSchema = MemberIdBundle.fromSchema(schema);
+
+      expect(Buffer.from(bundleFromSchema.serialise())).toStrictEqual(
+        Buffer.from(bundle.serialise()),
+      );
+    });
+  });
+
   describe('serialise', () => {
     test('Version should be 0', () => {
       const bundle = new MemberIdBundle(dnssecChain, orgCertificateSchema, memberCertificateSchema);

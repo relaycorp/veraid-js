@@ -10,6 +10,7 @@ import {
   IssuerAndSerialNumber,
   PublicKeyInfo,
 } from 'pkijs';
+import { AsnSerializer } from '@peculiar/asn1-schema';
 
 import { AUTHORITY_KEY, BASIC_CONSTRAINTS, COMMON_NAME, SUBJECT_KEY } from '../../oids.js';
 import { derSerializePublicKey } from '../keys/serialisation.js';
@@ -87,6 +88,29 @@ describe('constructor', () => {
       expect(certificate.validityPeriod.start).toStrictEqual(pkijsCertificate.notBefore.value);
       expect(certificate.validityPeriod.end).toStrictEqual(pkijsCertificate.notAfter.value);
     });
+  });
+});
+
+describe('toSchema', () => {
+  test('should output ASN.1 schema', async () => {
+    const cert = await generateStubCert();
+
+    const schema = cert.toSchema();
+
+    const schemaBuffer = Buffer.from(AsnSerializer.serialize(schema));
+    const serializedBuffer = Buffer.from(cert.serialize());
+    expect(schemaBuffer).toStrictEqual(serializedBuffer);
+  });
+});
+
+describe('fromSchema', () => {
+  test('should create instance from valid schema', async () => {
+    const cert = await generateStubCert();
+    const schema = cert.toSchema();
+
+    const certificateFromSchema = Certificate.fromSchema(schema);
+
+    expect(certificateFromSchema.isEqual(cert)).toBeTrue();
   });
 });
 

@@ -93,8 +93,19 @@ export interface DnsResolutionOptions {
 
 export class VeraidDnssecChain {
   /**
+   * Create a VeraidDnssecChain instance from an ASN.1 schema
+   * @param schema - The ASN.1 schema representation of a DNSSEC chain
+   * @param domainName - The domain name for the DNSSEC chain
+   * @returns A new VeraidDnssecChain instance
+   */
+  public static fromSchema(schema: DnssecChainSchema, domainName: string): VeraidDnssecChain {
+    return new VeraidDnssecChain(domainName, schema);
+  }
+
+  /**
    * Retrieve the DNSSEC chain for an organisation.
    * @param domainName - The domain name of the organisation to retrieve the DNSSEC chain for
+   * @param options - DNS resolution options
    * @param options.resolver - The DNS resolver to use for the DNSSEC chain retrieval
    * @param options.trustAnchors - The trust anchors to use for the DNSSEC chain retrieval
    * @returns A promise that resolves to the DNSSEC chain for the organisation
@@ -137,8 +148,16 @@ export class VeraidDnssecChain {
    * @returns The serialised DNSSEC chain
    */
   public serialise(): ArrayBuffer {
-    const chain = new DnssecChainSchema(this.responses as ArrayBuffer[]);
-    return AsnSerializer.serialize(chain);
+    const schema = this.toSchema();
+    return AsnSerializer.serialize(schema);
+  }
+
+  /**
+   * Convert a VeraidDnssecChain instance to its ASN.1 schema representation
+   * @returns The ASN.1 schema representation of the DNSSEC chain
+   */
+  public toSchema(): DnssecChainSchema {
+    return new DnssecChainSchema(this.responses as ArrayBuffer[]);
   }
 
   /**
