@@ -1,12 +1,11 @@
-import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
-import type { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import Certificate from '../utils/x509/Certificate.js';
 import VeraidError from '../VeraidError.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import { BOT_NAME } from '../pki/member.js';
 import { Chain } from '../Chain.js';
+import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 
 /**
  * VeraId member identity bundle containing certificates and DNSSEC chain
@@ -26,11 +25,7 @@ export class MemberIdBundle extends Chain {
       throw new VeraidError('Member id bundle is malformed');
     }
 
-    return new MemberIdBundle(
-      memberIdBundleSchema.dnssecChain,
-      memberIdBundleSchema.organisationCertificate,
-      memberIdBundleSchema.memberCertificate,
-    );
+    return this.fromSchema(memberIdBundleSchema);
   }
 
   /**
@@ -39,19 +34,19 @@ export class MemberIdBundle extends Chain {
    * @returns A new MemberIdBundle instance
    */
   public static fromSchema(schema: MemberIdBundleSchema): MemberIdBundle {
-    return new MemberIdBundle(
-      schema.dnssecChain,
-      schema.organisationCertificate,
-      schema.memberCertificate,
-    );
+    const orgCertificate = Certificate.fromSchema(schema.organisationCertificate);
+    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, schema.dnssecChain);
+    const memberCertificate = Certificate.fromSchema(schema.memberCertificate);
+
+    return new MemberIdBundle(dnssecChain, orgCertificate, memberCertificate);
   }
 
   public constructor(
-    dnssecChainSchema: DnssecChainSchema,
-    orgCertificateSchema: CertificateSchema,
-    public readonly memberCertificateSchema: CertificateSchema,
+    dnssecChain: VeraidDnssecChain,
+    orgCertificate: Certificate,
+    public readonly memberCertificate: Certificate,
   ) {
-    super(dnssecChainSchema, orgCertificateSchema);
+    super(dnssecChain, orgCertificate);
   }
 
   /**
@@ -70,20 +65,19 @@ export class MemberIdBundle extends Chain {
   public toSchema(): MemberIdBundleSchema {
     const bundle = new MemberIdBundleSchema();
     bundle.version = 0;
-    bundle.memberCertificate = this.memberCertificateSchema;
-    bundle.organisationCertificate = this.orgCertificateSchema;
-    bundle.dnssecChain = this.dnssecChainSchema;
+    bundle.memberCertificate = this.memberCertificate.toSchema();
+    bundle.organisationCertificate = this.orgCertificate.toSchema();
+    bundle.dnssecChain = this.dnssecChain.toSchema();
     return bundle;
   }
 
-  public override get signerCertificateSchema(): CertificateSchema {
-    return this.memberCertificateSchema;
+  public override get signerCertificate(): Certificate {
+    return this.memberCertificate;
   }
 
   public override get signerName(): string | undefined {
-    const memberCertificate = Certificate.deserialize(
-      AsnSerializer.serialize(this.memberCertificateSchema),
-    );
-    return memberCertificate.commonName === BOT_NAME ? undefined : memberCertificate.commonName;
+    return this.memberCertificate.commonName === BOT_NAME
+      ? undefined
+      : this.memberCertificate.commonName;
   }
 }

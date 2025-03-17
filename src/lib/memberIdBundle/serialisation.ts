@@ -1,8 +1,9 @@
-import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser } from '@peculiar/asn1-schema';
 
 import VeraidError from '../VeraidError.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
+import Certificate from '../utils/x509/Certificate.js';
+import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
 
@@ -11,27 +12,28 @@ export function serialiseMemberIdBundle(
   orgCertificateSerialised: ArrayBuffer,
   dnssecChainSerialised: ArrayBuffer,
 ): ArrayBuffer {
-  let memberCertificate: CertificateSchema;
+  let memberCertificate: Certificate;
   try {
-    memberCertificate = AsnParser.parse(memberCertificateSerialised, CertificateSchema);
+    memberCertificate = Certificate.deserialize(memberCertificateSerialised);
   } catch (err) {
     throw new VeraidError('Member certificate is malformed', { cause: err });
   }
 
-  let orgCertificate: CertificateSchema;
+  let orgCertificate: Certificate;
   try {
-    orgCertificate = AsnParser.parse(orgCertificateSerialised, CertificateSchema);
+    orgCertificate = Certificate.deserialize(orgCertificateSerialised);
   } catch (err) {
     throw new VeraidError('Organisation certificate is malformed', { cause: err });
   }
 
-  let dnssecChain: DnssecChainSchema;
+  let dnssecChainSchema: DnssecChainSchema;
   try {
-    dnssecChain = AsnParser.parse(dnssecChainSerialised, DnssecChainSchema);
+    dnssecChainSchema = AsnParser.parse(dnssecChainSerialised, DnssecChainSchema);
   } catch (err) {
     throw new VeraidError('DNSSEC chain is malformed', { cause: err });
   }
 
+  const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, dnssecChainSchema);
   const bundle = new MemberIdBundle(dnssecChain, orgCertificate, memberCertificate);
   return bundle.serialise();
 }
