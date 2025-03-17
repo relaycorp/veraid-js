@@ -4,6 +4,7 @@ import { addMinutes, setMilliseconds } from 'date-fns';
 import { selfIssueOrganisationCertificate } from '../../lib/pki/organisation.js';
 import { issueMemberCertificate } from '../../lib/pki/member.js';
 import { DatePeriod } from '../../lib/dates.js';
+import type Certificate from '../../lib/utils/x509/Certificate.js';
 
 import { MOCK_CHAIN, VERAID_RRSET } from './dnssec.js';
 import { ORG_KEY_PAIR, ORG_NAME } from './organisation.js';
@@ -12,14 +13,14 @@ import { MEMBER_KEY_PAIR, MEMBER_NAME } from './member.js';
 const FIXTURE_TTL_MINUTES = 5;
 
 interface MemberIdFixtureOptions {
-  readonly orgCertificateSerialised: ArrayBuffer;
+  readonly orgCertificate: Certificate;
   readonly datePeriod: DatePeriod;
 }
 
 interface MemberIdFixture {
   readonly dnssecChainFixture: MockChainFixture;
-  readonly orgCertificateSerialised: ArrayBuffer;
-  readonly memberCertificateSerialised: ArrayBuffer;
+  readonly orgCertificate: Certificate;
+  readonly memberCertificate: Certificate;
   readonly datePeriod: DatePeriod;
 }
 
@@ -35,16 +36,16 @@ export async function generateMemberIdFixture(
     end: datePeriod.end,
   });
 
-  const orgCertificateSerialised =
-    options.orgCertificateSerialised ??
+  const orgCertificate =
+    options.orgCertificate ??
     (await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, datePeriod.end, {
       startDate: datePeriod.start,
     }));
 
-  const memberCertificateSerialised = await issueMemberCertificate(
+  const memberCertificate = await issueMemberCertificate(
     MEMBER_NAME,
     MEMBER_KEY_PAIR.publicKey,
-    orgCertificateSerialised,
+    orgCertificate,
     ORG_KEY_PAIR.privateKey,
     datePeriod.end,
     { startDate: datePeriod.start },
@@ -52,8 +53,8 @@ export async function generateMemberIdFixture(
 
   return {
     dnssecChainFixture,
-    memberCertificateSerialised,
-    orgCertificateSerialised,
+    memberCertificate,
+    orgCertificate,
     datePeriod,
   };
 }

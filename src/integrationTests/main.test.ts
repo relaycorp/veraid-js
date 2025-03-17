@@ -12,26 +12,23 @@ import { arrayBufferFrom } from '../testUtils/buffers.js';
 import { VERAID_OIDS } from '../lib/oids.js';
 import VeraidError from '../lib/VeraidError.js';
 import { generateRsaKeyPair } from '../lib/utils/keys/generation.js';
-import Certificate from '../lib/utils/x509/Certificate.js';
 
 import { TEST_ORG_KEY_PAIR, TEST_ORG_NAME } from './utils.js';
 import { resolveWithRetries } from './resolver.js';
 
 const EXPIRY_DATE = addSeconds(new Date(), 60);
-const ORG_CERTIFICATE_SERIALISED = await selfIssueOrganisationCertificate(
+const ORG_CERTIFICATE = await selfIssueOrganisationCertificate(
   TEST_ORG_NAME,
   TEST_ORG_KEY_PAIR,
   EXPIRY_DATE,
 );
-const ORG_CERTIFICATE = Certificate.deserialize(ORG_CERTIFICATE_SERIALISED);
-const MEMBER_CERTIFICATE_SERIALISED = await issueMemberCertificate(
+const MEMBER_CERTIFICATE = await issueMemberCertificate(
   MEMBER_NAME,
   MEMBER_KEY_PAIR.publicKey,
-  ORG_CERTIFICATE_SERIALISED,
+  ORG_CERTIFICATE,
   TEST_ORG_KEY_PAIR.privateKey,
   EXPIRY_DATE,
 );
-const MEMBER_CERTIFICATE = Certificate.deserialize(MEMBER_CERTIFICATE_SERIALISED);
 
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 

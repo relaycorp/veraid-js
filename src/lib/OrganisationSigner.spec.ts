@@ -1,9 +1,9 @@
 import { generateMemberIdFixture } from '../testUtils/veraStubs/memberIdFixture.js';
-import { MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { serialiseMessage } from '../testUtils/dns.js';
+import { MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 
 import { bufferToArray } from './utils/buffers.js';
-import Certificate from './utils/x509/Certificate.js';
+import type Certificate from './utils/x509/Certificate.js';
 import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 import { OrganisationSigner } from './OrganisationSigner.js';
 
@@ -12,8 +12,8 @@ describe('OrganisationSigner', () => {
   let orgCertificate: Certificate;
 
   beforeAll(async () => {
-    const { orgCertificateSerialised, dnssecChainFixture } = await generateMemberIdFixture();
-    orgCertificate = Certificate.deserialize(orgCertificateSerialised);
+    const { orgCertificate: orgCert, dnssecChainFixture } = await generateMemberIdFixture();
+    orgCertificate = orgCert;
     dnssecChain = new VeraidDnssecChain(
       orgCertificate.commonName,
       dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),

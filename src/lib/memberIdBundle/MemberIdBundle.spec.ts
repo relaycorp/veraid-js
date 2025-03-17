@@ -11,23 +11,20 @@ import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import { issueMemberCertificate } from '../pki/member.js';
 import VeraidError from '../VeraidError.js';
 import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
-import Certificate from '../utils/x509/Certificate.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';
 
-const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
+const { orgCertificate, memberCertificate, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();
-const ORG_CERTIFICATE = Certificate.deserialize(orgCertificateSerialised);
-const MEMBER_CERTIFICATE = Certificate.deserialize(memberCertificateSerialised);
 const VERAID_DNSSEC_CHAIN = new VeraidDnssecChain(
-  ORG_CERTIFICATE.commonName,
+  orgCertificate.commonName,
   dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
 );
 
 describe('MemberIdBundle', () => {
   describe('toSchema', () => {
     test('should output ASN.1 schema', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const schema = bundle.toSchema();
 
@@ -39,7 +36,7 @@ describe('MemberIdBundle', () => {
 
   describe('fromSchema', () => {
     test('should create instance from valid schema', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
       const schema = bundle.toSchema();
 
       const bundleFromSchema = MemberIdBundle.fromSchema(schema);
@@ -52,7 +49,7 @@ describe('MemberIdBundle', () => {
 
   describe('serialise', () => {
     test('Version should be 0', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const serialisation = bundle.serialise();
 
@@ -61,7 +58,7 @@ describe('MemberIdBundle', () => {
     });
 
     test('DNSSEC chain should be included', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const serialisation = bundle.serialise();
 
@@ -73,37 +70,37 @@ describe('MemberIdBundle', () => {
     });
 
     test('Organisation certificate should be included', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const serialisation = bundle.serialise();
 
       const bundleDeserialised = AsnParser.parse(serialisation, MemberIdBundleSchema);
-      expect(bundleDeserialised.organisationCertificate).toStrictEqual(ORG_CERTIFICATE.toSchema());
+      expect(bundleDeserialised.organisationCertificate).toStrictEqual(orgCertificate.toSchema());
     });
 
     test('Member certificate should be included', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const serialisation = bundle.serialise();
 
       const bundleDeserialised = AsnParser.parse(serialisation, MemberIdBundleSchema);
-      expect(bundleDeserialised.memberCertificate).toStrictEqual(MEMBER_CERTIFICATE.toSchema());
+      expect(bundleDeserialised.memberCertificate).toStrictEqual(memberCertificate.toSchema());
     });
   });
 
   describe('signerCertificate', () => {
     test('should return the member certificate', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const { signerCertificate } = bundle;
 
-      expect(signerCertificate).toBe(MEMBER_CERTIFICATE);
+      expect(signerCertificate).toBe(memberCertificate);
     });
   });
 
   describe('signerName', () => {
     test('should return the member name if not a bot', () => {
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
       const { signerName } = bundle;
 
@@ -111,16 +108,15 @@ describe('MemberIdBundle', () => {
     });
 
     test('should return undefined if member is a bot', async () => {
-      const botCertificateSerialised = await issueMemberCertificate(
+      const botCertificate = await issueMemberCertificate(
         undefined,
         MEMBER_KEY_PAIR.publicKey,
-        orgCertificateSerialised,
+        orgCertificate,
         ORG_KEY_PAIR.privateKey,
         datePeriod.end,
         { startDate: datePeriod.start },
       );
-      const botCertificate = Certificate.deserialize(botCertificateSerialised);
-      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE, botCertificate);
+      const bundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, botCertificate);
 
       const { signerName } = bundle;
 
@@ -140,12 +136,12 @@ describe('MemberIdBundle', () => {
 
     test('should deserialise valid bundle', () => {
       const dnssecChain = new VeraidDnssecChain(
-        ORG_CERTIFICATE.commonName,
+        orgCertificate.commonName,
         new DnssecChainSchema(
           dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
         ),
       );
-      const bundle = new MemberIdBundle(dnssecChain, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
+      const bundle = new MemberIdBundle(dnssecChain, orgCertificate, memberCertificate);
       const bundleSerialised = bundle.serialise();
 
       const deserializedBundle = MemberIdBundle.deserialise(bundleSerialised);

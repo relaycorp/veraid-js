@@ -29,7 +29,6 @@ import { MOCK_CHAIN } from '../testUtils/veraStubs/dnssec.js';
 
 import { bufferToArray } from './utils/buffers.js';
 import VeraidError from './VeraidError.js';
-import Certificate from './utils/x509/Certificate.js';
 import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
 import { SignedData } from './utils/cms/SignedData.js';
 import { CMS_OIDS, VERAID_OIDS } from './oids.js';
@@ -48,22 +47,16 @@ import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 const PLAINTEXT = arrayBufferFrom('Hello world');
 
 const {
-  orgCertificateSerialised,
-  memberCertificateSerialised,
+  orgCertificate,
+  memberCertificate,
   dnssecChainFixture,
   datePeriod: DATE_PERIOD,
 } = await generateMemberIdFixture();
-const ORG_CERTIFICATE = Certificate.deserialize(orgCertificateSerialised);
-const MEMBER_CERTIFICATE = Certificate.deserialize(memberCertificateSerialised);
 const VERAID_DNSSEC_CHAIN = new VeraidDnssecChain(
-  ORG_CERTIFICATE.commonName,
+  orgCertificate.commonName,
   dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
 );
-const MEMBER_ID_BUNDLE = new MemberIdBundle(
-  VERAID_DNSSEC_CHAIN,
-  ORG_CERTIFICATE,
-  MEMBER_CERTIFICATE,
-);
+const MEMBER_ID_BUNDLE = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
 describe('SignatureBundle', () => {
   describe('sign', () => {
@@ -107,14 +100,7 @@ describe('SignatureBundle', () => {
         DATE_PERIOD.end,
       );
 
-      const signatureSerialised = signatureBundle.serialise();
-      const { organisationCertificate } = AsnParser.parse(
-        signatureSerialised,
-        SignatureBundleSchema,
-      );
-      expect(Buffer.from(AsnSerializer.serialize(organisationCertificate))).toStrictEqual(
-        Buffer.from(orgCertificateSerialised),
-      );
+      expect(signatureBundle.orgCertificate.isEqual(orgCertificate)).toBeTrue();
     });
 
     describe('Signature', () => {
@@ -131,7 +117,7 @@ describe('SignatureBundle', () => {
         const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
         const signedData = SignedData.deserialize(AsnSerializer.serialize(signature));
         await signedData.verify(PLAINTEXT);
-        expect(signedData.signerCertificate!.isEqual(MEMBER_CERTIFICATE)).toBeTrue();
+        expect(signedData.signerCertificate!.isEqual(memberCertificate)).toBeTrue();
       });
 
       test("Signer certificate should be attached if it's a member signature", async () => {
@@ -143,13 +129,10 @@ describe('SignatureBundle', () => {
           DATE_PERIOD.end,
         );
 
-        const signatureSerialised = signatureBundle.serialise();
-        const { signature } = AsnParser.parse(signatureSerialised, SignatureBundleSchema);
-        const { certificates } = getSignedData(signature);
-        const attachedCertsSerialised = certificates!.map((cert) =>
-          Buffer.from(AsnSerializer.serialize(cert)),
+        const signedData = SignedData.deserialize(
+          AsnSerializer.serialize(signatureBundle.signature),
         );
-        expect(attachedCertsSerialised).toContainEqual(Buffer.from(memberCertificateSerialised));
+        expect(signedData.signerCertificate!.isEqual(memberCertificate)).toBeTrue();
       });
 
       test('Member signature should not contain attribution attribute', async () => {
@@ -171,7 +154,7 @@ describe('SignatureBundle', () => {
       });
 
       test('Org signature should not include certificates', async () => {
-        const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE);
+        const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, orgCertificate);
 
         const signatureBundle = await SignatureBundle.sign(
           PLAINTEXT,
@@ -226,7 +209,7 @@ describe('SignatureBundle', () => {
       });
 
       test('Organisation signature should be attributed to bot by default', async () => {
-        const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE);
+        const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, orgCertificate);
 
         const signatureBundle = await SignatureBundle.sign(
           PLAINTEXT,
@@ -250,7 +233,7 @@ describe('SignatureBundle', () => {
         const attributedMemberName = 'alice';
         const orgSigner = new OrganisationSigner(
           VERAID_DNSSEC_CHAIN,
-          ORG_CERTIFICATE,
+          orgCertificate,
           attributedMemberName,
         );
 
@@ -420,7 +403,7 @@ describe('SignatureBundle', () => {
       const serialisation = signatureBundle.serialise();
 
       const bundleDeserialised = AsnParser.parse(serialisation, SignatureBundleSchema);
-      expect(bundleDeserialised.organisationCertificate).toStrictEqual(ORG_CERTIFICATE.toSchema());
+      expect(bundleDeserialised.organisationCertificate).toStrictEqual(orgCertificate.toSchema());
     });
 
     test('Signature should be included', async () => {
@@ -491,7 +474,7 @@ describe('SignatureBundle', () => {
       const deserialisedBundle = SignatureBundle.deserialise(serialisation);
 
       const { orgCertificate: deserialisedOrgCertificate } = deserialisedBundle;
-      expect(deserialisedOrgCertificate.toSchema()).toStrictEqual(ORG_CERTIFICATE.toSchema());
+      expect(deserialisedOrgCertificate.toSchema()).toStrictEqual(orgCertificate.toSchema());
     });
 
     test('Should correctly deserialise signature', async () => {
@@ -581,8 +564,8 @@ describe('SignatureBundle', () => {
       const signedData = await SignedData.sign(
         PLAINTEXT,
         MEMBER_KEY_PAIR.privateKey,
-        MEMBER_CERTIFICATE,
-        [MEMBER_CERTIFICATE],
+        memberCertificate,
+        [memberCertificate],
         { shouldEncapsulatePlaintext: false },
       );
       const bundle = replaceBundleAttribute(stubMemberSignatureBundle, { signedData });
@@ -600,8 +583,8 @@ describe('SignatureBundle', () => {
       const signedData = await SignedData.sign(
         PLAINTEXT,
         MEMBER_KEY_PAIR.privateKey,
-        MEMBER_CERTIFICATE,
-        [MEMBER_CERTIFICATE],
+        memberCertificate,
+        [memberCertificate],
         {
           shouldEncapsulatePlaintext: false,
           extraSignedAttrs: [attribute],
@@ -627,8 +610,8 @@ describe('SignatureBundle', () => {
       const signedData = await SignedData.sign(
         PLAINTEXT,
         MEMBER_KEY_PAIR.privateKey,
-        MEMBER_CERTIFICATE,
-        [MEMBER_CERTIFICATE],
+        memberCertificate,
+        [memberCertificate],
         {
           shouldEncapsulatePlaintext: false,
           extraSignedAttrs: [attribute],
@@ -797,18 +780,17 @@ describe('SignatureBundle', () => {
       test('Period should overlap with that of member certificate', async () => {
         const bundleVerifySpy = jest.spyOn(MemberIdBundle.prototype, 'verify');
         const verificationPeriod = DatePeriod.init(subSeconds(DATE_PERIOD.end, 1), DATE_PERIOD.end);
-        const otherMemberCertificateSerialised = await issueMemberCertificate(
+        const otherMemberCertificate = await issueMemberCertificate(
           MEMBER_NAME,
           MEMBER_KEY_PAIR.publicKey,
-          orgCertificateSerialised,
+          orgCertificate,
           ORG_KEY_PAIR.privateKey,
           subSeconds(verificationPeriod.start, 1),
           { startDate: DATE_PERIOD.start },
         );
-        const otherMemberCertificate = Certificate.deserialize(otherMemberCertificateSerialised);
         const testBundle = new MemberIdBundle(
           VERAID_DNSSEC_CHAIN,
-          ORG_CERTIFICATE,
+          orgCertificate,
           otherMemberCertificate,
         );
         const certSignatureBundle = await SignatureBundle.sign(
@@ -896,7 +878,7 @@ describe('SignatureBundle', () => {
         const signedData = await SignedData.sign(
           PLAINTEXT,
           MEMBER_KEY_PAIR.privateKey,
-          MEMBER_CERTIFICATE,
+          memberCertificate,
           [], // Empty certificates array
           {
             shouldEncapsulatePlaintext: false,
@@ -913,8 +895,8 @@ describe('SignatureBundle', () => {
       test('Member id bundle should be valid', async () => {
         const invalidBundle = new MemberIdBundle(
           VERAID_DNSSEC_CHAIN,
-          MEMBER_CERTIFICATE, // Invalid
-          MEMBER_CERTIFICATE,
+          memberCertificate, // Invalid
+          memberCertificate,
         );
         const invalidSignatureBundle = await SignatureBundle.sign(
           PLAINTEXT,
@@ -957,7 +939,7 @@ describe('SignatureBundle', () => {
         const signedData = await SignedData.sign(
           PLAINTEXT,
           MEMBER_KEY_PAIR.privateKey,
-          MEMBER_CERTIFICATE,
+          memberCertificate,
           [],
           {
             shouldEncapsulatePlaintext: false,
@@ -973,8 +955,8 @@ describe('SignatureBundle', () => {
 
       test('Organisation signer should be valid', async () => {
         const orgSigner = new OrganisationSigner(
-          new VeraidDnssecChain(ORG_CERTIFICATE.commonName, []), // Invalid
-          ORG_CERTIFICATE,
+          new VeraidDnssecChain(orgCertificate.commonName, []), // Invalid
+          orgCertificate,
         );
         const signatureBundle = await SignatureBundle.sign(
           PLAINTEXT,
@@ -1063,20 +1045,15 @@ describe('SignatureBundle', () => {
         });
 
         test('User name should not be output if member is a bot', async () => {
-          const botCertificateSerialised = await issueMemberCertificate(
+          const botCertificate = await issueMemberCertificate(
             undefined,
             MEMBER_KEY_PAIR.publicKey,
-            orgCertificateSerialised,
+            orgCertificate,
             ORG_KEY_PAIR.privateKey,
             DATE_PERIOD.end,
             { startDate: DATE_PERIOD.start },
           );
-          const botCertificate = Certificate.deserialize(botCertificateSerialised);
-          const botBundle = new MemberIdBundle(
-            VERAID_DNSSEC_CHAIN,
-            ORG_CERTIFICATE,
-            botCertificate,
-          );
+          const botBundle = new MemberIdBundle(VERAID_DNSSEC_CHAIN, orgCertificate, botCertificate);
           const botSignatureBundle = await SignatureBundle.sign(
             PLAINTEXT,
             SERVICE_OID,
@@ -1115,7 +1092,7 @@ describe('SignatureBundle', () => {
           const attributedMemberName = 'alice';
           const orgSigner = new OrganisationSigner(
             VERAID_DNSSEC_CHAIN,
-            ORG_CERTIFICATE,
+            orgCertificate,
             attributedMemberName,
           );
           const signatureBundle = await SignatureBundle.sign(
@@ -1140,7 +1117,7 @@ describe('SignatureBundle', () => {
         });
 
         test('Member name should not be output if attributed to bot', async () => {
-          const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE);
+          const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, orgCertificate);
           const signatureBundle = await SignatureBundle.sign(
             PLAINTEXT,
             SERVICE_OID,
@@ -1163,7 +1140,7 @@ describe('SignatureBundle', () => {
         });
 
         test('Signature should be deemed as signed by organisation', async () => {
-          const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, ORG_CERTIFICATE);
+          const orgSigner = new OrganisationSigner(VERAID_DNSSEC_CHAIN, orgCertificate);
           const signatureBundle = await SignatureBundle.sign(
             PLAINTEXT,
             SERVICE_OID,
