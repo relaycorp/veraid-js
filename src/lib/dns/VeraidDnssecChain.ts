@@ -94,6 +94,7 @@ export interface DnsResolutionOptions {
 export class VeraidDnssecChain {
   /**
    * Create a VeraidDnssecChain instance from an ASN.1 schema
+   * @internal
    * @param schema - The ASN.1 schema representation of a DNSSEC chain
    * @param domainName - The domain name for the DNSSEC chain
    * @returns A new VeraidDnssecChain instance
@@ -154,6 +155,7 @@ export class VeraidDnssecChain {
 
   /**
    * Convert a VeraidDnssecChain instance to its ASN.1 schema representation
+   * @internal
    * @returns The ASN.1 schema representation of the DNSSEC chain
    */
   public toSchema(): DnssecChainSchema {

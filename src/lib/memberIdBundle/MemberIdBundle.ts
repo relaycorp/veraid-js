@@ -12,8 +12,8 @@ import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
  */
 export class MemberIdBundle extends Chain {
   /**
-   * Deserialise a member ID bundle from its binary representation
-   * @param memberIdBundleSerialised - The serialised member ID bundle
+   * Deserialise a member id bundle from its binary representation
+   * @param memberIdBundleSerialised - The serialised member id bundle
    * @returns A new MemberIdBundle instance
    * @throws If the bundle is malformed
    */
@@ -30,7 +30,8 @@ export class MemberIdBundle extends Chain {
 
   /**
    * Create a MemberIdBundle instance from an ASN.1 schema
-   * @param schema - The ASN.1 schema representation of a member ID bundle
+   * @internal
+   * @param schema - The ASN.1 schema representation of a member id bundle
    * @returns A new MemberIdBundle instance
    */
   public static fromSchema(schema: MemberIdBundleSchema): MemberIdBundle {
@@ -50,8 +51,8 @@ export class MemberIdBundle extends Chain {
   }
 
   /**
-   * Serialise this member ID bundle to its binary representation
-   * @returns The serialised member ID bundle
+   * Serialise this member id bundle to its binary representation
+   * @returns The serialised member id bundle
    */
   public serialise(): ArrayBuffer {
     const schema = this.toSchema();
@@ -60,7 +61,8 @@ export class MemberIdBundle extends Chain {
 
   /**
    * Convert a MemberIdBundle instance to its ASN.1 schema representation
-   * @returns The ASN.1 schema representation of the member ID bundle
+   * @internal
+   * @returns The ASN.1 schema representation of the member id bundle
    */
   public toSchema(): MemberIdBundleSchema {
     const bundle = new MemberIdBundleSchema();
@@ -71,10 +73,16 @@ export class MemberIdBundle extends Chain {
     return bundle;
   }
 
+  /**
+   * @internal
+   */
   public override get signerCertificate(): Certificate {
     return this.memberCertificate;
   }
 
+  /**
+   * @internal
+   */
   public override get signerName(): string | undefined {
     return this.memberCertificate.commonName === BOT_NAME
       ? undefined

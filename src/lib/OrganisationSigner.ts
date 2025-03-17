@@ -19,10 +19,16 @@ export class OrganisationSigner extends Chain {
     super(dnssecChain, orgCertificate);
   }
 
+  /**
+   * @internal
+   */
   public override get signerCertificate() {
     return undefined;
   }
 
+  /**
+   * @internal
+   */
   public override get signerName() {
     return this.attributedMemberName;
   }

@@ -44,11 +44,13 @@ export abstract class Chain {
 
   /**
    * Get the certificate of the signer.
+   * @internal
    */
   public abstract get signerCertificate(): Certificate | undefined;
 
   /**
    * Get the name of the signer, if available.
+   * @internal
    */
   public abstract get signerName(): string | undefined;
 
