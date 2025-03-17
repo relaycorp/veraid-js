@@ -1,4 +1,4 @@
-import Certificate from '../utils/x509/Certificate.js';
+import { Certificate } from '../utils/x509/Certificate.js';
 import { validateUserName } from '../idValidation.js';
 
 import type { CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';

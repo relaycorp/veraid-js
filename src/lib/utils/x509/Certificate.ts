@@ -84,7 +84,7 @@ function cloneAsn1jsValue<Type extends BaseBlock>(value: Type): Type {
  * This is a high-level class on top of PKI.js Certificate, to make the use of VeraId
  * certificates easy and safe.
  */
-export default class Certificate {
+export class Certificate {
   protected static validateIssuerCertificate(issuerCertificate: Certificate): void {
     const extensions = issuerCertificate.pkijsCertificate.extensions ?? [];
     const bcExtension = extensions.find((extension) => extension.extnID === BASIC_CONSTRAINTS);

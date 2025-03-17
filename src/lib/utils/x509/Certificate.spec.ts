@@ -25,7 +25,7 @@ import { arrayBufferFrom } from '../../../testUtils/buffers.js';
 import { generateRsaKeyPair } from '../keys/generation.js';
 import { NODE_ENGINE } from '../pkijs.js';
 
-import Certificate from './Certificate.js';
+import { Certificate } from './Certificate.js';
 import CertificateError from './CertificateError.js';
 
 const baseCertificateOptions = {

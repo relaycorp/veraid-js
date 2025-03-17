@@ -14,7 +14,7 @@ import {
 import { SERVICE_OID } from '../testUtils/veraStubs/service.js';
 
 import { bufferToArray } from './utils/buffers.js';
-import type Certificate from './utils/x509/Certificate.js';
+import type { Certificate } from './utils/x509/Certificate.js';
 import CertificateError from './utils/x509/CertificateError.js';
 import { generateRsaKeyPair } from './utils/keys/generation.js';
 import { Chain } from './Chain.js';

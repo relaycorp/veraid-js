@@ -1,7 +1,7 @@
 import type { TrustAnchor } from '@relaycorp/dnssec';
 
 import type { DatePeriod } from './dates.js';
-import type Certificate from './utils/x509/Certificate.js';
+import type { Certificate } from './utils/x509/Certificate.js';
 import VeraidError from './VeraidError.js';
 import type { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 import { getKeySpec } from './dns/organisationKeys.js';

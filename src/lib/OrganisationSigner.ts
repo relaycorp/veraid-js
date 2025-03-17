@@ -1,6 +1,6 @@
 import { Chain } from './Chain.js';
 import type { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
-import type Certificate from './utils/x509/Certificate.js';
+import type { Certificate } from './utils/x509/Certificate.js';
 
 /**
  * Configuration for organisation signature bundles.
