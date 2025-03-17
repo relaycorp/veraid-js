@@ -3,23 +3,16 @@ import { serialiseMessage } from '../testUtils/dns.js';
 import { MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 
 import { bufferToArray } from './utils/buffers.js';
-import type Certificate from './utils/x509/Certificate.js';
 import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 import { OrganisationSigner } from './OrganisationSigner.js';
 
+const { orgCertificate, dnssecChainFixture } = await generateMemberIdFixture();
+const dnssecChain = new VeraidDnssecChain(
+  orgCertificate.commonName,
+  dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
+);
+
 describe('OrganisationSigner', () => {
-  let dnssecChain: VeraidDnssecChain;
-  let orgCertificate: Certificate;
-
-  beforeAll(async () => {
-    const { orgCertificate: orgCert, dnssecChainFixture } = await generateMemberIdFixture();
-    orgCertificate = orgCert;
-    dnssecChain = new VeraidDnssecChain(
-      orgCertificate.commonName,
-      dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
-    );
-  });
-
   describe('signerCertificate', () => {
     test('should return undefined', () => {
       const signer = new OrganisationSigner(dnssecChain, orgCertificate);
