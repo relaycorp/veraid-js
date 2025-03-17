@@ -13,7 +13,7 @@ import {
 
 import { NODE_ENGINE } from '../pkijs.js';
 import { getEngineForPrivateKey } from '../webcrypto/engine.js';
-import Certificate from '../x509/Certificate.js';
+import { Certificate } from '../x509/Certificate.js';
 import { CMS_OIDS } from '../../oids.js';
 
 import { deserializeContentInfo } from './utils.js';

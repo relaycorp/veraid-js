@@ -1,4 +1,4 @@
-import type Certificate from './Certificate.js';
+import type { Certificate } from './Certificate.js';
 
 export default interface FullIssuanceOptions {
   readonly issuerPrivateKey: CryptoKey;

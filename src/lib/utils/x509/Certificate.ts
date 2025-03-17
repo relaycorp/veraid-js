@@ -1,5 +1,7 @@
 import { BmpString, Integer, OctetString, type BaseBlock } from 'asn1js';
 import { min, setMilliseconds } from 'date-fns';
+import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
+import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import {
   AttributeTypeAndValue,
   AuthorityKeyIdentifier,
@@ -79,10 +81,10 @@ function cloneAsn1jsValue<Type extends BaseBlock>(value: Type): Type {
 /**
  * X.509 Certificate.
  *
- * This is a high-level class on top of PKI.js Certificate, to make the use of Relaynet
+ * This is a high-level class on top of PKI.js Certificate, to make the use of VeraId
  * certificates easy and safe.
  */
-export default class Certificate {
+export class Certificate {
   protected static validateIssuerCertificate(issuerCertificate: Certificate): void {
     const extensions = issuerCertificate.pkijsCertificate.extensions ?? [];
     const bcExtension = extensions.find((extension) => extension.extnID === BASIC_CONSTRAINTS);
@@ -107,7 +109,18 @@ export default class Certificate {
   }
 
   /**
-   * Issue a Relaynet PKI certificate.
+   * Create a Certificate instance from an ASN.1 schema
+   * @internal
+   * @param schema - The ASN.1 schema representation of a certificate
+   */
+  public static fromSchema(schema: CertificateSchema): Certificate {
+    const certDer = AsnSerializer.serialize(schema);
+    return Certificate.deserialize(certDer);
+  }
+
+  /**
+   * Issue a VeraId PKI certificate.
+   * @internal
    */
   public static async issue(options: FullIssuanceOptions): Promise<Certificate> {
     // PKI.js should round down to the nearest second per X.509. We should do it ourselves to
@@ -212,6 +225,15 @@ export default class Certificate {
   }
 
   /**
+   * Convert a Certificate instance to its ASN.1 schema representation
+   * @internal
+   */
+  public toSchema(): CertificateSchema {
+    const certDer = this.serialize();
+    return AsnParser.parse(certDer, CertificateSchema);
+  }
+
+  /**
    * Report whether this certificate is the same as `otherCertificate`.
    */
   public isEqual(otherCertificate: Certificate): boolean {
@@ -222,6 +244,7 @@ export default class Certificate {
 
   /**
    * Checks if this certificate matches the given issuer and serial number.
+   * @internal
    * @param issuerAndSerialNumber - The issuer and serial number to match against
    * @returns True if the certificate matches the issuer and serial number, false otherwise
    */
@@ -232,12 +255,17 @@ export default class Certificate {
     );
   }
 
+  /**
+   * Get the subject public key.
+   * @internal
+   */
   public async getPublicKey(): Promise<CryptoKey> {
     return this.pkijsCertificate.getPublicKey(undefined, NODE_ENGINE);
   }
 
   /**
    * Return the certification path (aka "certificate chain") if this certificate can be trusted.
+   * @internal
    * @param intermediateCaCertificates The alleged chain for the certificate
    * @param trustedCertificates The collection of certificates that are actually trusted
    * @throws CertificateError when this certificate is not on a certificate path from a CA in

@@ -1,29 +1,34 @@
-import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
-
 import { Chain } from './Chain.js';
-import type { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
+import type { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
+import type { Certificate } from './utils/x509/Certificate.js';
 
 /**
  * Configuration for organisation signature bundles.
  */
 export class OrganisationSigner extends Chain {
   /**
-   * @param dnssecChainSchema - The DNSSEC chain for the organisation
-   * @param orgCertificateSchema - The organisation certificate
+   * @param dnssecChain - The DNSSEC chain for the organisation
+   * @param orgCertificate - The organisation certificate
    * @param attributedMemberName - The name of the member to whom the content is attributed (optional)
    */
   public constructor(
-    dnssecChainSchema: DnssecChainSchema,
-    orgCertificateSchema: CertificateSchema,
+    dnssecChain: VeraidDnssecChain,
+    orgCertificate: Certificate,
     public readonly attributedMemberName?: string,
   ) {
-    super(dnssecChainSchema, orgCertificateSchema);
+    super(dnssecChain, orgCertificate);
   }
 
-  public override get signerCertificateSchema() {
+  /**
+   * @internal
+   */
+  public override get signerCertificate() {
     return undefined;
   }
 
+  /**
+   * @internal
+   */
   public override get signerName() {
     return this.attributedMemberName;
   }

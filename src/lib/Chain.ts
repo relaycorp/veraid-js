@@ -1,12 +1,9 @@
-import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
-import { AsnSerializer } from '@peculiar/asn1-schema';
 import type { TrustAnchor } from '@relaycorp/dnssec';
 
-import type { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
 import type { DatePeriod } from './dates.js';
-import Certificate from './utils/x509/Certificate.js';
+import type { Certificate } from './utils/x509/Certificate.js';
 import VeraidError from './VeraidError.js';
-import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
+import type { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 import { getKeySpec } from './dns/organisationKeys.js';
 import type { Member } from './Member.js';
 import { validateUserName } from './idValidation.js';
@@ -41,17 +38,19 @@ async function verifyCertificateChain(
 
 export abstract class Chain {
   protected constructor(
-    public readonly dnssecChainSchema: DnssecChainSchema,
-    public readonly orgCertificateSchema: CertificateSchema,
+    public readonly dnssecChain: VeraidDnssecChain,
+    public readonly orgCertificate: Certificate,
   ) {}
 
   /**
-   * Get the certificate schema of the signer.
+   * Get the certificate of the signer.
+   * @internal
    */
-  public abstract get signerCertificateSchema(): CertificateSchema | undefined;
+  public abstract get signerCertificate(): Certificate | undefined;
 
   /**
    * Get the name of the signer, if available.
+   * @internal
    */
   public abstract get signerName(): string | undefined;
 
@@ -67,26 +66,18 @@ export abstract class Chain {
     datePeriod: DatePeriod,
     dnssecTrustAnchors?: readonly TrustAnchor[],
   ): Promise<Member> {
-    const orgCertificate = Certificate.deserialize(
-      AsnSerializer.serialize(this.orgCertificateSchema),
-    );
-
-    const signerCertificate =
-      this.signerCertificateSchema === undefined
-        ? orgCertificate
-        : Certificate.deserialize(AsnSerializer.serialize(this.signerCertificateSchema));
+    const signerCertificate = this.signerCertificate ?? this.orgCertificate;
 
     const certChainPeriod = await verifyCertificateChain(
-      orgCertificate,
+      this.orgCertificate,
       signerCertificate,
       datePeriod,
     );
 
-    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, this.dnssecChainSchema);
-    const keySpec = await getKeySpec(await orgCertificate.getPublicKey());
-    await dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
+    const keySpec = await getKeySpec(await this.orgCertificate.getPublicKey());
+    await this.dnssecChain.verify(keySpec, serviceOid, certChainPeriod, dnssecTrustAnchors);
 
-    const organisation = orgCertificate.commonName.replace(/\.$/u, '');
+    const organisation = this.orgCertificate.commonName.replace(/\.$/u, '');
     const user = this.signerName;
     if (user !== undefined) {
       validateUserName(user);

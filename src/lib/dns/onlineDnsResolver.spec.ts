@@ -2,10 +2,9 @@ import { jest } from '@jest/globals';
 import { DnsRecord, Message } from '@relaycorp/dnssec';
 import { DNSoverHTTPS } from 'dohdec';
 
-import { serialiseMessage } from '../../testUtils/dns.js';
 import { ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
 
-import { dnssecOnlineResolve, makeDnssecOfflineResolver } from './dnssec.js';
+import { dnssecOnlineResolve } from './onlineDnsResolver.js';
 
 const STUB_RECORD = new DnsRecord(ORG_NAME, 'TXT', 'IN', 42, 'foo');
 const STUB_QUESTION = STUB_RECORD.makeQuestion();
@@ -69,25 +68,5 @@ describe('dnssecOnlineResolve', () => {
     const response = await dnssecOnlineResolve(STUB_QUESTION);
 
     expect(response).toBe(STUB_DNS_RESPONSE_SERIALISED);
-  });
-});
-
-describe('makeDnssecOfflineResolver', () => {
-  test('Existing response should be returned', async () => {
-    const resolver = makeDnssecOfflineResolver([STUB_RESPONSE]);
-
-    const response = (await resolver(STUB_QUESTION)) as Message;
-    expect(serialiseMessage(response)).toStrictEqual(Buffer.from(STUB_DNS_RESPONSE_SERIALISED));
-  });
-
-  test('Missing response should result in NXDOMAIN response', async () => {
-    const resolver = makeDnssecOfflineResolver([]);
-
-    const response = (await resolver(STUB_QUESTION)) as Message;
-
-    expect(response.header.rcode).toBe(3);
-    expect(response.questions).toHaveLength(1);
-    expect(response.questions[0].equals(STUB_QUESTION)).toBeTrue();
-    expect(response.answers).toBeEmpty();
   });
 });

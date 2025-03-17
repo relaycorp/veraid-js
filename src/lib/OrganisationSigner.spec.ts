@@ -1,39 +1,31 @@
-import { AsnParser } from '@peculiar/asn1-schema';
-import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
-
 import { generateMemberIdFixture } from '../testUtils/veraStubs/memberIdFixture.js';
-import { MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { serialiseMessage } from '../testUtils/dns.js';
+import { MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 
 import { bufferToArray } from './utils/buffers.js';
-import { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
+import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 import { OrganisationSigner } from './OrganisationSigner.js';
 
+const { orgCertificate, dnssecChainFixture } = await generateMemberIdFixture();
+const dnssecChain = new VeraidDnssecChain(
+  orgCertificate.commonName,
+  dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
+);
+
 describe('OrganisationSigner', () => {
-  let dnssecChain: DnssecChainSchema;
-  let orgCertificateSchema: CertificateSchema;
-
-  beforeAll(async () => {
-    const { orgCertificateSerialised, dnssecChainFixture } = await generateMemberIdFixture();
-    dnssecChain = new DnssecChainSchema(
-      dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
-    );
-    orgCertificateSchema = AsnParser.parse(orgCertificateSerialised, CertificateSchema);
-  });
-
-  describe('signerCertificateSchema', () => {
+  describe('signerCertificate', () => {
     test('should return undefined', () => {
-      const signer = new OrganisationSigner(dnssecChain, orgCertificateSchema);
+      const signer = new OrganisationSigner(dnssecChain, orgCertificate);
 
-      const { signerCertificateSchema } = signer;
+      const { signerCertificate } = signer;
 
-      expect(signerCertificateSchema).toBeUndefined();
+      expect(signerCertificate).toBeUndefined();
     });
   });
 
   describe('signerName', () => {
     test('should return undefined if attributedMemberName is not provided', () => {
-      const signer = new OrganisationSigner(dnssecChain, orgCertificateSchema);
+      const signer = new OrganisationSigner(dnssecChain, orgCertificate);
 
       const { signerName } = signer;
 
@@ -41,7 +33,7 @@ describe('OrganisationSigner', () => {
     });
 
     test('should return attributedMemberName if provided', () => {
-      const signer = new OrganisationSigner(dnssecChain, orgCertificateSchema, MEMBER_NAME);
+      const signer = new OrganisationSigner(dnssecChain, orgCertificate, MEMBER_NAME);
 
       const { signerName } = signer;
 

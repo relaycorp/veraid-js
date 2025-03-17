@@ -1,20 +1,19 @@
-import type { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
-import type { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
-import Certificate from '../utils/x509/Certificate.js';
+import { Certificate } from '../utils/x509/Certificate.js';
 import VeraidError from '../VeraidError.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import { BOT_NAME } from '../pki/member.js';
 import { Chain } from '../Chain.js';
+import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 
 /**
  * VeraId member identity bundle containing certificates and DNSSEC chain
  */
 export class MemberIdBundle extends Chain {
   /**
-   * Deserialise a member ID bundle from its binary representation
-   * @param memberIdBundleSerialised - The serialised member ID bundle
+   * Deserialise a member id bundle from its binary representation
+   * @param memberIdBundleSerialised - The serialised member id bundle
    * @returns A new MemberIdBundle instance
    * @throws If the bundle is malformed
    */
@@ -26,42 +25,67 @@ export class MemberIdBundle extends Chain {
       throw new VeraidError('Member id bundle is malformed');
     }
 
-    return new MemberIdBundle(
-      memberIdBundleSchema.dnssecChain,
-      memberIdBundleSchema.organisationCertificate,
-      memberIdBundleSchema.memberCertificate,
-    );
-  }
-
-  public constructor(
-    dnssecChainSchema: DnssecChainSchema,
-    orgCertificateSchema: CertificateSchema,
-    public readonly memberCertificateSchema: CertificateSchema,
-  ) {
-    super(dnssecChainSchema, orgCertificateSchema);
+    return this.fromSchema(memberIdBundleSchema);
   }
 
   /**
-   * Serialise this member ID bundle to its binary representation
-   * @returns The serialised member ID bundle
+   * Create a MemberIdBundle instance from an ASN.1 schema
+   * @internal
+   * @param schema - The ASN.1 schema representation of a member id bundle
+   * @returns A new MemberIdBundle instance
+   */
+  public static fromSchema(schema: MemberIdBundleSchema): MemberIdBundle {
+    const orgCertificate = Certificate.fromSchema(schema.organisationCertificate);
+    const dnssecChain = new VeraidDnssecChain(orgCertificate.commonName, schema.dnssecChain);
+    const memberCertificate = Certificate.fromSchema(schema.memberCertificate);
+
+    return new MemberIdBundle(dnssecChain, orgCertificate, memberCertificate);
+  }
+
+  public constructor(
+    dnssecChain: VeraidDnssecChain,
+    orgCertificate: Certificate,
+    public readonly memberCertificate: Certificate,
+  ) {
+    super(dnssecChain, orgCertificate);
+  }
+
+  /**
+   * Serialise this member id bundle to its binary representation
+   * @returns The serialised member id bundle
    */
   public serialise(): ArrayBuffer {
+    const schema = this.toSchema();
+    return AsnSerializer.serialize(schema);
+  }
+
+  /**
+   * Convert a MemberIdBundle instance to its ASN.1 schema representation
+   * @internal
+   * @returns The ASN.1 schema representation of the member id bundle
+   */
+  public toSchema(): MemberIdBundleSchema {
     const bundle = new MemberIdBundleSchema();
     bundle.version = 0;
-    bundle.memberCertificate = this.memberCertificateSchema;
-    bundle.organisationCertificate = this.orgCertificateSchema;
-    bundle.dnssecChain = this.dnssecChainSchema;
-    return AsnSerializer.serialize(bundle);
+    bundle.memberCertificate = this.memberCertificate.toSchema();
+    bundle.organisationCertificate = this.orgCertificate.toSchema();
+    bundle.dnssecChain = this.dnssecChain.toSchema();
+    return bundle;
   }
 
-  public override get signerCertificateSchema(): CertificateSchema {
-    return this.memberCertificateSchema;
+  /**
+   * @internal
+   */
+  public override get signerCertificate(): Certificate {
+    return this.memberCertificate;
   }
 
+  /**
+   * @internal
+   */
   public override get signerName(): string | undefined {
-    const memberCertificate = Certificate.deserialize(
-      AsnSerializer.serialize(this.memberCertificateSchema),
-    );
-    return memberCertificate.commonName === BOT_NAME ? undefined : memberCertificate.commonName;
+    return this.memberCertificate.commonName === BOT_NAME
+      ? undefined
+      : this.memberCertificate.commonName;
   }
 }

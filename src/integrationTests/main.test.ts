@@ -2,11 +2,10 @@ import { addSeconds } from 'date-fns';
 
 import {
   issueMemberCertificate,
-  retrieveVeraidDnssecChain,
   selfIssueOrganisationCertificate,
-  serialiseMemberIdBundle,
   MemberIdBundle,
   SignatureBundle,
+  VeraidDnssecChain,
 } from '../index.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { arrayBufferFrom } from '../testUtils/buffers.js';
@@ -33,13 +32,10 @@ const MEMBER_CERTIFICATE = await issueMemberCertificate(
 
 const PLAINTEXT = arrayBufferFrom('This is the plaintext');
 
-const DNSSEC_CHAIN = await retrieveVeraidDnssecChain(TEST_ORG_NAME, undefined, resolveWithRetries);
-const MEMBER_ID_BUNDLE_SERIALISED = serialiseMemberIdBundle(
-  MEMBER_CERTIFICATE,
-  ORG_CERTIFICATE,
-  DNSSEC_CHAIN,
-);
-const MEMBER_ID_BUNDLE = MemberIdBundle.deserialise(MEMBER_ID_BUNDLE_SERIALISED);
+const DNSSEC_CHAIN = await VeraidDnssecChain.retrieve(TEST_ORG_NAME, {
+  resolver: resolveWithRetries,
+});
+const MEMBER_ID_BUNDLE = new MemberIdBundle(DNSSEC_CHAIN, ORG_CERTIFICATE, MEMBER_CERTIFICATE);
 
 describe('main', () => {
   test('Valid signature bundle', async () => {

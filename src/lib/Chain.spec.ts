@@ -1,6 +1,4 @@
 import { jest } from '@jest/globals';
-import { AsnParser } from '@peculiar/asn1-schema';
-import { Certificate as CertificateSchema } from '@peculiar/asn1-x509';
 import { subSeconds } from 'date-fns';
 
 import { expectErrorToEqual, getPromiseRejection } from '../testUtils/errors.js';
@@ -16,36 +14,34 @@ import {
 import { SERVICE_OID } from '../testUtils/veraStubs/service.js';
 
 import { bufferToArray } from './utils/buffers.js';
-import Certificate from './utils/x509/Certificate.js';
+import type { Certificate } from './utils/x509/Certificate.js';
 import CertificateError from './utils/x509/CertificateError.js';
 import { generateRsaKeyPair } from './utils/keys/generation.js';
 import { Chain } from './Chain.js';
 import { DatePeriod } from './dates.js';
-import { DnssecChainSchema } from './schemas/DnssecChainSchema.js';
 import { selfIssueOrganisationCertificate } from './pki/organisation.js';
 import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
 import VeraidError from './VeraidError.js';
 
-const { orgCertificateSerialised, memberCertificateSerialised, dnssecChainFixture, datePeriod } =
+const { orgCertificate, memberCertificate, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();
-const dnssecChain = new DnssecChainSchema(
+const VERAID_DNSSEC_CHAIN = new VeraidDnssecChain(
+  orgCertificate.commonName,
   dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
 );
-const ORG_CERT_SCHEMA = AsnParser.parse(orgCertificateSerialised, CertificateSchema);
-const MEMBER_CERT_SCHEMA = AsnParser.parse(memberCertificateSerialised, CertificateSchema);
 
 class StubChain extends Chain {
   public constructor(
-    dnssecChainSchema: DnssecChainSchema,
-    orgCertificateSchema: CertificateSchema,
-    public readonly signerCertificateSchemaValue: CertificateSchema | undefined,
+    veraidDnssecChain: VeraidDnssecChain,
+    organisationCertificate: Certificate,
+    protected readonly signerCertificateValue: Certificate | undefined,
     public readonly signerNameValue?: string,
   ) {
-    super(dnssecChainSchema, orgCertificateSchema);
+    super(veraidDnssecChain, organisationCertificate);
   }
 
-  public override get signerCertificateSchema() {
-    return this.signerCertificateSchemaValue;
+  public override get signerCertificate() {
+    return this.signerCertificateValue;
   }
 
   public override get signerName() {
@@ -57,17 +53,17 @@ describe('Chain', () => {
   describe('verify', () => {
     describe('Certificate chain', () => {
       test('Signer certificate should be issued by organisation certificate', async () => {
-        const otherOrgCertSerialised = await selfIssueOrganisationCertificate(
+        const otherOrgCertificate = await selfIssueOrganisationCertificate(
           ORG_NAME,
           await generateRsaKeyPair(),
           datePeriod.end,
           { startDate: datePeriod.start },
         );
-        const chain = new StubChain(
-          dnssecChain,
-          AsnParser.parse(otherOrgCertSerialised, CertificateSchema),
-          MEMBER_CERT_SCHEMA,
+        const otherDnssecChain = new VeraidDnssecChain(
+          otherOrgCertificate.commonName,
+          dnssecChainFixture.responses.map(serialiseMessage).map(bufferToArray),
         );
+        const chain = new StubChain(otherDnssecChain, otherOrgCertificate, memberCertificate);
 
         const error = await getPromiseRejection(
           async () => chain.verify(SERVICE_OID, datePeriod),
@@ -83,7 +79,7 @@ describe('Chain', () => {
       });
 
       test('Should reuse orgCertificate when signerCertificateSchema is undefined', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, undefined);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, undefined);
 
         // This should succeed because the orgCertificate will be used as both
         // the org and signer certificate
@@ -93,7 +89,7 @@ describe('Chain', () => {
       });
 
       test('Certificates should overlap with specified period', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
         const pastPeriod = DatePeriod.init(
           subSeconds(datePeriod.start, 2),
           subSeconds(datePeriod.start, 1),
@@ -114,9 +110,9 @@ describe('Chain', () => {
       test('should not contain at signs', async () => {
         const invalidSignerName = `@${MEMBER_NAME}`;
         const chain = new StubChain(
-          dnssecChain,
-          ORG_CERT_SCHEMA,
-          MEMBER_CERT_SCHEMA,
+          VERAID_DNSSEC_CHAIN,
+          orgCertificate,
+          memberCertificate,
           invalidSignerName,
         );
 
@@ -128,9 +124,9 @@ describe('Chain', () => {
       test('should not contain tabs', async () => {
         const invalidSignerName = `\t${MEMBER_NAME}`;
         const chain = new StubChain(
-          dnssecChain,
-          ORG_CERT_SCHEMA,
-          MEMBER_CERT_SCHEMA,
+          VERAID_DNSSEC_CHAIN,
+          orgCertificate,
+          memberCertificate,
           invalidSignerName,
         );
 
@@ -142,9 +138,9 @@ describe('Chain', () => {
       test('should not contain carriage returns', async () => {
         const invalidSignerName = `\r${MEMBER_NAME}`;
         const chain = new StubChain(
-          dnssecChain,
-          ORG_CERT_SCHEMA,
-          MEMBER_CERT_SCHEMA,
+          VERAID_DNSSEC_CHAIN,
+          orgCertificate,
+          memberCertificate,
           invalidSignerName,
         );
 
@@ -156,9 +152,9 @@ describe('Chain', () => {
       test('should not contain line feeds', async () => {
         const invalidSignerName = `\n${MEMBER_NAME}`;
         const chain = new StubChain(
-          dnssecChain,
-          ORG_CERT_SCHEMA,
-          MEMBER_CERT_SCHEMA,
+          VERAID_DNSSEC_CHAIN,
+          orgCertificate,
+          memberCertificate,
           invalidSignerName,
         );
 
@@ -170,7 +166,7 @@ describe('Chain', () => {
 
     describe('DNSSEC chain', () => {
       test('Service OID should be verified', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
         const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
 
         await chain.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
@@ -184,7 +180,7 @@ describe('Chain', () => {
       });
 
       test('Key spec should match that set in TXT rdata', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
         const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
 
         await chain.verify(SERVICE_OID, datePeriod, dnssecChainFixture.trustAnchors);
@@ -198,7 +194,7 @@ describe('Chain', () => {
       });
 
       test('Date period should be intersection of specified one and the certificates', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
         const chainVerificationSpy = jest.spyOn(VeraidDnssecChain.prototype, 'verify');
         const narrowPeriod = DatePeriod.init(
           subSeconds(datePeriod.start, 1),
@@ -217,7 +213,7 @@ describe('Chain', () => {
       });
 
       test('Verification errors should be propagated', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
         // Do not pass trusted anchors
         await expect(async () => chain.verify(SERVICE_OID, datePeriod)).rejects.toThrowWithMessage(
@@ -229,7 +225,7 @@ describe('Chain', () => {
 
     describe('Valid result', () => {
       test('Organisation name should be output', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
         const { organisation } = await chain.verify(
           SERVICE_OID,
@@ -241,7 +237,7 @@ describe('Chain', () => {
       });
 
       test('Trailing dot should be removed from domain if present', async () => {
-        const otherOrgCertificateSerialised = await selfIssueOrganisationCertificate(
+        const otherOrgCertificate = await selfIssueOrganisationCertificate(
           ORG_DOMAIN,
           ORG_KEY_PAIR,
           datePeriod.end,
@@ -249,13 +245,13 @@ describe('Chain', () => {
         );
         const fixture = await generateMemberIdFixture({
           datePeriod,
-          orgCertificateSerialised: otherOrgCertificateSerialised,
+          orgCertificate: otherOrgCertificate,
         });
-        expect(Certificate.deserialize(otherOrgCertificateSerialised).commonName).toEndWith('.');
+        expect(otherOrgCertificate.commonName).toEndWith('.');
         const chain = new StubChain(
-          dnssecChain,
-          AsnParser.parse(otherOrgCertificateSerialised, CertificateSchema),
-          AsnParser.parse(fixture.memberCertificateSerialised, CertificateSchema),
+          VERAID_DNSSEC_CHAIN,
+          otherOrgCertificate,
+          fixture.memberCertificate,
         );
 
         const { organisation } = await chain.verify(
@@ -269,7 +265,12 @@ describe('Chain', () => {
       });
 
       test('User name should be output if provided', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA, MEMBER_NAME);
+        const chain = new StubChain(
+          VERAID_DNSSEC_CHAIN,
+          orgCertificate,
+          memberCertificate,
+          MEMBER_NAME,
+        );
 
         const { user } = await chain.verify(
           SERVICE_OID,
@@ -281,7 +282,7 @@ describe('Chain', () => {
       });
 
       test('User name should not be output if not provided', async () => {
-        const chain = new StubChain(dnssecChain, ORG_CERT_SCHEMA, MEMBER_CERT_SCHEMA);
+        const chain = new StubChain(VERAID_DNSSEC_CHAIN, orgCertificate, memberCertificate);
 
         const { user } = await chain.verify(
           SERVICE_OID,

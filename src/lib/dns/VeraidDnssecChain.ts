@@ -13,10 +13,11 @@ import { subSeconds } from 'date-fns';
 
 import { bufferToArray } from '../utils/buffers.js';
 import VeraidError from '../VeraidError.js';
-import { makeDnssecOfflineResolver } from '../utils/dnssec.js';
 import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
+import { dnssecOnlineResolve } from './onlineDnsResolver.js';
+import { makeDnssecOfflineResolver } from './offlineDnsResolver.js';
 import type { OrganisationKeySpec } from './organisationKeys.js';
 import { parseTxtRdata } from './rdataSerialisation.js';
 
@@ -85,23 +86,47 @@ function getVerificationPeriod(
   return rdataPeriod.intersect(datePeriod)!;
 }
 
+export interface DnsResolutionOptions {
+  resolver?: Resolver;
+  trustAnchors?: readonly TrustAnchor[];
+}
+
 export class VeraidDnssecChain {
+  /**
+   * Create a VeraidDnssecChain instance from an ASN.1 schema
+   * @internal
+   * @param schema - The ASN.1 schema representation of a DNSSEC chain
+   * @param domainName - The domain name for the DNSSEC chain
+   * @returns A new VeraidDnssecChain instance
+   */
+  public static fromSchema(schema: DnssecChainSchema, domainName: string): VeraidDnssecChain {
+    return new VeraidDnssecChain(domainName, schema);
+  }
+
+  /**
+   * Retrieve the DNSSEC chain for an organisation.
+   * @param domainName - The domain name of the organisation to retrieve the DNSSEC chain for
+   * @param options - DNS resolution options
+   * @param options.resolver - The DNS resolver to use for the DNSSEC chain retrieval
+   * @param options.trustAnchors - The trust anchors to use for the DNSSEC chain retrieval
+   * @returns A promise that resolves to the DNSSEC chain for the organisation
+   */
   public static async retrieve(
     domainName: string,
-    resolver: Resolver,
-    trustAnchors?: readonly TrustAnchor[],
+    { resolver, trustAnchors }: DnsResolutionOptions = {},
   ): Promise<VeraidDnssecChain> {
     const responses: ArrayBuffer[] = [];
     const veraQuery = makeQuestion(domainName);
-    const finalResolver: Resolver = async (question) => {
-      const response = await resolver(question);
+    const serialisingResolver: Resolver = async (question) => {
+      const finalResolver = resolver ?? dnssecOnlineResolve;
+      const response = await finalResolver(question);
       const responseSerialised = response instanceof Message ? response.serialise() : response;
       responses.push(bufferToArray(responseSerialised));
       return response;
     };
     let result: ChainVerificationResult;
     try {
-      result = await dnssecLookUp(veraQuery, finalResolver, { trustAnchors });
+      result = await dnssecLookUp(veraQuery, serialisingResolver, { trustAnchors });
     } catch (err) {
       throw new VeraidError('Failed to retrieve DNSSEC chain', { cause: err });
     }
@@ -119,11 +144,31 @@ export class VeraidDnssecChain {
     public readonly responses: readonly ArrayBuffer[],
   ) {}
 
+  /**
+   * Serialise the DNSSEC chain.
+   * @returns The serialised DNSSEC chain
+   */
   public serialise(): ArrayBuffer {
-    const chain = new DnssecChainSchema(this.responses as ArrayBuffer[]);
-    return AsnSerializer.serialize(chain);
+    const schema = this.toSchema();
+    return AsnSerializer.serialize(schema);
   }
 
+  /**
+   * Convert a VeraidDnssecChain instance to its ASN.1 schema representation
+   * @internal
+   * @returns The ASN.1 schema representation of the DNSSEC chain
+   */
+  public toSchema(): DnssecChainSchema {
+    return new DnssecChainSchema(this.responses as ArrayBuffer[]);
+  }
+
+  /**
+   * Verify the DNSSEC chain for an organisation.
+   * @param keySpec - The key specification to use for the verification
+   * @param serviceOid - The service OID to use for the verification
+   * @param datePeriod - The date period to use for the verification
+   * @param trustAnchors - The trust anchors to use for the verification
+   */
   public async verify(
     keySpec: OrganisationKeySpec,
     serviceOid: string,

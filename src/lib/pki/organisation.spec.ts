@@ -3,7 +3,7 @@ import { addMinutes, setMilliseconds, subMinutes } from 'date-fns';
 
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
 import type FullIssuanceOptions from '../utils/x509/FullIssuanceOptions.js';
-import Certificate from '../utils/x509/Certificate.js';
+import { Certificate } from '../utils/x509/Certificate.js';
 import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { ORG_KEY_PAIR, ORG_NAME } from '../../testUtils/veraStubs/organisation.js';
 
@@ -14,25 +14,15 @@ const START_DATE = subMinutes(NOW, 5);
 const EXPIRY_DATE = addMinutes(NOW, 5);
 
 describe('selfIssueOrganisationCertificate', () => {
-  test('Name should be used as Common Name', async () => {
-    const serialisation = await selfIssueOrganisationCertificate(
-      ORG_NAME,
-      ORG_KEY_PAIR,
-      EXPIRY_DATE,
-    );
+  test('Common name should match specified one', async () => {
+    const certificate = await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, EXPIRY_DATE);
 
-    const certificate = Certificate.deserialize(serialisation);
-    expect(certificate.commonName).toStrictEqual(ORG_NAME);
+    expect(certificate.commonName).toBe(ORG_NAME);
   });
 
-  test('Subject public key should be honoured', async () => {
-    const serialisation = await selfIssueOrganisationCertificate(
-      ORG_NAME,
-      ORG_KEY_PAIR,
-      EXPIRY_DATE,
-    );
+  test('Public key should match specified one', async () => {
+    const certificate = await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, EXPIRY_DATE);
 
-    const certificate = Certificate.deserialize(serialisation);
     await expect(derSerializePublicKey(await certificate.getPublicKey())).resolves.toStrictEqual(
       await derSerializePublicKey(ORG_KEY_PAIR.publicKey),
     );
@@ -51,13 +41,8 @@ describe('selfIssueOrganisationCertificate', () => {
   });
 
   test('Expiry date should match specified one', async () => {
-    const serialisation = await selfIssueOrganisationCertificate(
-      ORG_NAME,
-      ORG_KEY_PAIR,
-      EXPIRY_DATE,
-    );
+    const certificate = await selfIssueOrganisationCertificate(ORG_NAME, ORG_KEY_PAIR, EXPIRY_DATE);
 
-    const certificate = Certificate.deserialize(serialisation);
     expect(certificate.validityPeriod.end).toStrictEqual(EXPIRY_DATE);
   });
 
@@ -65,13 +50,12 @@ describe('selfIssueOrganisationCertificate', () => {
     test('should default to now', async () => {
       const preIssuanceDate = new Date();
 
-      const serialisation = await selfIssueOrganisationCertificate(
+      const certificate = await selfIssueOrganisationCertificate(
         ORG_NAME,
         ORG_KEY_PAIR,
         EXPIRY_DATE,
       );
 
-      const certificate = Certificate.deserialize(serialisation);
       expect(certificate.validityPeriod.start).toBeBetween(
         setMilliseconds(preIssuanceDate, 0),
         new Date(),
@@ -79,23 +63,20 @@ describe('selfIssueOrganisationCertificate', () => {
     });
 
     test('should match explicit date if set', async () => {
-      const serialisation = await selfIssueOrganisationCertificate(
+      const certificate = await selfIssueOrganisationCertificate(
         ORG_NAME,
         ORG_KEY_PAIR,
         EXPIRY_DATE,
-        {
-          startDate: START_DATE,
-        },
+        { startDate: START_DATE },
       );
 
-      const certificate = Certificate.deserialize(serialisation);
       expect(certificate.validityPeriod.start).toStrictEqual(START_DATE);
     });
   });
 
   describe('Basic constraints extension', () => {
     test('Subject should be a CA', async () => {
-      const serialisation = await selfIssueOrganisationCertificate(
+      const certificate = await selfIssueOrganisationCertificate(
         ORG_NAME,
         ORG_KEY_PAIR,
         EXPIRY_DATE,
@@ -104,13 +85,12 @@ describe('selfIssueOrganisationCertificate', () => {
         },
       );
 
-      const certificate = Certificate.deserialize(serialisation);
       const basicConstraints = getBasicConstraintsExtension(certificate.pkijsCertificate);
       expect(basicConstraints.cA).toBeTrue();
     });
 
     test('Path length should be zero', async () => {
-      const serialisation = await selfIssueOrganisationCertificate(
+      const certificate = await selfIssueOrganisationCertificate(
         ORG_NAME,
         ORG_KEY_PAIR,
         EXPIRY_DATE,
@@ -119,7 +99,6 @@ describe('selfIssueOrganisationCertificate', () => {
         },
       );
 
-      const certificate = Certificate.deserialize(serialisation);
       const basicConstraints = getBasicConstraintsExtension(certificate.pkijsCertificate);
       expect(basicConstraints.pathLenConstraint).toBe(0);
     });

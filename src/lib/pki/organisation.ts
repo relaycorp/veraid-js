@@ -1,4 +1,4 @@
-import Certificate from '../utils/x509/Certificate.js';
+import { Certificate } from '../utils/x509/Certificate.js';
 
 import type { CertificateIssuanceOptions } from './CertificateIssuanceOptions.js';
 
@@ -7,8 +7,8 @@ export async function selfIssueOrganisationCertificate(
   keyPair: CryptoKeyPair,
   expiryDate: Date,
   options: Partial<CertificateIssuanceOptions> = {},
-): Promise<ArrayBuffer> {
-  const certificate = await Certificate.issue({
+): Promise<Certificate> {
+  return Certificate.issue({
     commonName: name,
     subjectPublicKey: keyPair.publicKey,
     issuerPrivateKey: keyPair.privateKey,
@@ -16,5 +16,4 @@ export async function selfIssueOrganisationCertificate(
     validityStartDate: options.startDate,
     isCa: true,
   });
-  return certificate.serialize();
 }
