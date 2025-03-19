@@ -6,7 +6,7 @@ export { type DnsResolutionOptions, VeraidDnssecChain } from './lib/dns/VeraidDn
 
 // X.509 handling
 export { selfIssueOrganisationCertificate } from './lib/pki/organisation.js';
-export type { OrganisationSigner } from './lib/OrganisationSigner.js';
+export { OrganisationSigner } from './lib/OrganisationSigner.js';
 export { issueMemberCertificate } from './lib/pki/member.js';
 export type { Member } from './lib/Member.js';
 export { validateUserName } from './lib/idValidation.js';
