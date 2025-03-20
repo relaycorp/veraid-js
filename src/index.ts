@@ -1,5 +1,7 @@
 /* eslint-disable import/no-unused-modules */
 
+export { VeraidError } from './lib/VeraidError.js';
+
 // DNS handling
 export { generateTxtRdata } from './lib/dns/rdataSerialisation.js';
 export { type DnsResolutionOptions, VeraidDnssecChain } from './lib/dns/VeraidDnssecChain.js';

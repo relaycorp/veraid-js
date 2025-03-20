@@ -1,4 +1,4 @@
-import VeraidError from './VeraidError.js';
+import { VeraidError } from './VeraidError.js';
 
 const FORBIDDEN_USER_NAME_CHARS_REGEX = /[@\t\r\n]/u;
 

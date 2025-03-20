@@ -4,7 +4,7 @@ import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 import { addSeconds, setMilliseconds, subSeconds } from 'date-fns';
 
 import { expectErrorToEqual, getPromiseRejection } from '../../testUtils/errors.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 import { arrayBufferFrom } from '../../testUtils/buffers.js';
 import { serialiseMessage } from '../../testUtils/dns.js';
 import {

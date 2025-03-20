@@ -1,6 +1,6 @@
 import { NODE_ENGINE } from '../utils/pkijs.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 
 import { KeyAlgorithmType } from './KeyAlgorithmType.js';
 

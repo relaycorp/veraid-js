@@ -12,7 +12,7 @@ import { AsnSerializer } from '@peculiar/asn1-schema';
 import { subSeconds } from 'date-fns';
 
 import { bufferToArray } from '../utils/buffers.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 import { DatePeriod } from '../dates.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 
