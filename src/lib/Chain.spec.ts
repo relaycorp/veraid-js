@@ -21,7 +21,7 @@ import { Chain } from './Chain.js';
 import { DatePeriod } from './dates.js';
 import { selfIssueOrganisationCertificate } from './pki/organisation.js';
 import { VeraidDnssecChain } from './dns/VeraidDnssecChain.js';
-import VeraidError from './VeraidError.js';
+import { VeraidError } from './VeraidError.js';
 
 const { orgCertificate, memberCertificate, dnssecChainFixture, datePeriod } =
   await generateMemberIdFixture();

@@ -1,6 +1,6 @@
 import { MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 
-import VeraidError from './VeraidError.js';
+import { VeraidError } from './VeraidError.js';
 import { validateUserName } from './idValidation.js';
 
 describe('validateUserName', () => {

@@ -9,7 +9,7 @@ import { bufferToArray } from '../utils/buffers.js';
 import { DnssecChainSchema } from '../schemas/DnssecChainSchema.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import { issueMemberCertificate } from '../pki/member.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 import { VeraidDnssecChain } from '../dns/VeraidDnssecChain.js';
 
 import { MemberIdBundle } from './MemberIdBundle.js';

@@ -28,7 +28,7 @@ import { expectErrorToEqual, getPromiseRejection } from '../testUtils/errors.js'
 import { MOCK_CHAIN } from '../testUtils/veraStubs/dnssec.js';
 
 import { bufferToArray } from './utils/buffers.js';
-import VeraidError from './VeraidError.js';
+import { VeraidError } from './VeraidError.js';
 import { SignatureBundleSchema } from './schemas/SignatureBundleSchema.js';
 import { SignedData } from './utils/cms/SignedData.js';
 import { CMS_OIDS, VERAID_OIDS } from './oids.js';

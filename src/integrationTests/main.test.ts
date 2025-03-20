@@ -6,11 +6,11 @@ import {
   MemberIdBundle,
   SignatureBundle,
   VeraidDnssecChain,
+  VeraidError,
 } from '../index.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../testUtils/veraStubs/member.js';
 import { arrayBufferFrom } from '../testUtils/buffers.js';
 import { VERAID_OIDS } from '../lib/oids.js';
-import VeraidError from '../lib/VeraidError.js';
 import { generateRsaKeyPair } from '../lib/utils/keys/generation.js';
 
 import { TEST_ORG_KEY_PAIR, TEST_ORG_NAME } from './utils.js';

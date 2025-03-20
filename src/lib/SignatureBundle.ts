@@ -12,7 +12,7 @@ import { derDeserialize } from './utils/asn1.js';
 import { SignedData } from './utils/cms/SignedData.js';
 import type { SignatureOptions } from './SignatureOptions.js';
 import { Certificate } from './utils/x509/Certificate.js';
-import VeraidError from './VeraidError.js';
+import { VeraidError } from './VeraidError.js';
 import { MemberIdBundle } from './memberIdBundle/MemberIdBundle.js';
 import { DatePeriod, type IDatePeriod } from './dates.js';
 import type { SignatureBundleVerification } from './SignatureBundleVerification.js';
