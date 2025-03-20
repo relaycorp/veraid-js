@@ -1,7 +1,7 @@
 import { AsnParser, AsnSerializer } from '@peculiar/asn1-schema';
 
 import { Certificate } from '../utils/x509/Certificate.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 import { MemberIdBundleSchema } from '../schemas/MemberIdBundleSchema.js';
 import { BOT_NAME } from '../pki/member.js';
 import { Chain } from '../Chain.js';

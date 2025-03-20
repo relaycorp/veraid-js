@@ -2,7 +2,7 @@ import type { RsaModulus } from '../utils/algorithms.js';
 import { generateRsaKeyPair } from '../utils/keys/generation.js';
 import { calculateDigest } from '../../testUtils/crypto.js';
 import { derSerializePublicKey } from '../utils/keys/serialisation.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 import { NODE_ENGINE } from '../utils/pkijs.js';
 
 import { getKeySpec } from './organisationKeys.js';

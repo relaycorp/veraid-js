@@ -5,7 +5,7 @@ import { getBasicConstraintsExtension } from '../../testUtils/pkijs.js';
 import { MEMBER_KEY_PAIR, MEMBER_NAME } from '../../testUtils/veraStubs/member.js';
 import { ORG_KEY_PAIR } from '../../testUtils/veraStubs/organisation.js';
 import { generateMemberIdFixture } from '../../testUtils/veraStubs/memberIdFixture.js';
-import VeraidError from '../VeraidError.js';
+import { VeraidError } from '../VeraidError.js';
 
 import { issueMemberCertificate } from './member.js';
 
