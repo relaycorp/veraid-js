@@ -36,7 +36,7 @@
     "node": ">=16.9"
   },
   "devDependencies": {
-    "@jest/globals": "^29.4.3",
+    "@jest/globals": "^29.7.0",
     "@relaycorp/eslint-config": "^1.1.131",
     "@relaycorp/shared-config": "^1.15.1",
     "@types/jest": "^29.5.11",
@@ -48,7 +48,7 @@
     "jest-extended": "^4.0.2",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.8.8",
-    "ts-jest": "^29.3.0",
+    "ts-jest": "^29.3.1",
     "ts-node": "^10.9.2",
     "typedoc": "^0.28.1",
     "typescript": "^5.8.2"
