@@ -1,5 +1,7 @@
 /* eslint-disable import/no-unused-modules */
 
+export type { TrustAnchor } from '@relaycorp/dnssec';
+
 export { VeraidError } from './lib/VeraidError.js';
 
 // DNS handling
