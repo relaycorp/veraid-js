@@ -173,7 +173,7 @@ describe('verifySignature', () => {
 There are only two legitimate reasons to override the DNSSEC trust anchors during verification:
 
 - To test a service implementation locally (e.g., in a CI pipeline, during development).
-- To reflect an official change to [the root zone trust anchors](https://www.iana.org/dnssec/files), if the version of this library is not yet updated accordingly.
+- To reflect an official change to [the root zone trust anchors](https://www.iana.org/dnssec/files), if you're not able to use a version of this library that uses the new trust anchors.
 
 ## API docs
 
