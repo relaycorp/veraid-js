@@ -160,13 +160,20 @@ describe('verifySignature', () => {
     const memberId = await verifySignature(
       plaintext,
       signatureBundle.serialise(),
-      mockTrustChain.dnssecTrustAnchors, // Important: Pass the mock trust anchors
+      mockTrustChain.dnssecTrustAnchors,
     );
 
     expect(memberId).toBe('alice@example.com');
   });
 });
 ```
+
+## Custom trust anchors
+
+There are only two legitimate reasons to override the DNSSEC trust anchors during verification:
+
+- To test a service implementation locally (e.g., in a CI pipeline, during development).
+- To reflect an official change to [the root zone trust anchors](https://www.iana.org/dnssec/files), if the version of this library is not yet updated accordingly.
 
 ## API docs
 
