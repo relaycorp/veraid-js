@@ -15,7 +15,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(new Date(), 10),
       );
 
@@ -34,7 +33,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(new Date(), 10),
       );
 
@@ -53,7 +51,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         undefined,
-        true,
         addSeconds(new Date(), 10),
       );
 
@@ -72,7 +69,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(new Date(), 10),
       );
 
@@ -91,8 +87,8 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         undefined,
-        false,
         addSeconds(new Date(), 10),
+        { shouldBeSignedByMember: false },
       );
 
       const signatureBundle = await mockTrustChain.sign(PLAINTEXT, VERAID_OIDS.TEST_SERVICE);
@@ -108,7 +104,7 @@ describe('MockTrustChain', () => {
 
     test('should use specified expiry date', async () => {
       const expiryDate = setMilliseconds(addSeconds(new Date(), 10), 0);
-      const mockTrustChain = await MockTrustChain.generate(ORG_NAME, MEMBER_NAME, true, expiryDate);
+      const mockTrustChain = await MockTrustChain.generate(ORG_NAME, MEMBER_NAME, expiryDate);
 
       const signatureBundle = await mockTrustChain.sign(PLAINTEXT, VERAID_OIDS.TEST_SERVICE);
 
@@ -135,7 +131,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(startDate, 10),
       );
 
@@ -164,7 +159,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(startDate, 10),
         { startDate },
       );
@@ -193,7 +187,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(new Date(), 10),
       );
 
@@ -212,7 +205,6 @@ describe('MockTrustChain', () => {
       const mockTrustChain = await MockTrustChain.generate(
         ORG_NAME,
         MEMBER_NAME,
-        true,
         addSeconds(new Date(), 10),
       );
 

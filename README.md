@@ -83,6 +83,91 @@ See [`SignatureBundleVerification`](https://docs.relaycorp.tech/veraid-js/interf
 
 `verifySignature()` will return the id of the VeraId member that signed the plaintext, which looks like `user@example.com` if the member is a user or simply `example.com` if the member is a bot (acting on behalf of the organisation `example.com`).
 
+### Testing with mock trust chains
+
+You can use the [`MockTrustChain`](https://docs.relaycorp.tech/veraid-js/interfaces/MockTrustChainOptions.html) class to test your integration with VeraId by generating valid signature bundles without the real DNSSEC infrastructure. This makes it easy to test both signature creation and verification in your automated tests, but it won't work in production because it relies on mock DNSSEC trust anchors.
+
+For example, to test the `produceSignature()` function illustrated above, you could use `MockTrustChain` as follows:
+
+```typescript
+import { MockTrustChain } from '@relaycorp/veraid';
+import { addMinutes } from 'date-fns';
+import { describe, expect, test } from 'vitest';
+
+const mockTrustChain = await MockTrustChain.generate(
+  'example.com', 
+  'alice', // Use `undefined` for bot signatures
+  addMinutes(new Date(), 10), // Expiry date
+);
+
+describe('produceSignature', () => {
+  test('should produce valid signatures', async () => {
+    const plaintext = new TextEncoder().encode('Hello world');
+    const memberIdBundleSerialised = mockTrustChain.chain.serialise();
+
+    const signatureBundleSerialised = await produceSignature(
+      plaintext,
+      memberIdBundleSerialised,
+      mockTrustChain.signerPrivateKey,
+    );
+
+    const signatureBundle = SignatureBundle.deserialise(signatureBundleSerialised);
+    const { member } = await signatureBundle.verify(
+      undefined, // The plaintext is already encapsulated
+      SERVICE_OID,
+      new Date(),
+      mockTrustChain.dnssecTrustAnchors,
+    );
+    expect(member.organisation).toBe('example.com');
+    expect(member.user).toBe('alice');
+  });
+});
+```
+
+To test the `verifySignature()` function illustrated above, you'd have to add an optional parameter for the DNSSEC trust anchors and use `MockTrustChain` as follows:
+
+```typescript
+import { type IDatePeriod, type TrustAnchor, MockTrustChain, SignatureBundle } from '@relaycorp/veraid';
+import { addMinutes, subDays } from 'date-fns';
+import { describe, expect, test } from 'vitest';
+
+// Modify the verifySignature function to accept custom trust anchors
+async function verifySignature(
+  plaintext: ArrayBuffer,
+  signatureBundleSerialised: ArrayBuffer,
+  customTrustAnchors?: readonly TrustAnchor[], // New optional parameter
+): Promise<string> {
+  const now = new Date();
+  const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
+  const signatureBundle = SignatureBundle.deserialise(signatureBundleSerialised);
+  const {
+    member: { user, organisation },
+  } = await signatureBundle.verify(plaintext, SERVICE_OID, datePeriod, customTrustAnchors);
+  return user === undefined ? organisation : `${user}@${organisation}`;
+}
+
+const mockTrustChain = await MockTrustChain.generate(
+  'example.com', 
+  'alice', 
+  addMinutes(new Date(), 10), // Expiry date
+);
+
+describe('verifySignature', () => {
+  test('should verify valid signatures', async () => {
+    const plaintext = new TextEncoder().encode('Hello world');
+    const signatureBundle = await mockTrustChain.sign(plaintext, SERVICE_OID);
+
+    const memberId = await verifySignature(
+      plaintext,
+      signatureBundle.serialise(),
+      mockTrustChain.dnssecTrustAnchors, // Important: Pass the mock trust anchors
+    );
+
+    expect(memberId).toBe('alice@example.com');
+  });
+});
+```
+
 ## API docs
 
 The API documentation can be found on [docs.relaycorp.tech](https://docs.relaycorp.tech/veraid-js/).
