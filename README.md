@@ -85,7 +85,7 @@ See [`SignatureBundleVerification`](https://docs.relaycorp.tech/veraid-js/interf
 
 ### Testing with mock trust chains
 
-You can use the [`MockTrustChain`](https://docs.relaycorp.tech/veraid-js/interfaces/MockTrustChainOptions.html) class to test your integration with VeraId by generating valid signature bundles without the real DNSSEC infrastructure. This makes it easy to test both signature creation and verification in your automated tests, but it won't work in production because it relies on mock DNSSEC trust anchors.
+You can use [`MockTrustChain`](https://docs.relaycorp.tech/veraid-js/classes/MockTrustChain.html) to test your integration with VeraId by generating valid signature bundles without the real DNSSEC infrastructure. This makes it easy to test signature creation and verification, but it won't work in production because it relies on mock DNSSEC trust anchors.
 
 For example, to test the `produceSignature()` function illustrated above, you could use `MockTrustChain` as follows:
 
