@@ -21,3 +21,7 @@ export type { SignatureOptions } from './lib/SignatureOptions.js';
 export type { SignatureBundleVerification } from './lib/SignatureBundleVerification.js';
 export type { IDatePeriod } from './lib/dates.js';
 export { SignatureBundle } from './lib/SignatureBundle.js';
+
+// Mocking
+export { MockTrustChain } from './lib/mocking/MockTrustChain.js';
+export type { MockTrustChainOptions } from './lib/mocking/MockTrustChainOptions.js';
