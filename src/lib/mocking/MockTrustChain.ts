@@ -105,7 +105,6 @@ export class MockTrustChain {
    * Generate a mock trust chain
    * @param orgName - The name of the organisation
    * @param userName - The name of the user
-   * @param shouldBeSignedByMember - Whether the bundle should be signed by a member (if false, the bundle will be signed by the organisation)
    * @param expiryDate - The expiry date of the trust chain
    * @param options - The options for the mock trust chain
    * @returns A mock trust chain
@@ -113,7 +112,6 @@ export class MockTrustChain {
   public static async generate(
     orgName: string,
     userName: string | undefined,
-    shouldBeSignedByMember: boolean,
     expiryDate: Date,
     options: Partial<MockTrustChainOptions> = {},
   ): Promise<MockTrustChain> {
@@ -130,7 +128,7 @@ export class MockTrustChain {
     );
     const { chain, signerPrivateKey } = await createChain(
       zone,
-      shouldBeSignedByMember,
+      options.shouldBeSignedByMember ?? true,
       userName,
       orgKeyPair,
       veraidDnssecChain,
@@ -142,9 +140,9 @@ export class MockTrustChain {
 
   protected constructor(
     public readonly dnssecTrustAnchors: readonly TrustAnchor[],
-    protected readonly chain: MemberIdBundle | OrganisationSigner,
-    protected readonly signerPrivateKey: CryptoKey,
-    protected readonly validityPeriod: DatePeriod,
+    public readonly chain: MemberIdBundle | OrganisationSigner,
+    public readonly signerPrivateKey: CryptoKey,
+    public readonly validityPeriod: DatePeriod,
   ) {}
 
   /**
