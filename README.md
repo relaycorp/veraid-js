@@ -135,14 +135,14 @@ import { describe, expect, test } from 'vitest';
 async function verifySignature(
   plaintext: ArrayBuffer,
   signatureBundleSerialised: ArrayBuffer,
-  customTrustAnchors?: readonly TrustAnchor[], // New optional parameter
+  trustAnchors?: readonly TrustAnchor[], // New optional parameter
 ): Promise<string> {
   const now = new Date();
   const datePeriod: IDatePeriod = { start: subDays(now, TTL_DAYS), end: now };
   const signatureBundle = SignatureBundle.deserialise(signatureBundleSerialised);
   const {
     member: { user, organisation },
-  } = await signatureBundle.verify(plaintext, SERVICE_OID, datePeriod, customTrustAnchors);
+  } = await signatureBundle.verify(plaintext, SERVICE_OID, datePeriod, trustAnchors);
   return user === undefined ? organisation : `${user}@${organisation}`;
 }
 
