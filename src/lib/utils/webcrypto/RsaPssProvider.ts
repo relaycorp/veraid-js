@@ -1,25 +1,13 @@
 import { RSA_PKCS1_PSS_PADDING } from 'node:constants';
-import { createVerify } from 'node:crypto';
+import { createVerify, type VerifyPublicKeyInput } from 'node:crypto';
 
 import { RsaPssProvider as BaseRsaPssProvider, type CryptoKey } from 'webcrypto-core';
 
-function getCryptoAlgorithm(alg: RsaHashedKeyAlgorithm): string {
-  switch (alg.hash.name.toUpperCase()) {
-    case 'SHA-256': {
-      return 'RSA-SHA256';
-    }
-    case 'SHA-384': {
-      return 'RSA-SHA384';
-    }
-    case 'SHA-512': {
-      return 'RSA-SHA512';
-    }
-    default: {
-      throw new Error(`Unrecognised or unsupported hash algorithm (${alg.hash.name})`);
-    }
-  }
-}
-
+/**
+ * Custom RSA-PSS provider that lets Node.js determine the salt length.
+ *
+ * This is a workaround for: https://github.com/relaycorp/webcrypto-kms-js/issues/242
+ */
 export class RsaPssProvider extends BaseRsaPssProvider {
   public constructor(protected readonly originalProvider: BaseRsaPssProvider) {
     super();
@@ -31,18 +19,22 @@ export class RsaPssProvider extends BaseRsaPssProvider {
     signature: ArrayBuffer,
     data: ArrayBuffer,
   ) {
-    const cryptoAlg = getCryptoAlgorithm(key.algorithm as RsaHashedKeyAlgorithm);
-    const signer = createVerify(cryptoAlg);
-    signer.update(Buffer.from(data));
+    const signer = createVerify((key.algorithm as RsaHashedKeyAlgorithm).hash.name);
+    signer.update(new Uint8Array(data));
 
-    const keyDer = (await this.exportKey('spki', key)) as ArrayBuffer;
-    const keyPem = Buffer.from(keyDer).toString('base64');
-    const options = {
-      key: `-----BEGIN PUBLIC KEY-----\n${keyPem}\n-----END PUBLIC KEY-----`,
+    const keyPem = await this.exportPublicKeyToPem(key);
+    const options: VerifyPublicKeyInput = {
+      key: keyPem,
       padding: RSA_PKCS1_PSS_PADDING,
     };
 
     return signer.verify(options, new Uint8Array(signature));
+  }
+
+  private async exportPublicKeyToPem(key: CryptoKey) {
+    const keyDer = (await this.exportKey('spki', key)) as ArrayBuffer;
+    const keyBase64 = Buffer.from(keyDer).toString('base64');
+    return `-----BEGIN PUBLIC KEY-----\n${keyBase64}\n-----END PUBLIC KEY-----`;
   }
 
   public override async onSign(

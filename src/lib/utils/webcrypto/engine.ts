@@ -24,7 +24,7 @@ export function getEngineForPrivateKey(
     return cachedEngine;
   }
 
-  const crypto = new VeraCrypto([provider]);
+  const crypto = new VeraCrypto(false, [provider]);
   const engine = new CryptoEngine({ crypto });
   ENGINE_BY_PROVIDER.set(provider, engine);
   return engine;
