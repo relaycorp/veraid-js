@@ -8,7 +8,8 @@ export class MockRsaPssProvider extends RsaPssProvider {
 
   public override readonly onVerify = jest.fn<() => Promise<boolean>>();
 
-  public override readonly onExportKey = jest.fn<() => Promise<ArrayBuffer | JsonWebKey>>();
+  public override readonly onExportKey =
+    jest.fn<(format: KeyFormat, key: CryptoKey) => Promise<ArrayBuffer | JsonWebKey>>();
 
   public override readonly onImportKey = jest.fn<() => Promise<WebCryptoKey>>();
 }
